@@ -13,14 +13,30 @@ import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams } from '@sre/t
 import { LLMConnector } from './LLM.service/LLMConnector';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
-const console = Logger('LLMInference');
+const logger = Logger('LLMInference');
 
 type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams; onFallback?: (data: any) => void };
 
 export class LLMInference {
-    private model: string | TLLMModel;
-    private llmConnector: LLMConnector;
-    private modelProviderReq: IModelsProviderRequest;
+    private _model: string | TLLMModel;
+    public get model() {
+        return this._model;
+    }
+    public get modelId() {
+        return typeof this._model === 'string' ? this._model : this._model?.modelId;
+    }
+    private _llmConnector: LLMConnector;
+    public get llmConnector() {
+        return this._llmConnector;
+    }
+    private _modelProviderReq: IModelsProviderRequest;
+    public get modelProviderReq() {
+        return this._modelProviderReq;
+    }
+    private _llmProviderName: string;
+    public get llmProviderName() {
+        return this._llmProviderName;
+    }
     public teamId?: string;
 
     public static async getInstance(model: string | TLLMModel, candidate: AccessCandidate) {
@@ -34,18 +50,18 @@ export class LLMInference {
         const llmInference = new LLMInference();
         llmInference.teamId = teamId;
 
-        llmInference.modelProviderReq = modelsProvider.requester(candidate);
+        llmInference._modelProviderReq = modelsProvider.requester(candidate);
 
-        const llmProvider = await llmInference.modelProviderReq.getProvider(model);
-        if (llmProvider) {
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        llmInference._llmProviderName = await llmInference._modelProviderReq.getProvider(model);
+        if (llmInference._llmProviderName) {
+            llmInference._llmConnector = ConnectorService.getLLMConnector(llmInference._llmProviderName);
         }
 
-        if (!llmInference.llmConnector) {
-            console.error(`Model ${model} unavailable for team ${teamId}`);
+        if (!llmInference._llmConnector) {
+            logger.warn(`Model ${model} unavailable for team ${teamId}`);
         }
 
-        llmInference.model = model;
+        llmInference._model = model;
 
         return llmInference;
     }
@@ -53,32 +69,32 @@ export class LLMInference {
     public static user(candidate: AccessCandidate): any {}
 
     public get connector(): LLMConnector {
-        return this.llmConnector;
+        return this._llmConnector;
     }
 
     public async prompt({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
-            const content = this.llmConnector.enhancePrompt(query, params);
+            const content = this._llmConnector.enhancePrompt(query, params);
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
         // Reset the model, since the fallback model may change — especially when using user custom models.
-        params.model = this.model;
+        params.model = this._model;
 
         params.messages = messages;
         params.files = files;
 
         // If a fallback model is used, trigger the onFallback callback to notify the caller.
         if (isInFallback && typeof onFallback === 'function') {
-            onFallback({ model: this.model });
+            onFallback({ model: this._model });
         }
 
         try {
-            let response: TLLMChatResponse = await this.llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
+            let response: TLLMChatResponse = await this._llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
 
-            const result = this.llmConnector.postProcess(response?.content);
+            const result = this._llmConnector.postProcess(response?.content);
             if (result.error) {
                 // If the model stopped before completing the response, this is usually due to output token limit reached.
                 if (response.finishReason !== 'stop') {
@@ -102,12 +118,12 @@ export class LLMInference {
                     }
                 } catch (fallbackError) {
                     // If fallback also failed, log it but continue to throw original error
-                    console.warn('Fallback also failed:', fallbackError);
+                    logger.warn('Fallback also failed:', fallbackError);
                 }
             }
 
             // If fallback was not attempted or failed, throw the original error
-            console.error('Error in chatRequest: ', error);
+            logger.error('Error in chatRequest: ', error);
             throw error;
         }
     }
@@ -116,23 +132,23 @@ export class LLMInference {
         let messages = contextWindow || [];
 
         if (query) {
-            const content = this.llmConnector.enhancePrompt(query, params);
+            const content = this._llmConnector.enhancePrompt(query, params);
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
         // Reset the model, since the fallback model may change — especially when using user custom models.
-        params.model = this.model;
+        params.model = this._model;
 
         params.messages = messages;
         params.files = files;
 
         // If a fallback model is used, trigger the onFallback callback to notify the caller.
         if (isInFallback && typeof onFallback === 'function') {
-            onFallback({ model: this.model });
+            onFallback({ model: this._model });
         }
 
         try {
-            return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
+            return await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
         } catch (error) {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
@@ -152,12 +168,12 @@ export class LLMInference {
                     }
                 } catch (fallbackError) {
                     // If fallback also failed, log it but continue to return error emitter
-                    console.warn('Fallback also failed:', fallbackError);
+                    logger.warn('Fallback also failed:', fallbackError);
                 }
             }
 
             // If fallback was not attempted or failed, return error emitter
-            console.error('Error in streamRequest:', error);
+            logger.error('Error in streamRequest:', error);
 
             const dummyEmitter = new EventEmitter();
             process.nextTick(() => {
@@ -224,22 +240,22 @@ export class LLMInference {
      * @returns The result from the fallback execution, or null if fallback should not be attempted
      */
     private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
-        const isCustomModel = await this.modelProviderReq.isUserCustomLLM(this.model);
-        const fallbackModel = await this.modelProviderReq.getFallbackLLM(this.model);
+        const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+        const fallbackModel = await this._modelProviderReq.getFallbackLLM(this._model);
 
         // Only execute fallback if it's a custom model with a configured fallback
         if (!isCustomModel || !fallbackModel) {
             return null;
         }
 
-        console.info(`Attempting fallback from ${this.model} to ${fallbackModel}`);
+        logger.info(`Attempting fallback from ${this._model} to ${fallbackModel}`);
 
         // Mutate the model and connector to use fallback
-        this.model = fallbackModel;
+        this._model = fallbackModel;
 
-        const llmProvider = await this.modelProviderReq.getProvider(fallbackModel);
+        const llmProvider = await this._modelProviderReq.getProvider(fallbackModel);
         if (llmProvider) {
-            this.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            this._llmConnector = ConnectorService.getLLMConnector(llmProvider);
         }
 
         // Call the appropriate method with isInFallback=true to prevent further fallbacks
@@ -252,13 +268,13 @@ export class LLMInference {
 
     public async imageGenRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
-        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
+        return this._llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
     }
 
     public async imageEditRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
         params.files = files;
-        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
+        return this._llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
     }
 
     //@deprecated
@@ -269,11 +285,11 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            const model = params.model || this.model;
+            const model = params.model || this._model;
 
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
         } catch (error) {
-            console.error('Error in streamRequest:', error);
+            logger.error('Error in streamRequest:', error);
 
             const dummyEmitter = new EventEmitter();
             process.nextTick(() => {
@@ -306,11 +322,11 @@ export class LLMInference {
             //FIXME we need to update the connector multimediaStreamRequest in order to ignore prompt param if not provided
             const userMessage = Array.isArray(params.messages) ? params.messages.pop() : {};
             const prompt = userMessage?.content || '';
-            const model = params.model || this.model;
+            const model = params.model || this._model;
 
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
         } catch (error: any) {
-            console.error('Error in multimodalRequest: ', error);
+            logger.error('Error in multimodalRequest: ', error);
 
             throw error;
         }
@@ -337,12 +353,12 @@ export class LLMInference {
         params.files = _files;
 
         try {
-            prompt = this.llmConnector.enhancePrompt(prompt, config);
-            const model = params.model || this.model;
+            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            const model = params.model || this._model;
 
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
         } catch (error: any) {
-            console.error('Error in multimodalRequest: ', error);
+            logger.error('Error in multimodalRequest: ', error);
 
             throw error;
         }
@@ -376,7 +392,7 @@ export class LLMInference {
 
         //#region get max model context
 
-        const modelInfo = await this.modelProviderReq.getModelInfo(this.model, true);
+        const modelInfo = await this._modelProviderReq.getModelInfo(this._model, true);
         let maxModelContext = modelInfo?.tokens;
         let maxModelOutputTokens = modelInfo?.completionTokens || modelInfo?.tokens;
         // const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
@@ -399,10 +415,10 @@ export class LLMInference {
         }
 
         if (maxInputContext <= 0) {
-            console.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
+            logger.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
         }
 
-        console.debug(
+        logger.debug(
             `Context Window Configuration: Max Input Tokens: ${maxInputContext}, Max Output Tokens: ${maxOutputContext}, Max Model Tokens: ${maxModelContext}`
         );
         const systemMessage = { role: 'system', content: systemPrompt };
@@ -473,7 +489,7 @@ function countTokens(content: any, model: 'gpt-4o' | 'gpt-4o-mini' = 'gpt-4o') {
         const tokens = encodeChat([{ role: 'user', content: _stringifiedContent } as ChatMessage], model);
         return tokens.length;
     } catch (error) {
-        console.warn('Error in countTokens: ', error);
+        logger.warn('Error in countTokens: ', error);
         return 0;
     }
 }

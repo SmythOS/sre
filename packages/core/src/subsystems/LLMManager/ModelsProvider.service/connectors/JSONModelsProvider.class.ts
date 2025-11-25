@@ -16,7 +16,7 @@ import fsSync from 'fs';
 import path from 'path';
 import { findSmythPath } from '@sre/helpers/Sysconfig.helper';
 
-const console = Logger('SmythModelsProvider');
+const logger = Logger('SmythModelsProvider');
 
 type SmythModelsProviderConfig = {
     /**
@@ -58,7 +58,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                 this._settings.mode = 'merge'; //Force merge mode if using models from .smyth folder
                 this.initDirWatcher(modelsFolder); //this.started will be set to true when the watcher is ready
             } else {
-                console.warn('No models folder found ... falling back to built-in models only');
+                logger.warn('No models folder found ... falling back to built-in models only');
                 this.started = true;
             }
         }
@@ -71,7 +71,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
         const _modelsFolder = findSmythPath('models');
 
         if (fsSync.existsSync(_modelsFolder)) {
-            console.warn('Using default models folder  : ', _modelsFolder);
+            logger.warn('Using default models folder  : ', _modelsFolder);
             return _modelsFolder;
         }
 
@@ -106,7 +106,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
 
     private async reindexModels(dir: string) {
         try {
-            console.debug(`Reindexing models from directory: ${dir}`);
+            logger.debug(`Reindexing models from directory: ${dir}`);
 
             // Scan directory for models and get them as an object
             const scannedModels = await this.scanDirectoryForModels(dir);
@@ -121,9 +121,9 @@ export class JSONModelsProvider extends ModelsProviderConnector {
 
             JSONModelsProvider.localCache.clear();
 
-            console.debug(`Successfully reindexed models. Total models: ${Object.keys(this.models).length}`);
+            logger.debug(`Successfully reindexed models. Total models: ${Object.keys(this.models).length}`);
         } catch (error) {
-            console.error(`Error reindexing models from directory "${dir}":`, error);
+            logger.error(`Error reindexing models from directory "${dir}":`, error);
         }
     }
 
@@ -141,15 +141,21 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                     const subDirModels = await this.scanDirectoryForModels(fullPath);
                     Object.assign(scannedModels, subDirModels);
                 } else if (entry.isFile() && entry.name.endsWith('.json')) {
-                    // Process JSON files and merge results
-                    const fileContent = await fs.readFile(fullPath, 'utf-8');
-                    const modelData = JSON.parse(fileContent);
-                    const validModels = await this.getValidModels(modelData);
-                    Object.assign(scannedModels, validModels);
+                    try {
+                        // Process JSON files and merge results
+
+                        const fileContent = await fs.readFile(fullPath, 'utf-8');
+                        const modelData = JSON.parse(fileContent);
+                        const validModels = await this.getValidModels(modelData);
+                        Object.assign(scannedModels, validModels);
+                    } catch (error) {
+                        console.error(`Error parsing model data from file "${fullPath}"`);
+                        logger.warn(`Error parsing model data from file "${fullPath}":`, error.message);
+                    }
                 }
             }
         } catch (error) {
-            console.warn(`Error scanning directory "${dir}":`, error);
+            logger.warn(`Error scanning directory "${dir}":`, error);
         }
 
         return scannedModels;
@@ -164,9 +170,9 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                 // Single model case
                 if (this.isValidSingleModel(modelData)) {
                     validModels[modelData.modelId] = modelData as TLLMModel;
-                    console.debug(`Loaded model: ${modelData.modelId}`);
+                    logger.debug(`Loaded model: ${modelData.modelId}`);
                 } else {
-                    console.warn(`Invalid model format`, modelData);
+                    logger.warn(`Invalid model format`, modelData);
                 }
             } else if (typeof modelData === 'object' && !Array.isArray(modelData)) {
                 // Object of models case
@@ -178,19 +184,19 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                             //console.debug(`Loaded model: ${modelId}`);
                             models += `${modelId} `;
                         } else {
-                            console.warn(`Invalid model format for model "${modelId}"`);
+                            logger.warn(`Invalid model format for model "${modelId}"`);
                         }
                     } catch (error) {
-                        console.warn(`Error processing model "${modelId}":`, error);
+                        logger.warn(`Error processing model "${modelId}":`, error);
                         // Continue processing other models instead of failing the whole file
                     }
                 }
-                console.debug(`Loaded models: ${models}`);
+                logger.debug(`Loaded models: ${models}`);
             } else {
-                console.warn(`Invalid format (not a model or object of models)`);
+                logger.warn(`Invalid format (not a model or object of models)`);
             }
         } catch (error) {
-            console.warn(`Error loading model:`, error);
+            logger.warn(`Error loading model:`, error);
         }
 
         return validModels;
@@ -212,7 +218,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
         const stats = fsSync.statSync(dir);
 
         if (!stats.isDirectory() && !stats.isFile()) {
-            console.warn(`Path "${dir}" is neither a file nor a directory ... skipping models watcher and falling back to built-in models only`);
+            logger.warn(`Path "${dir}" is neither a file nor a directory ... skipping models watcher and falling back to built-in models only`);
             this.started = true;
             return;
         }
@@ -230,17 +236,18 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                         if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
                         else this.models = modelData;
                     } catch (error) {
-                        console.error(`Error parsing model data from file "${dir}":`, error);
+                        console.error(`Error parsing model data from file "${dir}":`);
+                        logger.warn(`Error parsing model data from file "${dir}":`, error.message);
                     }
                     this.started = true;
                     return;
                 }
 
-                console.warn(`Path "${dir}" is neither a file nor a directory`);
+                logger.warn(`Path "${dir}" is neither a file nor a directory`);
                 return;
             }
         } catch (error) {
-            console.warn(`Path "${dir}" does not exist or cannot be accessed:`, error.message);
+            logger.warn(`Path "${dir}" does not exist or cannot be accessed:`, error.message);
             return;
         }
 
@@ -262,19 +269,19 @@ export class JSONModelsProvider extends ModelsProviderConnector {
 
         watcher
             .on('add', (path) => {
-                console.debug(`File ${path} has been added`);
+                logger.debug(`File ${path} has been added`);
                 debouncedReindex();
             })
             .on('change', (path) => {
-                console.debug(`File ${path} has been changed`);
+                logger.debug(`File ${path} has been changed`);
                 debouncedReindex();
             })
             .on('unlink', (path) => {
-                console.debug(`File ${path} has been removed`);
+                logger.debug(`File ${path} has been removed`);
                 debouncedReindex();
             })
             .on('ready', async () => {
-                console.debug(`Watcher ready. Performing initial scan of ${dir}`);
+                logger.debug(`Watcher ready. Performing initial scan of ${dir}`);
                 // Do initial scan once when watcher is ready
                 await this.reindexModels(dir);
                 this.started = true;
