@@ -538,7 +538,7 @@ export class GenAILLM extends Component {
             }
 
             const emptyResponseErrorMsg =
-                'Empty response. This is usually due to output token limit reached. Please try again with a higher max tokens limit.';
+                "Empty response. This is usually due to output token limit reached. Please try again with a higher 'Maximum Output Tokens'.";
 
             // If the finish reason is not "stop", it means the model stopped before completing the response.
             if (finishReason !== 'stop') {
