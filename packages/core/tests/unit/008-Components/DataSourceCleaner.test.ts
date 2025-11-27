@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { DataSourceIndexer } from '@sre/Components/DataSourceIndexer.class';
+import { DataSourceIndexer } from '@sre/Components/RAG/DataSourceIndexer.class';
 // import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
@@ -7,7 +7,7 @@ import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
-import { DataSourceCleaner } from '@sre/Components/DataSourceCleaner.class';
+import { DataSourceCleaner } from '@sre/Components/RAG/DataSourceCleaner.class';
 import { setupSRE } from '../../utils/sre';
 import { loadAgentData } from '../../utils/test-data-manager';
 
@@ -72,7 +72,7 @@ describe('DataSourceCleaner Component', () => {
 
             const dsBeforeDel = await vectorDbConnector
                 .user(AccessCandidate.team(agent.teamId))
-                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+                .getDatasource(namespace, DataSourceIndexer.normalizeDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsBeforeDel).toBeDefined();
 
@@ -95,7 +95,7 @@ describe('DataSourceCleaner Component', () => {
 
             const dsAfterDel = await vectorDbConnector
                 .user(AccessCandidate.team(agent.teamId))
-                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+                .getDatasource(namespace, DataSourceIndexer.normalizeDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsAfterDel).toBeUndefined();
 
