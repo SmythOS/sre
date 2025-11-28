@@ -41,10 +41,7 @@ export class ServerlessCode extends Component {
             let codeInputs = {};
 
             for (let field of componentInputs) {
-                // Parse using input values first, then agent variables.
-                // This correctly resolves cases where input values reference agent variables with the same name.
-                // Example: agent variables { user_id: "123" }, input { user_id: "{{user_id}}" }.
-                const inputValue = TemplateString(input[field.name]).parse(input).parse(agent.agentVariables).result;
+                const inputValue = TemplateString(input[field.name]).parse(input).result;
 
                 const _type = typeof inputValue;
 
