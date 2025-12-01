@@ -20,8 +20,9 @@ import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { IAgent } from '@sre/types/Agent.types';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { TLLMEvent } from '@sre/types/LLM.types';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-const outputLogger = Logger('OTelLog');
+const outputLogger = Logger('OTel');
 
 export type OTelLogConfig = {
     endpoint: string;
@@ -50,7 +51,7 @@ export type OTelLogConfig = {
      */
     redactFields?: string[];
 };
-
+const OTEL_DEBUG_LOGS = true;
 export class OTel extends TelemetryConnector {
     public name: string = 'OTel';
     public id: string;
@@ -208,6 +209,8 @@ export class OTel extends TelemetryConnector {
 
         const createToolInfoHandler = function (hookContext) {
             return function (toolInfo: any) {
+                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createToolInfoHandler started', accessCandidate);
                 if (!hookContext.curLLMGenSpan || !hookContext.convSpan) return;
 
                 const modelId = toolInfo.model;
@@ -238,6 +241,7 @@ export class OTel extends TelemetryConnector {
 
                 hookContext.curLLMGenSpan.end();
                 delete hookContext.curLLMGenSpan;
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createToolInfoHandler completed', accessCandidate);
             };
         };
 
@@ -245,6 +249,8 @@ export class OTel extends TelemetryConnector {
             return function (data: any, reqInfo: any) {
                 if (!hookContext.convSpan) return;
                 if (hookContext.curLLMGenSpan) return;
+                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler started', reqInfo?.requestId, accessCandidate);
 
                 const modelId = reqInfo.model;
                 const contextWindow = reqInfo.contextWindow;
@@ -285,13 +291,15 @@ export class OTel extends TelemetryConnector {
                     'context.preview': JSON.stringify(lastContext).substring(0, 200),
                 });
                 hookContext.curLLMGenSpan = llmGenSpan;
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler completed', reqInfo?.requestId, accessCandidate);
             };
         };
 
         const createRequestedHandler = function (hookContext) {
             return function (reqInfo: any) {
                 if (!hookContext.convSpan) return;
-
+                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler started', reqInfo?.requestId, accessCandidate);
                 if (!hookContext.latencySpans) hookContext.latencySpans = {};
                 const contextWindow = reqInfo.contextWindow;
 
@@ -317,6 +325,7 @@ export class OTel extends TelemetryConnector {
                     'context.preview': JSON.stringify(lastContext).substring(0, 200),
                 });
                 hookContext.latencySpans[reqInfo.requestId] = llmGenLatencySpan;
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler completed', reqInfo?.requestId, accessCandidate);
             };
         };
         HookService.register(
@@ -332,6 +341,8 @@ export class OTel extends TelemetryConnector {
 
                     return;
                 }
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Conversation.streamPrompt started', { processId, message }, accessCandidate);
 
                 const modelId = typeof conversation?.model === 'string' ? conversation?.model : conversation?.model?.modelId;
 
@@ -349,15 +360,16 @@ export class OTel extends TelemetryConnector {
                     },
                 });
                 hookContext.convSpan = convSpan;
+                hookContext.agentId = agentId;
+                hookContext.processId = processId;
 
                 hookContext.dataHandler = createDataHandler(hookContext);
                 conversation.on(TLLMEvent.Data, hookContext.dataHandler);
+
                 hookContext.requestedHandler = createRequestedHandler(hookContext);
                 conversation.on(TLLMEvent.Requested, hookContext.requestedHandler);
-                hookContext.agentId = agentId;
-                hookContext.processId = processId;
-                hookContext.toolInfoHandler = createToolInfoHandler(hookContext);
 
+                hookContext.toolInfoHandler = createToolInfoHandler(hookContext);
                 conversation.on(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
 
                 // Add start event
@@ -408,6 +420,9 @@ export class OTel extends TelemetryConnector {
 
                 const ctx = OTelContextRegistry.get(agentId, processId);
                 if (!ctx) return;
+
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Conversation.streamPrompt completed', { processId }, accessCandidate);
 
                 if (hookContext.curLLMGenSpan) {
                     hookContext.curLLMGenSpan.addEvent('llm.gen.content', {
@@ -460,6 +475,9 @@ export class OTel extends TelemetryConnector {
                 const agentRequest = agent.agentRequest;
                 const teamId = agent.teamId;
                 const _hookContext: any = this.context;
+
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process started', { processId, agentProcessId, endpointPath }, accessCandidate);
 
                 const body = oTelInstance.prepareComponentData(agentRequest.body || {});
                 const query = oTelInstance.prepareComponentData(agentRequest.query || {});
@@ -537,6 +555,9 @@ export class OTel extends TelemetryConnector {
 
                 if (!agentSpan) return;
 
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process completed', { agentProcessId }, accessCandidate);
+
                 if (error) {
                     agentSpan.recordException(error);
                     agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
@@ -603,6 +624,8 @@ export class OTel extends TelemetryConnector {
                 const componentType = settings.name;
                 const componentName = settings.displayName || settings.name;
                 const eventId = settings.eventId; // specific event id attached to this component execution
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId }, accessCandidate);
 
                 const ctx = OTelContextRegistry.get(agentId, processId);
                 const parentSpan = ctx?.rootSpan;
@@ -676,6 +699,9 @@ export class OTel extends TelemetryConnector {
                 const componentId = settings.id || 'unknown';
                 const componentType = settings.name;
                 const componentName = settings.displayName || settings.name;
+
+                const accessCandidate = AccessCandidate.agent(agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process completed', { componentId }, accessCandidate);
 
                 if (error) {
                     // Capture error details
