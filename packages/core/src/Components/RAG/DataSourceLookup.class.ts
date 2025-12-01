@@ -158,7 +158,9 @@ export class DataSourceLookup extends DataSourceComponent {
             outputs[con.name] = '';
         }
 
-        const namespaceLabel = config.data.namespace.split('_').slice(1).join('_') || config.data.namespace;
+        const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(config.data.namespace)
+            ? config.data.namespace.split('_').slice(1).join('_')
+            : config.data.namespace;
         const namespaceId = config.data.namespace;
         const model = config.data?.model || 'gpt-4o-mini';
         const includeMetadata = config.data?.includeMetadata || false;

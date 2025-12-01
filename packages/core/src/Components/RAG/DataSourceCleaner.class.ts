@@ -51,7 +51,10 @@ export class DataSourceCleaner extends DataSourceComponent {
                 throw new Error(`Input validation error: ${inputSchema.error}\n EXITING...`);
             }
 
-            const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
+            // const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
+            const namespaceId = /^c[a-z0-9]{24}.+$/.test(configSchema.value.namespaceId)
+                ? configSchema.value.namespaceId.split('_').slice(1).join('_')
+                : configSchema.value.namespaceId;
 
             let vectorDbConnector = ConnectorService.getVectorDBConnector();
 
@@ -110,7 +113,11 @@ export class DataSourceCleaner extends DataSourceComponent {
                 throw new Error(`Input validation error: ${inputSchema.error}\n EXITING...`);
             }
 
-            const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
+            // const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
+            const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(configSchema.value.namespaceId)
+                ? configSchema.value.namespaceId.split('_').slice(1).join('_')
+                : configSchema.value.namespaceId;
+            const namespaceId = configSchema.value.namespaceId;
 
             let vecDbConnector: VectorDBConnector = null;
             try {
@@ -135,9 +142,9 @@ export class DataSourceCleaner extends DataSourceComponent {
             }
             debugOutput += `Searching for data source with id: ${providedId}\n`;
 
-            const dsId = DataSourceComponent.normalizeDsId(providedId, teamId, namespaceId);
+            const dsId = DataSourceComponent.normalizeDsId(providedId, teamId, namespaceLabel);
 
-            await vecDbConnector.requester(AccessCandidate.team(teamId)).deleteDatasource(namespaceId, dsId);
+            await vecDbConnector.requester(AccessCandidate.team(teamId)).deleteDatasource(namespaceLabel, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;
 

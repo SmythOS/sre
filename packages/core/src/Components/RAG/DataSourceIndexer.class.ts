@@ -148,7 +148,8 @@ export class DataSourceIndexer extends DataSourceComponent {
             }
 
             // we try to get the namespace without the prefix teamId, if not exist, we use the full namespace id
-            const namespaceLabel = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
+            // const namespaceLabel = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
+            const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(_config.namespace) ? _config.namespace.split('_').slice(1).join('_') : _config.namespace;
             const namespaceId = _config.namespace;
             debugOutput += `[Selected namespace] \n${namespaceLabel}\n\n`;
 
