@@ -75,7 +75,7 @@
         "express": "^4.21.2",
         "mammoth": "^1.9.1",
         "mime-types": "^3.0.1",
-        "pdfjs-dist": "^4.0.379"
+        "pdfjs-dist": "^4.10.38"
     },
     "devDependencies": {
         "@rollup/plugin-json": "^6.1.0",

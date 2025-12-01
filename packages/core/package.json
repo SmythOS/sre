@@ -25,7 +25,7 @@
     "scripts": {
         "gen:barrel": "ctix build",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
-        "build:jsbundle": "cross-env rollup -c",
+        "build:jsbundle": "cross-env NODE_OPTIONS='--max-old-space-size=8192' rollup -c",
         "build": "pnpm run build:jsbundle && pnpm run build:types",
         "test:unit": "cd ../.. && vitest run packages/core/tests/unit",
         "test:unit:watch": "cd ../.. && vitest watch packages/core/tests/unit",
@@ -81,7 +81,7 @@
         "@pinecone-database/pinecone": "^3.0.0",
         "@runware/sdk-js": "^1.1.36",
         "@smithy/smithy-client": "^4.4.3",
-        "@zilliz/milvus2-sdk-node": "^2.6.2",
+        "@zilliz/milvus2-sdk-node": "^2.6.4",
         "acorn": "^8.14.1",
         "axios": "^1.7.2",
         "chokidar": "^4.0.3",

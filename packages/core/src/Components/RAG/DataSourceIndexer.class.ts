@@ -1,18 +1,18 @@
 import { IAgent as Agent } from '@sre/types/Agent.types';
-import { Component } from './Component.class';
+import { DataSourceComponent } from './DataSourceComponent.class';
 import Joi from 'joi';
 import { validateCharacterSet } from '@sre/utils/validation.utils';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { isUrl, detectURLSourceType } from '../utils';
+import { isUrl, detectURLSourceType } from '../../utils';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TEmbeddings } from '@sre/IO/VectorDB.service/embed/BaseEmbedding';
-import { EmbeddingsFactory, SupportedModels } from '@sre/IO/VectorDB.service/embed';
-import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
+import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 
-export class DataSourceIndexer extends Component {
+export class DataSourceIndexer extends DataSourceComponent {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
     protected configSchema = Joi.object({
         namespace: Joi.string().max(50).allow(''),
@@ -92,7 +92,7 @@ export class DataSourceIndexer extends Component {
 
             let indexRes: any = null;
             let parsedUrlArray: string[] | null = null;
-            const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
+            const dsId = DataSourceIndexer.normalizeDsId(providedId, teamId, namespaceId);
 
             if (isUrl(inputSchema.value.Source)) {
                 debugOutput += `STEP: Parsing input as url\n\n`;
@@ -152,39 +152,16 @@ export class DataSourceIndexer extends Component {
             const namespaceId = _config.namespace;
             debugOutput += `[Selected namespace] \n${namespaceLabel}\n\n`;
 
-            // resolve the ns record, if not exist, throw an error (new in v2)
-            // then we also need to resolve the credentials
-            const nkvConnector = ConnectorService.getNKVConnector();
-            const nkvClient = nkvConnector.requester(AccessCandidate.team(teamId));
-            const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespaceId);
-
-            if (!rawNsRecord) {
+            let vecDbConnector: VectorDBConnector = null;
+            try {
+                vecDbConnector = await this.resolveVectorDbConnector(namespaceId, teamId);
+            } catch (err: any) {
+                debugOutput += `Error: ${err?.message || "Couldn't get vector database connector"}\n\n`;
                 return {
                     _debug: debugOutput,
-                    _error: `Namespace ${namespaceLabel} does not exist`,
+                    _error: err?.message || "Couldn't get vector database connector",
                 };
             }
-
-            // const { credentialId, embeddings: embeddingsOptions } = JSON.parse(rawNsRecord.toString());
-            const namespaceRecord = JSON.parse(rawNsRecord.toString());
-            const accountConnector = ConnectorService.getAccountConnector();
-            const accountClient = accountConnector.requester(AccessCandidate.team(teamId));
-            const rawCredRecord = await accountClient.getTeamSetting(namespaceRecord.credentialId, 'vector_db_creds');
-            if (!rawCredRecord) {
-                throw new Error(`Credential ${namespaceRecord.credentialId} does not exist`);
-            }
-            const credRecord = JSON.parse(rawCredRecord);
-            await Promise.all(
-                Object.keys(credRecord.credentials).map(async (key) => {
-                    if (typeof credRecord.credentials[key] !== 'string') return;
-                    credRecord.credentials[key] = await TemplateString(credRecord.credentials[key]).parseTeamKeysAsync(teamId).asyncResult;
-                })
-            );
-
-            const vecDbConnector = ConnectorService.getVectorDBConnector(credRecord.provider).instance({
-                credentials: credRecord.credentials,
-                embeddings: await this.transformEmbedding(namespaceRecord.embeddings, config.data, teamId),
-            });
             const vecDbClient = vecDbConnector.requester(AccessCandidate.team(teamId));
 
             const inputSchema = this.validateInput(input);
@@ -205,15 +182,27 @@ export class DataSourceIndexer extends Component {
                 throw new Error(`Invalid id. Accepted characters: 'a-z', 'A-Z', '0-9', '-', '_', '.'`);
             }
 
-            const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceLabel);
+            const dsId = DataSourceIndexer.normalizeDsId(providedId, teamId, namespaceLabel);
+
+            // check if the datasource already exists
+            const dsExists = await vecDbClient.getDatasource(namespaceLabel, dsId);
+            if (dsExists) {
+                debugOutput += `Datasource already exists\n\n`;
+                return {
+                    _debug: debugOutput,
+                    _error: `Datasource already exists`,
+                };
+            }
 
             debugOutput += `STEP: Parsing input as text\n\n`;
 
             const response = await vecDbClient.createDatasource(namespaceLabel, {
                 text: inputSchema.value.Source,
-                metadata: _config.metadata || null,
+                metadata: JSONContentHelper.create(_config.metadata).tryParse() || null,
                 id: dsId,
                 label: _config.name || 'Untitled',
+                chunkSize: _config.chunkSize ? parseInt(_config.chunkSize) : undefined,
+                chunkOverlap: _config.chunkOverlap ? parseInt(_config.chunkOverlap) : undefined,
             });
 
             debugOutput += `Created datasource successfully\n\n`;
@@ -233,29 +222,6 @@ export class DataSourceIndexer extends Component {
                 _error: err?.message || "Couldn't index data source",
             };
         }
-    }
-
-    private async transformEmbedding(embedding: { dimensions: string; modelId: string }, data: any, teamId: string): Promise<TEmbeddings> {
-        // we need to take this and return a proper TEmbeddings object
-
-        const provider = EmbeddingsFactory.getProviderByModel(embedding.modelId as any);
-
-        // based on the provider, we should be able to retreive the correct credentials
-        const modelsProvider = ConnectorService.getModelsProviderConnector();
-        const modelProviderCandidate = modelsProvider.requester(AccessCandidate.team(teamId));
-        const modelInfo = await modelProviderCandidate.getModelInfo(embedding.modelId);
-
-        const llmCreds = await getLLMCredentials(AccessCandidate.team(teamId), modelInfo);
-
-        return {
-            provider,
-            model: embedding.modelId,
-            credentials: llmCreds,
-            params: {
-                dimensions: parseInt(embedding.dimensions),
-                chunkSize: data.chunkSize,
-            },
-        };
     }
 
     validateInput(input: any) {
@@ -283,13 +249,5 @@ export class DataSourceIndexer extends Component {
         });
 
         return id;
-    }
-
-    public static genDsId(providedId: string, teamId: string, namespaceId: string) {
-        return `${teamId}::${namespaceId}::${providedId}`;
-    }
-
-    private async addDSFromUrl({ teamId, namespaceId, dsId, type, url, name, metadata }) {
-        throw new Error('URLs are not supported yet');
     }
 }
