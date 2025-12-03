@@ -150,12 +150,12 @@ export class DataSourceIndexer extends DataSourceComponent {
             // we try to get the namespace without the prefix teamId, if not exist, we use the full namespace id
             // const namespaceLabel = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
             const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(_config.namespace) ? _config.namespace.split('_').slice(1).join('_') : _config.namespace;
-            const namespaceId = _config.namespace;
+            // const namespaceId = _config.namespace;
             debugOutput += `[Selected namespace] \n${namespaceLabel}\n\n`;
 
             let vecDbConnector: VectorDBConnector = null;
             try {
-                vecDbConnector = await this.resolveVectorDbConnector(namespaceId, teamId);
+                vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
             } catch (err: any) {
                 debugOutput += `Error: ${err?.message || "Couldn't get vector database connector"}\n\n`;
                 return {

@@ -161,7 +161,7 @@ export class DataSourceLookup extends DataSourceComponent {
         const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(config.data.namespace)
             ? config.data.namespace.split('_').slice(1).join('_')
             : config.data.namespace;
-        const namespaceId = config.data.namespace;
+        // const namespaceId = config.data.namespace;
         const model = config.data?.model || 'gpt-4o-mini';
         const includeMetadata = config.data?.includeMetadata || false;
 
@@ -175,7 +175,7 @@ export class DataSourceLookup extends DataSourceComponent {
         // let vectorDbConnector = ConnectorService.getVectorDBConnector();
         // let existingNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespaceLabel);
 
-        const vecDbConnector = await this.resolveVectorDbConnector(namespaceId, teamId);
+        const vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
 
         let results: string[] | { content: string; metadata: any; score?: number }[];
         let _error;
