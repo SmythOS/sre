@@ -13,6 +13,7 @@ import {
     GetSecretValueCommandOutput,
 } from '@aws-sdk/client-secrets-manager';
 
+const defaultPrefix = 'smythos';
 const console = Logger('SecretsManager');
 
 export type SecretsManagerConfig = {
@@ -29,7 +30,7 @@ export class SecretsManager extends VaultConnector {
     constructor(protected _settings: SecretsManagerConfig) {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        this.prefix = _settings.prefix || '';
+        this.prefix = _settings.prefix || defaultPrefix;
         this.secretsManager = new SecretsManagerClient({
             region: _settings.region,
             ...(_settings.awsAccessKeyId && _settings.awsSecretAccessKey
