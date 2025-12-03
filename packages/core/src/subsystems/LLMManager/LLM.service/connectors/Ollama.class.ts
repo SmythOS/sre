@@ -138,14 +138,17 @@ export class OllamaConnector extends LLMConnector {
 
             let toolsData: ToolData[] = [];
             let fullContent = '';
+            let finishReason = 'stop';
 
             (async () => {
                 for await (const chunk of stream) {
+                    emitter.emit(TLLMEvent.Data, chunk);
+
                     // Emit content deltas
                     if (chunk.message?.content) {
                         const content = chunk.message.content;
                         fullContent += content;
-                        emitter.emit('content', content);
+                        emitter.emit(TLLMEvent.Content, content);
                     }
 
                     // Handle tool calls accumulation
@@ -181,6 +184,11 @@ export class OllamaConnector extends LLMConnector {
                         };
                         usage_data.push(usage);
                     }
+
+                    // Capture finish reason from Ollama's done_reason
+                    if (chunk.done_reason) {
+                        finishReason = chunk.done_reason;
+                    }
                 }
 
                 // Emit tool info if tools were requested
@@ -189,18 +197,25 @@ export class OllamaConnector extends LLMConnector {
                 }
 
                 // Report usage
+                const reportedUsage: any[] = [];
                 usage_data.forEach((usage) => {
-                    this.reportUsage(usage, {
+                    const reported = this.reportUsage(usage, {
                         modelEntryName: context.modelEntryName,
                         keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId: context.agentId,
                         teamId: context.teamId,
                     });
+                    reportedUsage.push(reported);
                 });
+
+                // Emit interrupted event if finishReason is not 'stop'
+                if (finishReason !== 'stop') {
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
+                }
 
                 // Final end event
                 setTimeout(() => {
-                    emitter.emit('end', toolsData);
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
                 }, 100);
             })();
 
