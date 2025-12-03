@@ -138,11 +138,13 @@ export class VertexAIConnector extends LLMConnector {
                 for await (const chunk of streamResult.stream) {
                     const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (chunkText) {
-                        emitter.emit('content', chunkText);
+                        emitter.emit(TLLMEvent.Content, chunkText);
                     }
                 }
 
                 const aggregatedResponse = await streamResult.response;
+
+                emitter.emit(TLLMEvent.Data, aggregatedResponse);
 
                 // Check for function calls in the final response (like Anthropic does)
                 const functionCalls = aggregatedResponse.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
@@ -176,15 +178,15 @@ export class VertexAIConnector extends LLMConnector {
                 const finishReason = (aggregatedResponse.candidates?.[0]?.finishReason || 'stop').toLowerCase();
 
                 if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, usageData, finishReason);
+                    emitter.emit(TLLMEvent.End, toolsData, usageData, finishReason);
                 }, 100);
             } catch (error) {
                 logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             }
         }, 100);
 
