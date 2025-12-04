@@ -294,12 +294,20 @@ export class GoogleAIConnector extends LLMConnector {
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-            this.reportImageUsage({
-                usage: {
-                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                context,
+            // ! Deprecated: use reportUsage instead
+            // this.reportImageUsage({
+            //     usage: {
+            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+            //         usageMetadata,
+            //     },
+            //     context,
+            // });
+
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             if (imageData.length === 0) {
@@ -322,13 +330,22 @@ export class GoogleAIConnector extends LLMConnector {
             // Report input tokens and image cost pricing based on the official pricing page:
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-            this.reportImageUsage({
-                usage: {
-                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                numberOfImages: config.numberOfImages,
-                context,
+
+            // ! Deprecated: use reportUsage instead
+            // this.reportImageUsage({
+            //     usage: {
+            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+            //         usageMetadata,
+            //     },
+            //     numberOfImages: config.numberOfImages,
+            //     context,
+            // });
+
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             return {
@@ -381,12 +398,20 @@ export class GoogleAIConnector extends LLMConnector {
         // Report pricing for input tokens and image costs
         const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-        this.reportImageUsage({
-            usage: {
-                cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                usageMetadata,
-            },
-            context,
+        // ! Deprecated: use reportUsage instead
+        // this.reportImageUsage({
+        //     usage: {
+        //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+        //         usageMetadata,
+        //     },
+        //     context,
+        // });
+
+        this.reportUsage(usageMetadata, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
         });
 
         return {
@@ -528,7 +553,7 @@ export class GoogleAIConnector extends LLMConnector {
         let inputTokens = usage?.promptTokenCount || 0;
 
         // The pricing is the same for output and thinking tokens, so we can add them together.
-        const outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
+        let outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
 
         // If cached input tokens are available, we need to subtract them from the input tokens.
         let cachedInputTokens = usage?.cachedContentTokenCount || 0;
@@ -578,10 +603,20 @@ export class GoogleAIConnector extends LLMConnector {
         }
         // #endregion
 
+        // #region Calculate image tokens
+        const imageOutputTokens = usage?.candidatesTokensDetails?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        // Gemini models does not return output text tokens right now, so we need to subtract the output image tokens from the output tokens.
+        if (!imageOutputTokens) {
+            outputTokens = outputTokens - imageOutputTokens;
+        }
+        // #endregion Calculate image tokens
+
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            output_tokens_image: imageOutputTokens,
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: cachedInputTokens,
             input_tokens_cache_read_audio: cachedAudioInputTokens,
@@ -609,6 +644,9 @@ export class GoogleAIConnector extends LLMConnector {
         return { textTokens, imageTokens };
     }
 
+    /**
+     * @deprecated use reportUsage instead
+     */
     protected reportImageUsage({
         usage,
         context,
