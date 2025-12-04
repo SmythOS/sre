@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
+import type { MessageStreamEvents } from '@anthropic-ai/sdk/lib/MessageStream';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -35,6 +36,26 @@ const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.
 
 // Type aliases
 type AnthropicMessageParams = Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
+type AnthropicStreamEventType = keyof MessageStreamEvents;
+
+// Event names automatically validated against MessageStreamEvents type
+// TypeScript will error if any events are missing or incorrect
+// This ensures we always use the correct event names as defined by Anthropic SDK
+const AnthropicStreamEvent = {
+    connect: 'connect',
+    streamEvent: 'streamEvent',
+    text: 'text',
+    citation: 'citation',
+    inputJson: 'inputJson',
+    thinking: 'thinking',
+    signature: 'signature',
+    message: 'message',
+    contentBlock: 'contentBlock',
+    finalMessage: 'finalMessage',
+    error: 'error',
+    abort: 'abort',
+    end: 'end',
+} satisfies Record<keyof MessageStreamEvents, AnthropicStreamEventType>;
 
 // TODO [Forhad]: implement proper typing
 
@@ -132,34 +153,38 @@ export class AnthropicConnector extends LLMConnector {
             const needsPrefillInjection = this.hasPrefillText(body.messages);
             let prefillInjected = false;
 
-            stream.on('streamEvent', (event: any) => {
+            stream.on(AnthropicStreamEvent.streamEvent, (event: any) => {
                 if (event.message?.usage) {
                     //console.log('usage', event.message?.usage);
                 }
             });
 
-            stream.on('error', (error) => {
+            stream.on(AnthropicStreamEvent.error, (error) => {
                 //console.log('error', error);
 
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             });
 
-            stream.on('text', (text: string) => {
+            stream.on(AnthropicStreamEvent.message, (message) => {
+                emitter.emit(TLLMEvent.Data, message);
+            });
+
+            stream.on(AnthropicStreamEvent.text, (text: string) => {
                 // Inject prefill text only once at the very beginning if needed
                 if (needsPrefillInjection && !prefillInjected) {
                     text = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${text}`;
                     prefillInjected = true;
                 }
 
-                emitter.emit('content', text);
+                emitter.emit(TLLMEvent.Content, text);
             });
 
-            stream.on('thinking', (thinking) => {
+            stream.on(AnthropicStreamEvent.thinking, (thinking) => {
                 // Handle thinking blocks during streaming
-                emitter.emit('thinking', thinking);
+                emitter.emit(TLLMEvent.Thinking, thinking);
             });
 
-            stream.on('finalMessage', (finalMessage) => {
+            stream.on(AnthropicStreamEvent.finalMessage, (finalMessage) => {
                 let finishReason = 'stop';
                 // Preserve thinking blocks for subsequent tool interactions
                 thinkingBlocks = finalMessage.content.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
@@ -197,12 +222,12 @@ export class AnthropicConnector extends LLMConnector {
                     usage_data.push(reportedUsage);
                 }
                 if (finishReason !== 'stop' && finishReason !== 'end_turn') {
-                    emitter.emit('interrupted', finishReason);
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
                 //only emit end event after processing the final message
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data, finishReason);
+                    emitter.emit(TLLMEvent.End, toolsData, usage_data, finishReason);
                 }, 100);
             });
 

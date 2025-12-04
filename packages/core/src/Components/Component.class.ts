@@ -3,6 +3,7 @@ import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookableClass, hookAsync } from '@sre/Core/HookService';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export type TComponentSchema = {
     name: string;
@@ -123,7 +124,19 @@ export class Component {
         if (agent.isKilled()) {
             throw new Error('Agent killed');
         }
-        const _input = await performTypeInference(input, config?.inputs, agent);
+
+        let _input = {};
+
+        // #region Resolve agent variables so that:
+        // - type inference works correctly
+        // - we don’t need a separate resolution step when the variable name
+        //   matches the component input name
+        for (let [key, value] of Object.entries(input)) {
+            _input[key] = TemplateString(value as string).parse(agent.agentVariables).result;
+        }
+        // #endregion
+
+        _input = await performTypeInference(_input, config?.inputs, agent);
 
         // modify the input object for component's process method
         for (const [key, value] of Object.entries(_input)) {

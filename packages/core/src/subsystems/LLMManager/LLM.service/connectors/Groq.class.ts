@@ -108,6 +108,7 @@ export class GroqConnector extends LLMConnector {
             const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
 
             let toolsData: ToolData[] = [];
+            let finishReason = 'stop';
 
             (async () => {
                 for await (const chunk of stream as any) {
@@ -117,10 +118,10 @@ export class GroqConnector extends LLMConnector {
                     if (usage) {
                         usage_data.push(usage);
                     }
-                    emitter.emit('data', delta);
+                    emitter.emit(TLLMEvent.Data, delta);
 
                     if (delta?.content) {
-                        emitter.emit('content', delta.content);
+                        emitter.emit(TLLMEvent.Content, delta.content);
                     }
 
                     if (delta?.tool_calls) {
@@ -139,24 +140,35 @@ export class GroqConnector extends LLMConnector {
                             }
                         });
                     }
+
+                    // Capture finish reason
+                    if (chunk.choices[0]?.finish_reason) {
+                        finishReason = chunk.choices[0].finish_reason;
+                    }
                 }
 
                 if (toolsData.length > 0) {
                     emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
+                const reportedUsage: any[] = [];
                 usage_data.forEach((usage) => {
-                    // probably we can acc them and send them as one event
-                    this.reportUsage(usage, {
+                    const reported = this.reportUsage(usage, {
                         modelEntryName: context.modelEntryName,
                         keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId: context.agentId,
                         teamId: context.teamId,
                     });
+                    reportedUsage.push(reported);
                 });
 
+                // Emit interrupted event if finishReason is not 'stop'
+                if (finishReason !== 'stop') {
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
+                }
+
                 setTimeout(() => {
-                    emitter.emit('end', toolsData);
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
                 }, 100);
             })();
 
