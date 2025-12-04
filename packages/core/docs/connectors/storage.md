@@ -1,3 +1,7 @@
+---
+title: 'connectors/Storage'
+---
+
 # Storage Connectors
 
 The Storage subsystem provides file and blob storage capabilities for the SRE. It handles persistent data storage, file uploads, downloads, and management operations.

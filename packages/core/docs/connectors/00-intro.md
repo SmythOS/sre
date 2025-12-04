@@ -1,3 +1,7 @@
+---
+title: 'connectors/Connectors Introduction'
+---
+
 # SRE Connectors Documentation
 
 This directory contains comprehensive documentation for all Smyth Runtime Environment (SRE) connectors. Each connector provides a specific implementation for SRE subsystems, enabling different deployment scenarios and integration requirements.
