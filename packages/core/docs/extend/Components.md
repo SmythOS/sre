@@ -1,3 +1,7 @@
+---
+title: 'extend/Custom Components'
+---
+
 # Extending SRE: Custom Components
 
 Components are the building blocks of an agent's behavior. While SRE provides a rich library of standard components, you can easily create your own to encapsulate custom logic, integrate with unique services, or perform specialized tasks.

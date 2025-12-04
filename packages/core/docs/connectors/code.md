@@ -1,3 +1,7 @@
+---
+title: 'connectors/Code Execution'
+---
+
 # Code Connectors
 
 The Code subsystem provides code execution environments for dynamic component execution.

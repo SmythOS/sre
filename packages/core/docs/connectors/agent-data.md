@@ -1,3 +1,7 @@
+---
+title: 'connectors/Agent Data'
+---
+
 # AgentData Connectors
 
 The AgentData subsystem manages agent-specific data persistence and state.

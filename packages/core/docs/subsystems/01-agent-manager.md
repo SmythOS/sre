@@ -1,3 +1,7 @@
+---
+title: 'subsystems/Agent Manager'
+---
+
 # Agent Manager Subsystem
 
 The Agent Manager is the heart of agent execution within the SRE. It is responsible for the entire agent lifecycle, from loading and configuration to execution and monitoring. This subsystem brings together all other SRE services to provide the environment where agents live and operate.
