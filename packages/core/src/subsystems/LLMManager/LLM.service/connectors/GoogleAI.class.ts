@@ -606,8 +606,8 @@ export class GoogleAIConnector extends LLMConnector {
         // #region Calculate image tokens
         const imageOutputTokens = usage?.candidatesTokensDetails?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
 
-        // Gemini models does not return output text tokens right now, so we need to subtract the output image tokens from the output tokens.
-        if (!imageOutputTokens) {
+        // Gemini models does not return output text tokens right now for Image Generation, so we need to subtract the output image tokens from the output tokens to get the output text tokens.
+        if (imageOutputTokens) {
             outputTokens = outputTokens - imageOutputTokens;
         }
         // #endregion Calculate image tokens
