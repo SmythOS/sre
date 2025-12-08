@@ -569,15 +569,11 @@ export class GoogleAIConnector extends LLMConnector {
             'gemini-3-pro': 200_000,
         };
 
-        let inTier = '';
-        let outTier = '';
-        let crTier = '';
+        let tier = '';
 
         const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
         if (modelWithTier) {
-            inTier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            outTier = outputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            crTier = cachedInputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            tier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
         // #endregion
 
@@ -625,9 +621,7 @@ export class GoogleAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-            inTier,
-            outTier,
-            crTier,
+            tier,
         };
         SystemEvents.emit('USAGE:LLM', usageData);
 
