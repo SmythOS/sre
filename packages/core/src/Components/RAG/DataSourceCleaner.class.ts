@@ -117,11 +117,11 @@ export class DataSourceCleaner extends DataSourceComponent {
             const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(configSchema.value.namespaceId)
                 ? configSchema.value.namespaceId.split('_').slice(1).join('_')
                 : configSchema.value.namespaceId;
-            const namespaceId = configSchema.value.namespaceId;
+            // const namespaceId = configSchema.value.namespaceId;
 
             let vecDbConnector: VectorDBConnector = null;
             try {
-                vecDbConnector = await this.resolveVectorDbConnector(namespaceId, teamId);
+                vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
             } catch (err: any) {
                 debugOutput += `Error: ${err?.message || "Couldn't get vector database connector"}\n\n`;
                 return {
