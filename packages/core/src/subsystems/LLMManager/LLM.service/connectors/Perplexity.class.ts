@@ -14,6 +14,7 @@ import {
     TLLMChatResponse,
     ILLMRequestContext,
     TLLMPreparedParams,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -97,6 +98,8 @@ export class PerplexityConnector extends LLMConnector {
         //fallback to chatRequest
         const emitter = new EventEmitter();
 
+        // TODO: need to implement proper streaming for Perplexity
+
         setTimeout(() => {
             try {
                 logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
@@ -105,17 +108,23 @@ export class PerplexityConnector extends LLMConnector {
                         const finishReason = respose.finishReason;
                         const usage = respose.usage;
 
-                        emitter.emit('interrupted', finishReason);
-                        emitter.emit('content', respose.content);
-                        emitter.emit('end', undefined, usage, finishReason);
+                        emitter.emit(TLLMEvent.Data, respose);
+                        emitter.emit(TLLMEvent.Content, respose.content);
+
+                        // Only emit Interrupted if finishReason is not 'stop'
+                        if (finishReason !== 'stop') {
+                            emitter.emit(TLLMEvent.Interrupted, finishReason);
+                        }
+
+                        emitter.emit(TLLMEvent.End, [], [usage], finishReason);
                     })
                     .catch((error) => {
-                        emitter.emit('error', error.message || error.toString());
+                        emitter.emit(TLLMEvent.Error, error.message || error.toString());
                     });
                 //emitter.emit('finishReason', respose.finishReason);
             } catch (error) {
                 logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                emitter.emit('error', error.message || error.toString());
+                emitter.emit(TLLMEvent.Error, error.message || error.toString());
             }
         }, 100);
 

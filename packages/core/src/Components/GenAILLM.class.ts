@@ -528,26 +528,36 @@ export class GenAILLM extends Component {
             response = await contentPromise.catch((error) => {
                 return { error: error.message || error };
             });
-            // If the model stopped before completing the response, this is usually due to output token limit reached.
-            if (finishReason !== 'stop') {
-                return {
-                    Reply: response,
-                    _error: 'The model stopped before completing the response, this is usually due to output token limit reached.',
-                    _debug: logger.output,
-                };
-            }
 
-            // in case we have the response but it's empty string, undefined or null
-            if (!response) {
-                return { _error: ' LLM Error = Empty Response!', _debug: logger.output };
-            }
-
+            // #region Handle Response Errors
             if (response?.error) {
                 const error = response?.error + ' ' + (response?.details || '');
                 logger.error(` LLM Error=`, error);
 
                 return { Output: response?.data, _error: error, _debug: logger.output };
             }
+
+            const emptyResponseErrorMsg =
+                "Empty response. This is usually due to output token limit reached. Please try again with a higher 'Maximum Output Tokens'.";
+
+            // If the finish reason is not "stop", it means the model stopped before completing the response.
+            if (finishReason !== 'stop') {
+                let errMsg = `The model stopped before completing the response.
+                \nReason: ${finishReason}.
+                \n${!response ? emptyResponseErrorMsg : ''}`;
+
+                return {
+                    Reply: response,
+                    _error: errMsg,
+                    _debug: logger.output,
+                };
+            }
+
+            // If the finish reason is "stop" but there is still no response, it is usually caused by reaching the output token limit.
+            if (!response) {
+                return { _error: emptyResponseErrorMsg, _debug: logger.output };
+            }
+            // #endregion
 
             const Reply = llmInference.connector.postProcess(response);
             if (Reply.error) {

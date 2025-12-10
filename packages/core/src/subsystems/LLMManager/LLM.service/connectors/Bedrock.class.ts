@@ -126,14 +126,14 @@ export class BedrockConnector extends LLMConnector {
                         // Handle message start
                         if (chunk.messageStart) {
                             currentMessage.role = chunk.messageStart.role || '';
-                            emitter.emit('data', { role: currentMessage.role });
+                            emitter.emit(TLLMEvent.Data, { role: currentMessage.role });
                         }
 
                         // Handle content deltas
                         if (chunk.contentBlockDelta?.delta?.text) {
                             currentMessage.content += chunk.contentBlockDelta.delta.text;
-                            emitter.emit('data', chunk.contentBlockDelta.delta.text);
-                            emitter.emit('content', chunk.contentBlockDelta.delta.text, currentMessage.role);
+                            emitter.emit(TLLMEvent.Data, chunk.contentBlockDelta.delta.text);
+                            emitter.emit(TLLMEvent.Content, chunk.contentBlockDelta.delta.text, currentMessage.role);
                         }
 
                         // Handle tool use start
@@ -175,10 +175,18 @@ export class BedrockConnector extends LLMConnector {
 
                         // Handle message completion
                         if (chunk.messageStop) {
+                            const finishReason = chunk.messageStop.stopReason || 'stop';
+
                             if (currentMessage.toolCalls.length > 0) {
                                 emitter.emit(TLLMEvent.ToolInfo, currentMessage.toolCalls);
                             }
-                            emitter.emit(TLLMEvent.End, currentMessage.toolCalls);
+
+                            // Emit interrupted event if finishReason is not 'stop'
+                            if (finishReason !== 'stop' && finishReason !== 'end_turn') {
+                                emitter.emit(TLLMEvent.Interrupted, finishReason);
+                            }
+
+                            emitter.emit(TLLMEvent.End, currentMessage.toolCalls, [], finishReason);
                         }
 
                         if (chunk?.metadata?.usage) {

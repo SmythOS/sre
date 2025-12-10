@@ -70,6 +70,7 @@ The search paths and the used path are visible in SRE logs in case you need to d
 | `region`             | string | Yes      | -       | AWS region where secrets are stored               |
 | `awsAccessKeyId`     | string | No       | -       | AWS access key ID (can use IAM roles instead)     |
 | `awsSecretAccessKey` | string | No       | -       | AWS secret access key (can use IAM roles instead) |
+| `prefix`             | string | No       | smythos | Prefix to add to the secret name                  |
 
 **Example Configuration:**
 
@@ -83,10 +84,50 @@ SRE.init({
             region: 'us-east-1',
             awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
             awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            prefix: 'smythos', // Optional, defaults to 'smythos'
         },
     },
 });
 ```
+
+**Secret Naming Convention:**
+
+The SecretsManager connector uses a structured naming format to organize secrets in AWS Secrets Manager:
+
+**Format:** `<prefix>/<teamId>/<secretName>`
+
+-   **prefix**: Namespace for SRE secrets (default: `"smythos"`)
+-   **teamId**: Team identifier (default: `"default"`)
+-   **secretName**: Name of the secret (e.g., `"openai"`, `"anthropic"`, `"custom-key"`)
+
+**Examples:**
+
+1. **Agent with default team** (no `teamId` specified):
+
+    ```typescript
+    const agent = new Agent({
+        id: 'my-agent',
+        behavior: '...',
+        model: 'gpt-4o',
+    });
+    ```
+
+    Secret path in AWS: `smythos/default/openai`
+
+2. **Agent with custom team**:
+
+    ```typescript
+    const agent = new Agent({
+        id: 'my-agent',
+        behavior: '...',
+        teamId: 'team-id-0001',
+        model: 'gpt-4o',
+    });
+    ```
+
+    Secret path in AWS: `smythos/team-id-0001/openai`
+
+This structure enables multi-tenant configurations where different teams can have isolated API keys and secrets, allowing for fine-grained access control and billing separation.
 
 **Use Cases:**
 

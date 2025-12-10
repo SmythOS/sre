@@ -14,6 +14,7 @@ import {
     ILLMRequestFuncParams,
     TLLMChatResponse,
     ILLMRequestContext,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -202,10 +203,10 @@ export class xAIConnector extends LLMConnector {
                             }
 
                             if (delta) {
-                                emitter.emit('data', delta);
+                                emitter.emit(TLLMEvent.Data, delta);
 
                                 if (delta.content) {
-                                    emitter.emit('content', delta.content, delta.role);
+                                    emitter.emit(TLLMEvent.Content, delta.content, delta.role);
                                 }
 
                                 if (delta.tool_calls) {
@@ -238,11 +239,11 @@ export class xAIConnector extends LLMConnector {
                 if (citations && citations.length > 0) {
                     const citationsText = '\n\n**Sources:**\n' + citations.map((url, index) => `${index + 1}. ${url}`).join('\n');
 
-                    emitter.emit('content', citationsText, 'assistant');
+                    emitter.emit(TLLMEvent.Content, citationsText, 'assistant');
                 }
 
                 if (toolsData.length > 0) {
-                    emitter.emit('toolInfo', toolsData);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
                 // Report usage if available
@@ -257,20 +258,20 @@ export class xAIConnector extends LLMConnector {
                 }
 
                 if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, reportedUsage, finishReason);
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
                 }, 100);
             });
 
             response.data.on('error', (error) => {
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             });
         } catch (error) {
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            emitter.emit('error', error);
+            emitter.emit(TLLMEvent.Error, error);
         }
 
         return emitter;

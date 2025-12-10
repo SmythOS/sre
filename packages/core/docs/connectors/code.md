@@ -1,56 +1,59 @@
-# Code Connectors
+# Code Connector
 
-The Code subsystem provides code execution environments for dynamic component execution.
+The Code Connector manages the secure execution of code snippets. It abstracts the underlying runtime environment, whether it's a local sandbox or a cloud function.
 
-## Available Connectors
+## Interface: `ICodeRequest`
+
+### Methods
+
+#### `prepare(codeUID, input, config)`
+Prepares code for execution. This might involves compiling, validating, or resolving dependencies.
+- **codeUID**: `string` - Unique identifier for the code.
+- **input**: `CodeInput` - Contains source code and dependencies.
+- **config**: `CodeConfig` - Runtime configuration (e.g., 'nodejs', timeout).
+- **Returns**: `Promise<CodePreparationResult>`
+
+#### `execute(codeUID, inputs, config)`
+Executes code immediately.
+- **inputs**: `Record<string, any>` - Arguments to pass to the code.
+- **Returns**: `Promise<CodeExecutionResult>`
+
+#### `deploy(codeUID, input, config)`
+Deploys the code for future execution (e.g., creating a Lambda function).
+- **Returns**: `Promise<CodeDeployment>`
+
+#### `executeDeployment(codeUID, deploymentId, inputs, config)`
+Executes a previously deployed function.
+- **deploymentId**: `string` - ID of the deployment.
+- **Returns**: `Promise<CodeExecutionResult>`
+
+## Connectors
+
+### ECMASandbox
+
+Executes JavaScript/TypeScript in an isolated VM or remote sandbox service.
+
+- **Settings**:
+  - `sandboxUrl`: Optional URL for remote execution.
 
 ### AWSLambda
 
-**Role**: AWS Lambda code executor  
-**Summary**: Executes code in AWS Lambda functions for serverless code execution with automatic scaling and isolation.
+Deploys and executes code as AWS Lambda functions.
 
-| Setting           | Type   | Required | Default | Description                     |
-| ----------------- | ------ | -------- | ------- | ------------------------------- |
-| `region`          | string | Yes      | -       | AWS region for Lambda functions |
-| `accessKeyId`     | string | Yes      | -       | AWS access key ID               |
-| `secretAccessKey` | string | Yes      | -       | AWS secret access key           |
+- **Settings**:
+  - `region`: AWS Region.
+  - `accessKeyId`: AWS Access Key.
+  - `secretAccessKey`: AWS Secret Key.
 
-**Example Configuration:**
+## Usage Example
 
 ```typescript
-import { SRE } from '@smythos/sre';
+const codeService = ConnectorService.getCodeConnector().requester(candidate);
 
-SRE.init({
-    Code: {
-        Connector: 'AWSLambda',
-        Settings: {
-            region: 'us-east-1',
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-    },
-});
+const result = await codeService.execute('script-1', {
+    code: 'export default async ({ name }) => `Hello ${name}`;',
+    inputs: { name: 'World' }
+}, { runtime: 'nodejs' });
+
+console.log(result.output); // "Hello World"
 ```
-
-**Use Cases:**
-
--   Serverless code execution
--   Dynamic component deployment
--   Scalable code execution
--   Isolated execution environments
--   Enterprise-grade code execution
-
-**How it Works:**
-
--   Creates Lambda functions for code execution
--   Handles code packaging and deployment
--   Manages function lifecycle and caching
--   Provides isolated execution environments
--   Automatic scaling based on demand
-
-**Security Notes:**
-
--   Use IAM roles when running on AWS infrastructure
--   Store credentials securely using environment variables
--   Lambda functions are isolated and secure by default
--   Code is packaged and deployed securely

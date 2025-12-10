@@ -186,9 +186,11 @@ export class GoogleAIConnector extends LLMConnector {
             (async () => {
                 try {
                     for await (const chunk of stream) {
+                        emitter.emit(TLLMEvent.Data, chunk);
+
                         const chunkText = chunk.text ?? '';
                         if (chunkText) {
-                            emitter.emit('content', chunkText);
+                            emitter.emit(TLLMEvent.Content, chunkText);
                         }
 
                         const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
@@ -213,21 +215,28 @@ export class GoogleAIConnector extends LLMConnector {
                         }
                     }
 
+                    const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
+                    const reportedUsage: any[] = [];
+
                     if (usage) {
-                        this.reportUsage(usage, {
+                        const reported = this.reportUsage(usage, {
                             modelEntryName: context.modelEntryName,
                             keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                             agentId: context.agentId,
                             teamId: context.teamId,
                         });
+                        reportedUsage.push(reported);
                     }
 
+                    // Note: GoogleAI stream doesn't provide explicit finish reasons
+                    // If we had a non-stop finish reason, we would emit Interrupted here
+
                     setTimeout(() => {
-                        emitter.emit('end', toolsData);
+                        emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
                     }, 100);
                 } catch (error) {
                     logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                    emitter.emit('error', error);
+                    emitter.emit(TLLMEvent.Error, error);
                 }
             })();
 
@@ -285,12 +294,20 @@ export class GoogleAIConnector extends LLMConnector {
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-            this.reportImageUsage({
-                usage: {
-                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                context,
+            // ! Deprecated: use reportUsage instead
+            // this.reportImageUsage({
+            //     usage: {
+            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+            //         usageMetadata,
+            //     },
+            //     context,
+            // });
+
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             if (imageData.length === 0) {
@@ -313,13 +330,22 @@ export class GoogleAIConnector extends LLMConnector {
             // Report input tokens and image cost pricing based on the official pricing page:
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-            this.reportImageUsage({
-                usage: {
-                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                numberOfImages: config.numberOfImages,
-                context,
+
+            // ! Deprecated: use reportUsage instead
+            // this.reportImageUsage({
+            //     usage: {
+            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+            //         usageMetadata,
+            //     },
+            //     numberOfImages: config.numberOfImages,
+            //     context,
+            // });
+
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             return {
@@ -372,12 +398,20 @@ export class GoogleAIConnector extends LLMConnector {
         // Report pricing for input tokens and image costs
         const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-        this.reportImageUsage({
-            usage: {
-                cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                usageMetadata,
-            },
-            context,
+        // ! Deprecated: use reportUsage instead
+        // this.reportImageUsage({
+        //     usage: {
+        //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
+        //         usageMetadata,
+        //     },
+        //     context,
+        // });
+
+        this.reportUsage(usageMetadata, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
         });
 
         return {
@@ -519,7 +553,7 @@ export class GoogleAIConnector extends LLMConnector {
         let inputTokens = usage?.promptTokenCount || 0;
 
         // The pricing is the same for output and thinking tokens, so we can add them together.
-        const outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
+        let outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
 
         // If cached input tokens are available, we need to subtract them from the input tokens.
         let cachedInputTokens = usage?.cachedContentTokenCount || 0;
@@ -535,15 +569,11 @@ export class GoogleAIConnector extends LLMConnector {
             'gemini-3-pro': 200_000,
         };
 
-        let inTier = '';
-        let outTier = '';
-        let crTier = '';
+        let tier = '';
 
         const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
         if (modelWithTier) {
-            inTier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            outTier = outputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            crTier = cachedInputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            tier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
         // #endregion
 
@@ -569,10 +599,20 @@ export class GoogleAIConnector extends LLMConnector {
         }
         // #endregion
 
+        // #region Calculate image tokens
+        const imageOutputTokens = usage?.candidatesTokensDetails?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        // Gemini models does not return output text tokens right now for Image Generation, so we need to subtract the output image tokens from the output tokens to get the output text tokens.
+        if (imageOutputTokens) {
+            outputTokens = outputTokens - imageOutputTokens;
+        }
+        // #endregion Calculate image tokens
+
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            output_tokens_image: imageOutputTokens,
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: cachedInputTokens,
             input_tokens_cache_read_audio: cachedAudioInputTokens,
@@ -581,9 +621,7 @@ export class GoogleAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-            inTier,
-            outTier,
-            crTier,
+            tier,
         };
         SystemEvents.emit('USAGE:LLM', usageData);
 
@@ -600,6 +638,9 @@ export class GoogleAIConnector extends LLMConnector {
         return { textTokens, imageTokens };
     }
 
+    /**
+     * @deprecated use reportUsage instead
+     */
     protected reportImageUsage({
         usage,
         context,
