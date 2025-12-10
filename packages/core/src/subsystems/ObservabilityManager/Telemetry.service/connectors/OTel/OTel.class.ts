@@ -62,6 +62,10 @@ export class OTel extends TelemetryConnector {
 
     constructor(protected _settings: OTelLogConfig) {
         super();
+        if (!_settings.endpoint) {
+            outputLogger.warn('OTel initialization skipped, endpoint is not set');
+            return;
+        }
 
         outputLogger.log(`Initializing Tracer ...`);
 
