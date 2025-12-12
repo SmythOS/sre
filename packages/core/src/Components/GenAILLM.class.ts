@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -330,7 +330,11 @@ export class GenAILLM extends Component {
 
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
-        reasoningEffort: Joi.string().valid('none', 'default', 'minimal', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
+        reasoningEffort: Joi.string()
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .optional()
+            .allow('')
+            .label('Reasoning Effort'),
         maxThinkingTokens: Joi.number().min(1).optional().label('Maximum Thinking Tokens'),
         // #endregion
     });
