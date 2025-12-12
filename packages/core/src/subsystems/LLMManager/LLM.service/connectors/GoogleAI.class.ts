@@ -63,11 +63,8 @@ const VALID_MIME_TYPES = [
 type UsageMetadataWithThoughtsToken = GenerateContentResponseUsageMetadata & { thoughtsTokenCount?: number; cost?: number };
 
 const IMAGE_GEN_FIXED_PRICING = {
-    'imagen-3.0-generate-001': 0.04, // Fixed cost per image
-    'imagen-4.0-generate-001': 0.04, // Fixed cost per image
     'imagen-4': 0.04, // Standard Imagen 4
     'imagen-4-ultra': 0.06, // Imagen 4 Ultra
-    'gemini-2.5-flash-image': 0.039,
 };
 
 export class GoogleAIConnector extends LLMConnector {
@@ -294,15 +291,6 @@ export class GoogleAIConnector extends LLMConnector {
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-            // ! Deprecated: use reportUsage instead
-            // this.reportImageUsage({
-            //     usage: {
-            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
-            //         usageMetadata,
-            //     },
-            //     context,
-            // });
-
             this.reportUsage(usageMetadata, {
                 modelEntryName: context.modelEntryName,
                 keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -331,22 +319,22 @@ export class GoogleAIConnector extends LLMConnector {
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-            // ! Deprecated: use reportUsage instead
-            // this.reportImageUsage({
-            //     usage: {
-            //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
-            //         usageMetadata,
-            //     },
-            //     numberOfImages: config.numberOfImages,
-            //     context,
-            // });
+            const isImagen4 = modelName.startsWith('imagen-4');
 
-            this.reportUsage(usageMetadata, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
-            });
+            if (isImagen4) {
+                this.reportImageCost({
+                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
+                    numberOfImages: config.numberOfImages,
+                    context,
+                });
+            } else {
+                this.reportUsage(usageMetadata, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
 
             return {
                 created: Math.floor(Date.now() / 1000),
@@ -373,7 +361,6 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         // Use the prepared body which already contains processed files and contents
         const response = await ai.models.generateContent({
@@ -397,15 +384,6 @@ export class GoogleAIConnector extends LLMConnector {
 
         // Report pricing for input tokens and image costs
         const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-
-        // ! Deprecated: use reportUsage instead
-        // this.reportImageUsage({
-        //     usage: {
-        //         cost: IMAGE_GEN_FIXED_PRICING[modelName],
-        //         usageMetadata,
-        //     },
-        //     context,
-        // });
 
         this.reportUsage(usageMetadata, {
             modelEntryName: context.modelEntryName,
@@ -638,35 +616,12 @@ export class GoogleAIConnector extends LLMConnector {
         return { textTokens, imageTokens };
     }
 
-    /**
-     * @deprecated use reportUsage instead
-     */
-    protected reportImageUsage({
-        usage,
-        context,
-        numberOfImages = 1,
-    }: {
-        usage: { cost?: number; usageMetadata?: UsageMetadataWithThoughtsToken };
-        context: ILLMRequestContext;
-        numberOfImages?: number;
-    }) {
-        // Extract text and image tokens from rawUsage if available
-        let input_tokens_txt = 0;
-        let input_tokens_img = 0;
-
-        if (usage.usageMetadata) {
-            const { textTokens, imageTokens } = this.extractTokenCounts(usage.usageMetadata);
-            input_tokens_txt = textTokens;
-            input_tokens_img = imageTokens;
-        }
-
+    protected reportImageCost({ cost, context, numberOfImages = 1 }) {
         const imageUsageData = {
             sourceId: `api:imagegen.smyth`,
             keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
 
-            cost: usage.cost * numberOfImages,
-            input_tokens_txt,
-            input_tokens_img,
+            cost: cost * numberOfImages,
 
             agentId: context.agentId,
             teamId: context.teamId,
