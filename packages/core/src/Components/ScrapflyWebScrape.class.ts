@@ -39,6 +39,7 @@ export class ScrapflyWebScrape extends Component {
         javascriptRendering: Joi.boolean().default(false).label('Enable JavaScript Rendering'),
         autoScroll: Joi.boolean().default(false).label('Enable Auto Scroll'),
         format: Joi.string().default('markdown').label('Format').optional(),
+        countries: Joi.array().items(Joi.string()).label('Countries').optional().allow(''),
     });
 
     constructor() {
@@ -96,6 +97,10 @@ export class ScrapflyWebScrape extends Component {
 
     async scrapeURL(url, data, key) {
         try {
+            // Handle countries - convert array to comma-separated string (e.g., "us,ca,mx")
+            const countryValue =
+                data.countries && Array.isArray(data.countries) && data.countries.length > 0 ? data.countries.join(',').toLowerCase() : undefined;
+
             const response = await axios({
                 method: 'get',
                 url: 'https://api.scrapfly.io/scrape',
@@ -107,8 +112,10 @@ export class ScrapflyWebScrape extends Component {
                     ...(data.antiScrapingProtection && { asp: true }),
                     ...(data.javascriptRendering && { render_js: true }),
                     ...(data.autoScroll && { auto_scroll: true, render_js: true }),
+                    ...(countryValue && { country: countryValue }),
                 },
             });
+
             return {
                 content: response.data?.result?.content,
                 success: true,

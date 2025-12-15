@@ -15,6 +15,8 @@ export interface TScrapflyWebScrapeSettings {
     autoScroll?: boolean;
     /** Format */
     format?: string;
+    /** Countries */
+    countries?: any[];
 }
 
 export type TScrapflyWebScrapeInputs = {
