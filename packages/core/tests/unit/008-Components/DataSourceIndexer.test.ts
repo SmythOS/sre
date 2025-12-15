@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { DataSourceIndexer } from '@sre/Components/DataSourceIndexer.class';
+import { DataSourceIndexer } from '@sre/Components/RAG/DataSourceIndexer.class';
 // import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
@@ -77,7 +77,7 @@ describe('DataSourceIndexer Component', () => {
 
         const ds = await vectorDbConnector
             .user(AccessCandidate.team(agent.teamId))
-            .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+            .getDatasource(namespace, DataSourceIndexer.normalizeDsId(dynamic_id, agent.teamId, namespace));
 
         expect(ds).toBeDefined();
     });
@@ -130,7 +130,7 @@ describe('DataSourceIndexer Component', () => {
 
         const ds = await vectorDbConnector
             .user(AccessCandidate.team(agent.teamId))
-            .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+            .getDatasource(namespace, DataSourceIndexer.normalizeDsId(dynamic_id, agent.teamId, namespace));
 
         expect(ds).toBeDefined();
     });
@@ -175,7 +175,7 @@ describe('DataSourceIndexer Component', () => {
 
         const ds = await vectorDbConnector
             .user(AccessCandidate.team(agent.teamId))
-            .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+            .getDatasource(namespace, DataSourceIndexer.normalizeDsId(dynamic_id, agent.teamId, namespace));
         expect(ds).toBeDefined();
 
         const vectors = await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');

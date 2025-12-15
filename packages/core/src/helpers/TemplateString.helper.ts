@@ -103,7 +103,7 @@ export class TemplateStringHelper {
      * unmatched placeholders will be left as is
      * Recursively resolves nested template variables until no more variables are found
      */
-    public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default, maxDepth: number = 5) {
+    public parse(data: Record<string, unknown>, regex: TemplateStringMatch = Match.default, maxDepth: number = 5) {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
 
         // Keep parsing until no more template variables are resolved or max depth is reached
@@ -114,12 +114,13 @@ export class TemplateStringHelper {
             this._current = this._current.replace(regex, (match, token) => {
                 let val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
 
-                //if no exact match, try to parse the token as a JSON expression
-                if (!data?.[token]) {
-                    val = JSONExpression(data, token) || `{{${token}}}`; //if no match, use the token as is
+                // if no exact match, try to parse the token as a JSON expression
+                // * Nullish check: using `==` intentionally to match both null and undefined
+                if (data?.[token] == null) {
+                    val = JSONExpression(data, token) ?? `{{${token}}}`; //if no match, use the token as is
                 }
 
-                return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
+                return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val as string);
             });
 
             // Break early if no changes were made : we parsed all the template variables

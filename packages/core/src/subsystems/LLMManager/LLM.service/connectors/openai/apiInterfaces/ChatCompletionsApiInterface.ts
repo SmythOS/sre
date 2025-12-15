@@ -73,7 +73,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                 // Step 3: Emit final events
                 this.emitFinalEvents(emitter, finalToolsData, reportedUsage, finishReason);
             } catch (error) {
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             }
         })();
 
@@ -267,11 +267,11 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             }
 
             // Emit data event for delta
-            emitter.emit('data', delta);
+            emitter.emit(TLLMEvent.Data, delta);
 
             // Handle content deltas
             if (!delta?.tool_calls && delta?.content) {
-                emitter.emit('content', delta?.content, delta?.role);
+                emitter.emit(TLLMEvent.Content, delta?.content, delta?.role);
             }
 
             // Handle tool calls
@@ -350,12 +350,12 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
 
         // Emit interrupted event if finishReason is not 'stop'
         if (finishReason !== 'stop') {
-            emitter.emit('interrupted', finishReason);
+            emitter.emit(TLLMEvent.Interrupted, finishReason);
         }
 
         // Emit end event with setImmediate to ensure proper event ordering
         setImmediate(() => {
-            emitter.emit('end', toolsData, reportedUsage, finishReason);
+            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
         });
     }
 

@@ -246,12 +246,7 @@ async function resolveTemplateVariables(data: any, input: any, agent: Agent): Pr
         if (isKeyTemplateVar(value as string)) {
             data[key] = await parseKey(value as string, agent.teamId);
         } else if (isTemplateVar(value as string)) {
-            // Parse using input values first, then agent variables.
-            // This correctly resolves cases where input values reference agent variables with the same name.
-            // Example: agent variables { user_id: "123" }, input { user_id: "{{user_id}}" }.
-            data[key] = TemplateString(value as string)
-                .parse(input)
-                .parse(agent.agentVariables).result;
+            data[key] = TemplateString(value as string).parse(input).result;
         }
     }
 

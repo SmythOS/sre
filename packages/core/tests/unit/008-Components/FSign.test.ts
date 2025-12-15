@@ -83,6 +83,7 @@ describe('FSign Component', () => {
                 return {
                     parse: () => {
                         return {
+                            result: templateString, // Return the original value for non-async parsing
                             parseTeamKeysAsync: () => {
                                 return {
                                     asyncResult: vaultSigningKey,

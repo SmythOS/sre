@@ -4,6 +4,7 @@ import { GetBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Logger } from '@sre/helpers/Log.helper';
 const console = Logger('S3Cache');
+const lifeCycleRuleNotExistsErrorCode = 'NoSuchLifecycleConfiguration';
 
 export function generateLifecycleRules() {
     const rules = [];
@@ -121,7 +122,7 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
             console.log('Lifecycle configuration already exists');
         }
     } catch (error) {
-        if (error.code === 'NoSuchLifecycleConfiguration') {
+        if (error.code === lifeCycleRuleNotExistsErrorCode || error.name === lifeCycleRuleNotExistsErrorCode) {
             console.log('No lifecycle configuration found. Creating new configuration...');
 
             const lifecycleRules = generateLifecycleRules();

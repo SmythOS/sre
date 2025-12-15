@@ -119,7 +119,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                 // Step 3: Emit final events
                 this.emitFinalEvents(emitter, finalToolsData, reportedUsage, finishReason);
             } catch (error) {
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             }
         })();
 
@@ -362,8 +362,10 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                     role: 'assistant',
                     content: part.delta,
                 };
-                emitter.emit('data', deltaMsg);
-                emitter.emit('content', part.delta, 'assistant');
+
+                // TODO: we have inconsistency for data event with chat completions API, we need to check and fix it
+                emitter.emit(TLLMEvent.Data, deltaMsg);
+                emitter.emit(TLLMEvent.Content, part.delta, 'assistant');
             }
         } catch (error) {
             console.warn('Error handling output text delta:', error);
@@ -412,6 +414,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                     }
 
                     if (addingNew) {
+                        // TODO: Check whether this event is being used.
                         emitter.emit('tool_call_started', {
                             id: callId,
                             name: functionName || '',
@@ -458,6 +461,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                 }
 
                 const entry = existingIndex === -1 ? updated[finalIndex] : updated[finalIndex];
+                // TODO: Check whether this event is being used.
                 emitter.emit('tool_call_progress', {
                     id: entry.callId || itemId,
                     name: entry.name,
@@ -489,6 +493,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                     const updated = toolsData.map((t, idx) => (idx === toolIndex ? { ...t, arguments: finalArguments } : t));
 
                     const updatedEntry = updated[toolIndex];
+                    // TODO: Check whether this event is being used.
                     emitter.emit('tool_call_completed', {
                         id: updatedEntry.callId || itemId,
                         name: updatedEntry.name,

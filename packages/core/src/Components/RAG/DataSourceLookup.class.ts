@@ -1,12 +1,12 @@
 import Joi from 'joi';
-import { validateInteger } from '../utils';
+import { validateInteger } from '../../utils';
 import { jsonrepair } from 'jsonrepair';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
-import { Component } from './Component.class';
+import { DataSourceComponent } from './DataSourceComponent.class';
 
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
@@ -15,7 +15,7 @@ class LLMInference {
     }
 }
 
-export class DataSourceLookup extends Component {
+export class DataSourceLookup extends DataSourceComponent {
     protected configSchema = Joi.object({
         topK: Joi.alternatives([Joi.string(), Joi.number()]) // Value is now a number; keep string fallback for backward compatibility.
 
@@ -31,13 +31,22 @@ export class DataSourceLookup extends Component {
         }),
         scoreThreshold: Joi.number().optional().label('Score Threshold'),
         includeScore: Joi.boolean().optional().label('Include Score'),
+        version: Joi.string().valid('v1', 'v2').default('v1'),
     });
     constructor() {
         super();
     }
     init() {}
+
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
+        if (!config.data.version || config.data.version === 'v1') {
+            return await this.processV1(input, config, agent);
+        } else if (config.data.version === 'v2') {
+            return await this.processV2(input, config, agent);
+        }
+    }
+    async processV1(input, config, agent: Agent) {
         const componentId = config.id;
         const component = agent.components[componentId];
         const teamId = agent.teamId;
@@ -126,6 +135,86 @@ export class DataSourceLookup extends Component {
                     results[i] = JSONContent(results[i] as string).tryParse();
                 }
             }
+        }
+
+        const totalLength = JSON.stringify(results).length;
+        debugOutput += `[Total Length] \n${totalLength}\n\n`;
+
+        return {
+            Results: results,
+            _error,
+            _debug: debugOutput,
+            //_debug: `Query: ${_input}. \nTotal Length = ${totalLength} \nResults: ${JSON.stringify(results)}`,
+        };
+    }
+
+    async processV2(input, config, agent: Agent) {
+        const teamId = agent.teamId;
+        let debugOutput = agent.agentRuntime?.debug ? '== Data Source Lookup Log ==\n' : null;
+
+        const outputs = {};
+        for (let con of config.outputs) {
+            if (con.default) continue;
+            outputs[con.name] = '';
+        }
+
+        const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(config.data.namespace)
+            ? config.data.namespace.split('_').slice(1).join('_')
+            : config.data.namespace;
+        // const namespaceId = config.data.namespace;
+        const model = config.data?.model || 'gpt-4o-mini';
+        const includeMetadata = config.data?.includeMetadata || false;
+
+        const scoreThreshold = config.data?.scoreThreshold || 0.001; // Use low score (0.001) to return most results for backward compatibility
+        const includeScore = config.data?.includeScore || false;
+
+        const _input = typeof input.Query === 'string' ? input.Query : JSON.stringify(input.Query);
+
+        const topK = Math.max(config.data?.topK || 50, 50);
+
+        // let vectorDbConnector = ConnectorService.getVectorDBConnector();
+        // let existingNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespaceLabel);
+
+        const vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
+
+        let results: string[] | { content: string; metadata: any; score?: number }[];
+        let _error;
+        try {
+            const response = await vecDbConnector
+                .requester(AccessCandidate.team(teamId))
+                .search(namespaceLabel, _input, { topK, includeMetadata: true });
+
+            results = response.slice(0, config.data.topK).map((result) => ({
+                content: result.text,
+                metadata: result.metadata,
+                score: result.score, // use a very low score to return
+            }));
+
+            results = results.filter((result) => result.score >= scoreThreshold);
+
+            // Transform results based on inclusion flags
+            results = results.map((result) => {
+                const transformedResult: any = {
+                    content: result.content,
+                };
+
+                if (includeMetadata) {
+                    // legacy user-specific metadata key [result.metadata?.metadata]
+                    transformedResult.metadata = this.parseMetadata(result.metadata || result.metadata?.metadata);
+                }
+
+                if (includeScore) {
+                    transformedResult.score = result.score;
+                }
+
+                // If neither metadata nor score is included, return just the content string
+                return includeMetadata || includeScore ? transformedResult : result.content;
+            });
+
+            debugOutput += `[Results] \nLoaded ${results.length} results from namespace: ${namespaceLabel}\n\n`;
+        } catch (error) {
+            debugOutput += `Error: ${error instanceof Error ? error.message : error.toString()}\n\n`;
+            _error = error instanceof Error ? error.message : error.toString();
         }
 
         const totalLength = JSON.stringify(results).length;
