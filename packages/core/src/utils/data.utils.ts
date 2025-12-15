@@ -161,12 +161,12 @@ function isValidPathFormat(path: string): boolean {
     const windowsAbsolute = /^[a-zA-Z]:[\\\/]/; // C:\ or C:/
     const windowsUNC = /^\\\\[^\\]+\\[^\\]+/; // \\server\share
     const windowsRelative = /^\.{1,2}[\\\/]/; // .\ or ..\ or ./ or ../
-    
+
     // Unix path patterns
     const unixAbsolute = /^\//; // /path/to/file
     const unixHome = /^~[\/]/; // ~/path/to/file
     const unixRelative = /^\.{1,2}\//; // ./ or ../
-    
+
     // Relative paths without leading ./ or .\
     const genericRelative = /^[^\\\/]/; // path/to/file or path\to\file
 
@@ -259,12 +259,14 @@ export async function formatDataForDebug(data: any, candidate: IAccessCandidate)
     }
 
     try {
-        if (data.constructor?.name === 'BinaryInput') {
+        // We use .includes() instead of === because constructor.name can be 'BinaryInput$1', 'FormData$1', etc.
+        // This happens when the same class is loaded in different module contexts (bundling, HMR, circular deps)
+        if (data.constructor?.name.includes('BinaryInput')) {
             const jsonData = await data.getJsonData(candidate);
             dataForDebug = `[BinaryInput size=${jsonData?.size}]`;
         } else if (isBuffer(data)) {
             dataForDebug = `[Buffer size=${data.byteLength}]`;
-        } else if (data.constructor?.name === 'FormData') {
+        } else if (data.constructor?.name.includes('FormData')) {
             dataForDebug = `[FormData]`;
         } else if (isBase64(data) || isBase64DataUrl(data)) {
             dataForDebug = `[Base64 size=${getBase64FileSize(data)}]`;
