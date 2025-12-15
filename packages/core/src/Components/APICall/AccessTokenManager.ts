@@ -23,7 +23,6 @@ class AccessTokenManager {
     private keyId: any; // key of object in teamSettings
     private logger: any; // Use to log console in debugger
     private agent: Agent;
-    private isNewStructure: boolean;
     constructor(
         clientId: string,
         clientSecret: string,
@@ -34,8 +33,7 @@ class AccessTokenManager {
         tokensData: any,
         keyId: any,
         logger: any,
-        agent: Agent,
-        isNewStructure: boolean = false,
+        agent: Agent
     ) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -47,7 +45,6 @@ class AccessTokenManager {
         this.keyId = keyId;
         this.logger = logger;
         this.agent = agent;
-        this.isNewStructure = isNewStructure;
     }
 
     async getAccessToken(): Promise<string> {
@@ -100,7 +97,7 @@ class AccessTokenManager {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                },
+                }
             );
 
             const newAccessToken: string = response?.data?.access_token;
@@ -109,31 +106,18 @@ class AccessTokenManager {
             const expiresInMilliseconds: number = response?.data?.expires_in ? response?.data?.expires_in * 1000 : response?.data?.expires_in;
             const expirationTimestamp: number = expiresInMilliseconds ? new Date().getTime() + expiresInMilliseconds : expiresInMilliseconds;
 
-            // Maintain the same structure format when saving
-            let updatedData;
-            if (this.isNewStructure) {
-                // Maintain new structure format
-                updatedData = {
-                    ...this.tokensData,
-                    auth_data: {
-                        ...(this.tokensData?.auth_data ?? {}),
+            const updatedData = {
+                ...this.tokensData,
+                customProperties: {
+                    ...(this.tokensData?.customProperties || {}),
+                    tokens: {
+                        ...(this.tokensData?.customProperties?.tokens || {}),
                         primary: newAccessToken,
-                        // Persist rotated refresh_token when provided; fall back to existing
-                        secondary: (response?.data?.refresh_token ?? this.secondaryToken),
-                        // Use nullish check so 0 is preserved
-                        expires_in: (expirationTimestamp ?? undefined) !== undefined ? String(expirationTimestamp) : undefined
-                    }
-                };
-            } else {
-                // Maintain old structure format
-                updatedData = {
-                    ...this.tokensData,
-                    primary: newAccessToken,
-                    expires_in: (expirationTimestamp ?? undefined) !== undefined ? String(expirationTimestamp) : undefined
-                };
-                // Persist rotated refresh_token when provided; otherwise keep existing
-                updatedData.secondary = (response?.data?.refresh_token ?? this.secondaryToken);
-            }
+                        expires_in: expirationTimestamp.toString(),
+                        secondary: response?.data?.refresh_token ?? this.secondaryToken,
+                    },
+                },
+            };
 
             const save: any = await managedVault.user(AccessCandidate.agent(this.agent.id)).set(this.keyId, JSON.stringify(updatedData));
             if (save && save.status === 200) {
@@ -148,12 +132,9 @@ class AccessTokenManager {
             this.tokensData = updatedData;
             this.primaryToken = newAccessToken;
             // Update in-memory refresh token in case the provider rotated it
-            this.secondaryToken = (response?.data?.refresh_token ?? this.secondaryToken);
+            this.secondaryToken = response?.data?.refresh_token ?? this.secondaryToken;
             // Preserve 0 and avoid dropping undefined
-            this.expires_in =
-                (expirationTimestamp ?? undefined) !== undefined
-                    ? String(expirationTimestamp)
-                    : undefined;
+            this.expires_in = (expirationTimestamp ?? undefined) !== undefined ? String(expirationTimestamp) : undefined;
             return newAccessToken;
         } catch (error) {
             console.error('Failed to refresh access token:', error);

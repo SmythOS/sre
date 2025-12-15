@@ -47,17 +47,19 @@ export class ManagedOAuth2Credentials extends Credentials {
     private parseData(data: any) {
         //SRE v1.0 format
 
+        const tokens = data.customProperties.tokens;
+        const credentials = data.credentials;
         //SRE v1.5.0+ format
-        if (!data.auth_data || !data.auth_settings) throw new Error('oAuth2Manager:Invalid data format');
+        if (!tokens) throw new Error('oAuth2Manager:Invalid data format');
 
-        this.#accessToken = data.auth_data.primary;
-        this.#refreshToken = data.auth_data.secondary;
-        this.#expiresIn = data.auth_data.expires_in;
-        this.#scope = data.auth_settings.scope;
-        this.#tokenUrl = data.auth_settings.tokenURL;
-        this.#service = data.auth_settings.service;
-        this.#clientId = data.auth_settings.clientID;
-        this.#clientSecret = data.auth_settings.clientSecret;
+        this.#accessToken = tokens.primary;
+        this.#refreshToken = tokens.secondary;
+        this.#expiresIn = tokens.expires_in;
+        this.#scope = credentials.scope;
+        this.#tokenUrl = credentials.tokenURL;
+        this.#service = credentials.service;
+        this.#clientId = credentials.clientID;
+        this.#clientSecret = credentials.clientSecret;
     }
 
     /**

@@ -176,87 +176,58 @@ export const retrieveOAuthTokens = async (agent, config) => {
 
         try {
             const result: any = await managedVault.user(AccessCandidate.agent(agent.id)).get(tokenKey);
-            const tokensData = typeof result === 'object' ? result : JSON.parse(result || '{}');
+            const vaultEntry = typeof result === 'object' ? result : JSON.parse(result || '{}');
 
-            if (!tokensData) {
+            if (!vaultEntry) {
                 throw new Error('Failed to retrieve OAuth tokens from vault. Please authenticate ...');
             }
 
-            // Check if it's new structure (has auth_data and auth_settings) or old structure
-            const isNewStructure = tokensData.auth_data !== undefined && tokensData.auth_settings !== undefined;
+            const tokens = vaultEntry?.customProperties?.tokens;
+            const credentials = vaultEntry?.credentials;
+            //* Resolve vault keys of the credentials from vault (if any)
+            await Promise.all(
+                Object.keys(credentials).map(async (key) => {
+                    if (typeof credentials[key] !== 'string') return;
+                    credentials[key] = await TemplateString(credentials[key]).parseTeamKeysAsync(agent.teamId).asyncResult;
+                })
+            );
 
-            //* Resolve vault keys inside auth_data
-            if (isNewStructure) {
-                await Promise.all(
-                    Object.keys(tokensData.auth_settings).map(async (key) => {
-                        if (typeof tokensData.auth_settings[key] !== 'string') return;
-                        tokensData.auth_settings[key] = await TemplateString(tokensData.auth_settings[key]).parseTeamKeysAsync(agent.teamId)
-                            .asyncResult;
-                    })
-                );
-            }
-
-            // Extract tokens based on structure
-            const primaryToken = isNewStructure ? tokensData.auth_data?.primary : tokensData.primary;
-            const secondaryToken = isNewStructure ? tokensData.auth_data?.secondary : tokensData.secondary;
-            const expiresIn = isNewStructure ? tokensData.auth_data?.expires_in : tokensData.expires_in;
-
-            // Extract settings based on structure
-            const type = isNewStructure ? tokensData.auth_settings?.type : tokensData.type || tokensData.oauth_info?.type;
-            const service = isNewStructure ? tokensData.auth_settings?.service : tokensData.oauth_info?.service;
+            // TODO: not yet added field
+            const type = vaultEntry?.authType;
+            const service = vaultEntry?.provider;
 
             // Add warning logs for OAuth2
             if (type === 'oauth2' && service !== 'oauth2_client_credentials') {
-                if (!secondaryToken) {
+                if (!tokens?.secondary) {
                     logger.warn('Warning: refresh_token is missing for OAuth2');
                 }
-                if (!expiresIn) {
+                if (!tokens?.expires_in) {
                     logger.warn('Warning: expires_in is missing for OAuth2.');
                 }
             }
 
             // sometimes refreshToken is not available . e.g in case of linkedIn. so only add check for primary token
             if (service !== 'oauth2_client_credentials') {
-                if (!primaryToken) {
+                if (!tokens?.primary) {
                     throw new Error('Retrieved OAuth tokens do not exist, invalid OR incomplete. Please authenticate ...');
                 }
             }
 
-            const responseData: any = {
-                primaryToken,
-                secondaryToken,
+            const oauthConfig: any = {
+                primaryToken: tokens?.primary,
+                secondaryToken: tokens?.secondary,
+                expiresIn: tokens?.expires_in || 0,
                 type,
                 service,
+                consumerKey: credentials?.consumerKey,
+                consumerSecret: credentials?.consumerSecret,
+                tokenURL: credentials?.tokenURL,
+                clientID: credentials?.clientID,
+                clientSecret: credentials?.clientSecret,
+                team: agent.teamId || vaultEntry?.teamId,
             };
 
-            if (type === 'oauth') {
-                // Extract OAuth1 credentials based on structure
-                if (isNewStructure) {
-                    responseData.consumerKey = tokensData.auth_settings?.consumerKey;
-                    responseData.consumerSecret = tokensData.auth_settings?.consumerSecret;
-                    responseData.tokenURL = tokensData.auth_settings?.tokenURL;
-                } else {
-                    responseData.consumerKey = tokensData.consumerKey || tokensData.oauth_info?.consumerKey;
-                    responseData.consumerSecret = tokensData.consumerSecret || tokensData.oauth_info?.consumerSecret;
-                    responseData.tokenURL = tokensData.tokenURL || tokensData.oauth_info?.tokenURL;
-                }
-                responseData.team = tokensData.team || agent.teamId;
-            } else if (type === 'oauth2') {
-                // Extract OAuth2 credentials based on structure
-                if (isNewStructure) {
-                    responseData.tokenURL = tokensData.auth_settings?.tokenURL;
-                    responseData.clientID = tokensData.auth_settings?.clientID;
-                    responseData.clientSecret = tokensData.auth_settings?.clientSecret;
-                } else {
-                    responseData.tokenURL = tokensData.tokenURL || tokensData.oauth_info?.tokenURL;
-                    responseData.clientID = tokensData.clientID || tokensData.oauth_info?.clientID;
-                    responseData.clientSecret = tokensData.clientSecret || tokensData.oauth_info?.clientSecret;
-                }
-                responseData.expiresIn = expiresIn ?? 0; // Optional property, default to 0 if not present
-                responseData.team = tokensData.team || agent.teamId;
-            }
-
-            return { responseData, tokensData, keyId: tokenKey, isNewStructure };
+            return { oauthConfig, settingValue: vaultEntry, keyId: tokenKey };
         } catch (error) {
             throw new Error(`Failed to parse retrieved tokens: ${error}`);
         }
@@ -268,58 +239,58 @@ export const retrieveOAuthTokens = async (agent, config) => {
 
 export const handleOAuthHeaders = async (agent, config, reqConfig, logger, additionalParams = {}) => {
     let headers = {}; // Initialize headers as an empty object
-    const { responseData: oauthTokens, tokensData, keyId, isNewStructure } = await retrieveOAuthTokens(agent, config);
+    const { oauthConfig, settingValue, keyId } = await retrieveOAuthTokens(agent, config);
 
     try {
         // Build OAuth config string with template support
-        let oAuthConfigString = JSON.stringify({
-            consumerKey: oauthTokens.consumerKey || '',
-            consumerSecret: oauthTokens.consumerSecret || '',
-            clientID: oauthTokens.clientID || '',
-            clientSecret: oauthTokens.clientSecret || '',
-            tokenURL: oauthTokens.tokenURL || '',
-        });
+        // let oAuthConfigString = JSON.stringify({
+        //     consumerKey: oauthConfig.consumerKey || '',
+        //     consumerSecret: oauthConfig.consumerSecret || '',
+        //     clientID: oauthConfig.clientID || '',
+        //     clientSecret: oauthConfig.clientSecret || '',
+        //     tokenURL: oauthConfig.tokenURL || '',
+        // });
 
-        oAuthConfigString = await TemplateString(oAuthConfigString).parseTeamKeysAsync(oauthTokens.team || agent.teamId).asyncResult;
+        // oAuthConfigString = await TemplateString(oAuthConfigString).parseTeamKeysAsync(oauthConfig.team || agent.teamId).asyncResult;
 
-        const oAuthConfig = JSON.parse(oAuthConfigString);
+        // const oAuthConfig = JSON.parse(oAuthConfigString);
+
         // Avoid logging sensitive OAuth config in plaintext
         // console.log('oAuthConfig', { ...oAuthConfig, clientSecret: '***' });
-        if (oauthTokens.service === 'oauth2_client_credentials') {
-            const accessToken = await getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure);
+        if (oauthConfig.service === 'oauth2_client_credentials') {
+            const accessToken = await getClientCredentialToken(settingValue, logger, keyId, oauthConfig, config, agent);
             headers['Authorization'] = `Bearer ${accessToken}`;
         } else {
-            if (oauthTokens.type === 'oauth') {
+            if (oauthConfig.type === 'oauth') {
                 // For OAuth1, generate and replace the signature in headers
                 // Use the full URL (with path but without query params) for OAuth1
                 const oauthHeader = buildOAuth1Header(
                     reqConfig.url,
                     reqConfig.method,
                     {
-                        consumerKey: oAuthConfig.consumerKey,
-                        consumerSecret: oAuthConfig.consumerSecret,
-                        token: oauthTokens.primaryToken,
-                        tokenSecret: oauthTokens.secondaryToken,
+                        consumerKey: oauthConfig.consumerKey,
+                        consumerSecret: oauthConfig.consumerSecret,
+                        token: oauthConfig.primaryToken,
+                        tokenSecret: oauthConfig.secondaryToken,
                     },
                     additionalParams
                 );
 
                 headers = { ...reqConfig.headers, ...oauthHeader };
                 logger.debug('OAuth1 access token check success.');
-            } else if (oauthTokens.type === 'oauth2') {
+            } else if (oauthConfig.type === 'oauth2') {
                 // For OAuth2, add the 'Authorization' header with the bearer token
                 const accessTokenManager = new AccessTokenManager(
-                    oAuthConfig.clientID,
-                    oAuthConfig.clientSecret,
-                    oauthTokens.secondaryToken,
-                    oAuthConfig.tokenURL,
-                    oauthTokens.expiresIn,
-                    oauthTokens.primaryToken,
-                    tokensData,
+                    oauthConfig.clientID,
+                    oauthConfig.clientSecret,
+                    oauthConfig.secondaryToken,
+                    oauthConfig.tokenURL,
+                    oauthConfig.expiresIn,
+                    oauthConfig.primaryToken,
+                    settingValue,
                     keyId,
                     logger,
-                    agent,
-                    isNewStructure
+                    agent
                 );
 
                 const accessToken = await accessTokenManager.getAccessToken();
@@ -333,22 +304,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
     }
 };
 
-const getKeyIdsFromTemplateVars = (str: string): string[] => {
-    if (!str) return [];
-
-    const pattern = /{{KEY\((.*?)\)}}/g;
-    const keyIds: any = [];
-    let match: any = [];
-
-    while ((match = pattern.exec(str)) !== null) {
-        if (match?.length < 2) continue;
-        keyIds.push(match[1]);
-    }
-
-    return keyIds;
-};
-
-async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure = false) {
+async function getClientCredentialToken(settingValue, logger, keyId, oauthTokens, config, agent) {
     const logAndThrowError = (message) => {
         logger.debug(message);
         throw new Error(message);
@@ -381,51 +337,17 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
             const expiresInMilliseconds = response.data.expires_in * 1000;
             const expirationTimestamp = currentTime + expiresInMilliseconds;
 
-            // Maintain the same structure format when saving
-            let updatedData;
-            if (isNewStructure) {
-                // Maintain new structure format; preserve existing fields
-                const parts = String(config?.data?.oauth_con_id ?? '').split('_');
-                const prefixSuffix = parts.length > 1 ? parts[1] : parts[0];
-                const oauthKeysPrefix = prefixSuffix ? `OAUTH_${prefixSuffix}` : undefined;
-                updatedData = {
-                    ...(tokensData || {}),
-                    auth_data: {
-                        ...(tokensData?.auth_data || {}),
+            const updatedData = {
+                ...(settingValue || {}),
+                customProperties: {
+                    ...(settingValue?.customProperties || {}),
+                    tokens: {
+                        ...(settingValue?.customProperties?.tokens || {}),
                         primary: newAccessToken,
                         expires_in: expirationTimestamp.toString(),
                     },
-                    auth_settings: {
-                        ...(tokensData?.auth_settings || {}),
-                        type: 'oauth2',
-                        tokenURL,
-                        clientID,
-                        clientSecret,
-                        ...(oauthKeysPrefix ? { oauth_keys_prefix: oauthKeysPrefix } : {}),
-                        service: 'oauth2_client_credentials',
-                    },
-                };
-            } else {
-                // Maintain old structure format
-                updatedData = {
-                    ...tokensData,
-                    primary: newAccessToken,
-                    expires_in: expirationTimestamp.toString(),
-                };
-                // Ensure required fields are present for old structure
-                if (!updatedData.type) updatedData.type = 'oauth2';
-                if (!updatedData.tokenURL) updatedData.tokenURL = tokenURL;
-                if (!updatedData.team) updatedData.team = agent.teamId;
-                if (!updatedData.oauth_info) {
-                    updatedData.oauth_info = {
-                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1] || config?.id}`,
-                        service: 'oauth2_client_credentials',
-                        tokenURL,
-                        clientID,
-                        clientSecret,
-                    };
-                }
-            }
+                },
+            };
 
             await managedVault.user(AccessCandidate.agent(agent.id)).set(keyId, JSON.stringify(updatedData));
 
