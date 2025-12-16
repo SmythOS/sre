@@ -11,6 +11,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { TEmbeddings } from '@sre/IO/VectorDB.service/embed/BaseEmbedding';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import envConfig from '@sre/config';
 
 export class DataSourceIndexer extends DataSourceComponent {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
@@ -31,10 +32,10 @@ export class DataSourceIndexer extends DataSourceComponent {
         await super.process(input, config, agent);
 
         let response: any = null;
-        if (!config.data.version || config.data.version === 'v1') {
-            response = await this.processV1(input, config, agent);
-        } else if (config.data.version === 'v2') {
+        if (envConfig.env.ROLLOUT_RAG_V2) {
             response = await this.processV2(input, config, agent);
+        } else {
+            response = await this.processV1(input, config, agent);
         }
 
         return response;
@@ -60,7 +61,7 @@ export class DataSourceIndexer extends DataSourceComponent {
             }
 
             const namespaceId = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
-            debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
+            debugOutput += `[Selected data space id] \n${namespaceId}\n\n`;
 
             const vectorDbConnector =
                 // (await vectorDBHelper.getTeamConnector(teamId)) ||
@@ -151,7 +152,7 @@ export class DataSourceIndexer extends DataSourceComponent {
             // const namespaceLabel = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
             const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(_config.namespace) ? _config.namespace.split('_').slice(1).join('_') : _config.namespace;
             // const namespaceId = _config.namespace;
-            debugOutput += `[Selected namespace] \n${namespaceLabel}\n\n`;
+            debugOutput += `[Selected data space] \n${namespaceLabel}\n\n`;
 
             let vecDbConnector: VectorDBConnector = null;
             try {
