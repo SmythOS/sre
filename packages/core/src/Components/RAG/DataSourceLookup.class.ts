@@ -7,6 +7,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { DataSourceComponent } from './DataSourceComponent.class';
+import envConfig from '@sre/config';
 
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
@@ -40,10 +41,15 @@ export class DataSourceLookup extends DataSourceComponent {
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        if (!config.data.version || config.data.version === 'v1') {
-            return await this.processV1(input, config, agent);
-        } else if (config.data.version === 'v2') {
+        // if (!config.data.version || config.data.version === 'v1') {
+        //     return await this.processV1(input, config, agent);
+        // } else if (config.data.version === 'v2') {
+        //     return await this.processV2(input, config, agent);
+        // }
+        if (envConfig.env.ROLLOUT_RAG_V2) {
             return await this.processV2(input, config, agent);
+        } else {
+            return await this.processV1(input, config, agent);
         }
     }
     async processV1(input, config, agent: Agent) {
