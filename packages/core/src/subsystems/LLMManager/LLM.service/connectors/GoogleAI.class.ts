@@ -559,7 +559,7 @@ export class GoogleAIConnector extends LLMConnector {
         // Since Gemini 2.5 Flash has a different pricing model for audio input tokens, we need to report audio input tokens separately.
         let audioInputTokens = 0;
         let cachedAudioInputTokens = 0;
-        const isFlashModel = ['gemini-2.5-flash'].includes(modelName);
+        const isFlashModel = modelName.includes('flash');
 
         if (isFlashModel) {
             // There is no concept of different pricing for Flash models based on token tiers (e.g., less than or greater than 200k),
