@@ -80,6 +80,10 @@ export class Conversation extends EventEmitter {
         return this._context;
     }
 
+    public get storeId() {
+        return this._llmContextStore?.id;
+    }
+
     private _lastError;
     private _spec;
     private _customToolsDeclarations: FunctionDeclaration[] = [];

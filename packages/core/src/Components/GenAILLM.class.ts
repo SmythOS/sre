@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -330,7 +330,11 @@ export class GenAILLM extends Component {
 
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
-        reasoningEffort: Joi.string().valid('none', 'default', 'minimal', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
+        reasoningEffort: Joi.string()
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .optional()
+            .allow('')
+            .label('Reasoning Effort'),
         maxThinkingTokens: Joi.number().min(1).optional().label('Maximum Thinking Tokens'),
         // #endregion
     });
@@ -403,8 +407,24 @@ export class GenAILLM extends Component {
                 files = validFiles.filter(Boolean);
 
                 if (files.length === 0) {
+                    // No valid files after filtering - determine the cause
+                    const hasDetectedMimeTypes = fileTypes.size > 0;
+
+                    if (!hasDetectedMimeTypes) {
+                        // Case 1: No mime types detected - files are corrupted/invalid
+                        return {
+                            _error: `Unable to process the provided file(s). Please ensure file(s) are not corrupted, have valid formats, and contain readable data.`,
+                            _debug: logger.output,
+                        };
+                    }
+
+                    // Case 2: Files detected but model doesn't support those types
+                    const detectedTypes = Array.from(fileTypes).join(', ');
+                    const supportedTypes = new Set(Object.values(supportedFileTypes).flat());
+                    const supportedTypesText = supportedTypes.size > 0 ? `\nSupported types: ${Array.from(supportedTypes).join(', ')}` : '';
+
                     return {
-                        _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
+                        _error: `Model '${model}' does not support the provided file type(s): ${detectedTypes}.${supportedTypesText}`,
                         _debug: logger.output,
                     };
                 }

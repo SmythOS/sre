@@ -93,6 +93,7 @@ export * from './Components/APICall/parseUrl';
 export * from './Components/Image/imageSettings.config';
 export * from './Components/RAG/DataSourceCleaner.class';
 export * from './Components/RAG/DataSourceComponent.class';
+export * from './Components/RAG/DataSourceIndexer.class';
 export * from './Components/RAG/DataSourceLookup.class';
 export * from './Components/Triggers/Gmail.trigger';
 export * from './Components/Triggers/JobScheduler.trigger';

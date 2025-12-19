@@ -335,11 +335,14 @@ export class OTel extends TelemetryConnector {
         HookService.register(
             'Conversation.streamPrompt',
             async function (additionalContext, args) {
-                const conversation: Conversation = this.instance;
-                const processId = conversation.id;
+                const conversation: Conversation = this.instance; //this.instance.agentData.teamId // this.instance.agentData.parenparentTeamId //this.instance.agentData.planInfo.properties this.instance.agentData.planInfo.flags
+                const processId = conversation.storeId || conversation.id;
                 const agentId = conversation.agentId;
                 const message = typeof args === 'object' ? args?.message : args || null;
                 const hookContext: any = this.context;
+                const teamId = conversation.agentData.teamId;
+                const orgTier = 'standard';
+                const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
 
@@ -358,6 +361,9 @@ export class OTel extends TelemetryConnector {
                         'gen_ai.conversation.id': processId,
                         'gen_ai.request.model': modelId || 'unknown',
                         ////////////////////////////////
+                        'team.id': teamId,
+                        'org.tier': orgTier,
+                        'org.slot': orgSlot,
                         'agent.id': agentId,
                         'conv.id': processId,
                         'llm.model': modelId || 'unknown',
@@ -366,6 +372,8 @@ export class OTel extends TelemetryConnector {
                 hookContext.convSpan = convSpan;
                 hookContext.agentId = agentId;
                 hookContext.processId = processId;
+                hookContext.teamId = teamId;
+                hookContext.orgSlot = orgSlot;
 
                 hookContext.dataHandler = createDataHandler(hookContext);
                 conversation.on(TLLMEvent.Data, hookContext.dataHandler);
@@ -399,6 +407,10 @@ export class OTel extends TelemetryConnector {
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
 
+                            /////
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+
                             'agent.id': agentId,
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
@@ -414,10 +426,13 @@ export class OTel extends TelemetryConnector {
             'Conversation.streamPrompt',
             async function ({ result, args, error }) {
                 const conversation: Conversation = this.instance;
-                const processId = conversation.id;
+                const processId = conversation.storeId || conversation.id;
                 const agentId = conversation.agentId;
                 const message = typeof args?.[0] === 'object' ? args?.[0]?.message : args?.[0] || null;
                 const hookContext: any = this.context;
+                const teamId = conversation.agentData.teamId;
+                const orgTier = 'standard';
+                const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
                 if (message == null) {
                     return;
                 }
@@ -454,6 +469,9 @@ export class OTel extends TelemetryConnector {
                             'conv.id': processId,
                             'output.size': JSON.stringify(result || {}).length,
                             'output.preview': result.substring(0, 2000),
+                            'team.id': teamId,
+                            'org.tier': orgTier,
+                            'org.slot': orgSlot,
                         },
                     });
                 });
@@ -475,6 +493,8 @@ export class OTel extends TelemetryConnector {
                 const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
                 const processId = agentProcessId.split(':').shift();
 
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
                 const agentId = agent.id;
                 const agentRequest = agent.agentRequest;
                 const teamId = agent.teamId;
@@ -503,7 +523,10 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': agentId,
                             'team.id': teamId,
+                            'conv.id': conversationId,
                             'process.id': agentProcessId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
                         },
                     },
                     convSpan ? trace.setSpan(context.active(), convSpan) : undefined
@@ -538,6 +561,9 @@ export class OTel extends TelemetryConnector {
                             body,
                             query,
                             headers,
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
                         },
                     } as any);
                 });
@@ -550,9 +576,12 @@ export class OTel extends TelemetryConnector {
             async function ({ result, error }) {
                 const agent = this.instance;
                 const agentProcessId = agent.agentRuntime.processID; // nested process has a subID that needs to be removed
+                const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
                 const agentId = agent.id;
                 const _hookContext: any = this.context;
-
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
                 const ctx = OTelContextRegistry.get(agentId, agentProcessId);
                 if (!ctx) return;
                 const agentSpan = ctx.rootSpan;
@@ -591,6 +620,10 @@ export class OTel extends TelemetryConnector {
                     hasError: !!error,
                     'error.message': error?.message,
                     'error.stack': error?.stack,
+                    'team.id': teamId,
+                    'org.slot': orgSlot,
+                    'org.tier': orgTier,
+                    'conv.id': conversationId,
                 };
 
                 // Only include output if formatOutputForLog returns a value
@@ -629,6 +662,9 @@ export class OTel extends TelemetryConnector {
                 const componentName = settings.displayName || settings.name;
                 const eventId = settings.eventId; // specific event id attached to this component execution
                 const accessCandidate = AccessCandidate.agent(agentId);
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId }, accessCandidate);
 
                 const ctx = OTelContextRegistry.get(agentId, processId);
@@ -646,6 +682,9 @@ export class OTel extends TelemetryConnector {
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
+                            'team.id': teamId,
+                            'org.tier': orgTier,
+                            'org.slot': orgSlot,
                             ...compSettingsData,
                         },
                     },
@@ -677,6 +716,9 @@ export class OTel extends TelemetryConnector {
                             'cmp.type': componentType,
                             'cmp.name': componentName,
                             'cmp.input': input,
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
                         },
                     });
                 });
@@ -703,7 +745,9 @@ export class OTel extends TelemetryConnector {
                 const componentId = settings.id || 'unknown';
                 const componentType = settings.name;
                 const componentName = settings.displayName || settings.name;
-
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process completed', { componentId }, accessCandidate);
 
@@ -740,6 +784,9 @@ export class OTel extends TelemetryConnector {
                                 'error.type': error.name,
                                 'error.message': error.message,
                                 'error.stack': error.stack, // ← Full stack in logs
+                                'team.id': teamId,
+                                'org.slot': orgSlot,
+                                'org.tier': orgTier,
                             },
                         });
                     });
@@ -769,6 +816,9 @@ export class OTel extends TelemetryConnector {
                         'process.id': processId,
                         'event.id': eventId,
                         'cmp.output': result,
+                        'team.id': teamId,
+                        'org.slot': orgSlot,
+                        'org.tier': orgTier,
                     };
 
                     // Only include output if formatOutputForLog returns a value
