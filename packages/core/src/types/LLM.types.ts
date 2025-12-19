@@ -446,6 +446,7 @@ export type TLLMInputMessage = {
 };
 
 export interface ILLMContextStore {
+    id: string;
     save(messages: any[]): Promise<void>;
     load(count?: number): Promise<any[]>;
     getMessage(message_id: string): Promise<any[]>;
