@@ -4,7 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
-import { ILLMContextStore, TLLMEvent, TLLMModel, ToolData } from '@sre/types/LLM.types';
+import { IConversationSettings, ILLMContextStore, TLLMEvent, TLLMModel, ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit, uid } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -76,6 +76,11 @@ export class Conversation extends EventEmitter {
         return this._id;
     }
 
+    // Tool call limit tracking
+    private _toolCallCount: number = 0;
+    private _maxToolCallsPerSession: number = 2; // Default limit
+    private _disableToolsForNextCall: boolean = false;
+
     public get context() {
         return this._context;
     }
@@ -126,22 +131,7 @@ export class Conversation extends EventEmitter {
         return this._llmInference;
     }
 
-    constructor(
-        private _model: string | TLLMModel,
-        private _specSource?: string | Record<string, any>,
-        private _settings?: {
-            maxContextSize?: number;
-            maxOutputTokens?: number;
-            systemPrompt?: string;
-            toolChoice?: string;
-            store?: ILLMContextStore;
-            experimentalCache?: boolean;
-            toolsStrategy?: (toolsConfig) => any;
-            agentId?: string;
-            agentVersion?: string;
-            baseUrl?: string;
-        }
-    ) {
+    constructor(private _model: string | TLLMModel, private _specSource?: string | Record<string, any>, private _settings?: IConversationSettings) {
         //TODO: handle loading previous session (messages)
         super();
 
@@ -168,6 +158,10 @@ export class Conversation extends EventEmitter {
 
         if (_settings?.store) {
             this._llmContextStore = _settings.store;
+        }
+
+        if (_settings?.maxToolCalls !== undefined) {
+            this._maxToolCallsPerSession = _settings.maxToolCalls;
         }
 
         this._baseUrl = _settings?.baseUrl;
@@ -337,13 +331,17 @@ export class Conversation extends EventEmitter {
             requestId: llmReqUid,
         });
 
+        // Disable tools if we've reached the limit (for final synthesis call)
+        const effectiveToolsConfig = this._disableToolsForNextCall ? null : toolsConfig;
+        this._disableToolsForNextCall = false; // Reset flag after using it
+
         const eventEmitter: any = await this.llmInference
             .promptStream({
                 contextWindow,
                 files,
                 params: {
                     model: this.model,
-                    toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
+                    toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(effectiveToolsConfig) : effectiveToolsConfig,
                     maxTokens,
                     cache: this._settings?.experimentalCache,
                     agentId: this._agentId,
@@ -536,6 +534,9 @@ export class Conversation extends EventEmitter {
                         this.emit('afterToolCall', { tool, args }, functionResponse); // Deprecated
                         this.emit(TLLMEvent.ToolResult, { tool, result, requestId: llmReqUid });
 
+                        // Increment tool call counter
+                        this._toolCallCount++;
+
                         return { ...tool, result: functionResponse };
                     }
                 );
@@ -558,6 +559,18 @@ export class Conversation extends EventEmitter {
                     //it's just a workaround to avoid generating more content after passthrough content
                     //this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
                     //toolHeaders['x-passthrough'] = 'true';
+                }
+
+                // Check if tool call limit has been reached
+                if (this._toolCallCount >= this._maxToolCallsPerSession) {
+                    // Add a system message instructing the LLM to provide a final response
+                    const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+                    this._context.addUserMessage(systemInstruction, message_id, { internal: true });
+
+                    this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
+
+                    // Set flag to disable tools for the next (final) call
+                    this._disableToolsForNextCall = true;
                 }
 
                 this.streamPrompt(null, toolHeaders, concurrentToolCalls, abortSignal).then(resolve).catch(reject);

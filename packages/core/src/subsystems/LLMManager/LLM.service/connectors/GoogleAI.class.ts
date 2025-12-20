@@ -776,14 +776,37 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
+        // Build function response parts - each tool needs BOTH functionCall (with thoughtSignature) AND functionResponse
         const functionResponseParts = toolsData
             .filter((toolData) => toolData.result !== undefined)
-            .map((toolData) => ({
-                functionResponse: {
-                    name: toolData.name,
-                    response: parseFunctionResponse(toolData.result),
-                },
-            }));
+            .flatMap((toolData) => {
+                const parts: any[] = [];
+
+                // 1. Include the original functionCall with thoughtSignature
+                const functionCallPart: any = {
+                    functionCall: {
+                        name: toolData.name,
+                        args: parseFunctionArgs(toolData.arguments),
+                    },
+                };
+
+                // Preserve thoughtSignature if present (required by Google AI)
+                if (toolData.thoughtSignature) {
+                    functionCallPart.thoughtSignature = toolData.thoughtSignature;
+                }
+
+                parts.push(functionCallPart);
+
+                // 2. Add the functionResponse
+                parts.push({
+                    functionResponse: {
+                        name: toolData.name,
+                        response: parseFunctionResponse(toolData.result),
+                    },
+                });
+
+                return parts;
+            });
 
         if (functionResponseParts.length > 0) {
             messageBlocks.push({
