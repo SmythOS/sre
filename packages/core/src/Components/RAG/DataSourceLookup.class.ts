@@ -164,9 +164,7 @@ export class DataSourceLookup extends DataSourceComponent {
             outputs[con.name] = '';
         }
 
-        const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(config.data.namespace)
-            ? config.data.namespace.split('_').slice(1).join('_')
-            : config.data.namespace;
+        const namespaceLabelorId = config.data.namespace;
         // const namespaceId = config.data.namespace;
         const model = config.data?.model || 'gpt-4o-mini';
         const includeMetadata = config.data?.includeMetadata || false;
@@ -181,14 +179,14 @@ export class DataSourceLookup extends DataSourceComponent {
         // let vectorDbConnector = ConnectorService.getVectorDBConnector();
         // let existingNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespaceLabel);
 
-        const vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
+        const { vecDbConnector, namespaceRecord } = await this.resolveVectorDbConnector(namespaceLabelorId, teamId);
 
         let results: string[] | { content: string; metadata: any; score?: number }[];
         let _error;
         try {
             const response = await vecDbConnector
                 .requester(AccessCandidate.team(teamId))
-                .search(namespaceLabel, _input, { topK, includeMetadata: true });
+                .search(namespaceRecord.label, _input, { topK, includeMetadata: true });
 
             results = response.slice(0, config.data.topK).map((result) => ({
                 content: result.text,
@@ -217,7 +215,7 @@ export class DataSourceLookup extends DataSourceComponent {
                 return includeMetadata || includeScore ? transformedResult : result.content;
             });
 
-            debugOutput += `[Results] \nLoaded ${results.length} results from namespace: ${namespaceLabel}\n\n`;
+            debugOutput += `[Results] \nLoaded ${results.length} results from namespace: ${namespaceRecord.label}\n\n`;
         } catch (error) {
             debugOutput += `Error: ${error instanceof Error ? error.message : error.toString()}\n\n`;
             _error = error instanceof Error ? error.message : error.toString();
