@@ -1,5 +1,5 @@
 import { IAgent as Agent } from '@sre/types/Agent.types';
-import { DataSourceComponent } from './DataSourceComponent.class';
+import { DataSourceComponent, NsRecord } from './DataSourceComponent.class';
 import Joi from 'joi';
 import { validateCharacterSet } from '@sre/utils/validation.utils';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
@@ -150,13 +150,15 @@ export class DataSourceIndexer extends DataSourceComponent {
 
             // we try to get the namespace without the prefix teamId, if not exist, we use the full namespace id
             // const namespaceLabel = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
-            const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(_config.namespace) ? _config.namespace.split('_').slice(1).join('_') : _config.namespace;
+            const namespaceLabelorId = _config.namespace;
             // const namespaceId = _config.namespace;
-            debugOutput += `[Selected data space] \n${namespaceLabel}\n\n`;
 
             let vecDbConnector: VectorDBConnector = null;
+            let namespaceRecord: NsRecord = null;
             try {
-                vecDbConnector = await this.resolveVectorDbConnector(namespaceLabel, teamId);
+                const resolved = await this.resolveVectorDbConnector(namespaceLabelorId, teamId);
+                vecDbConnector = resolved.vecDbConnector;
+                namespaceRecord = resolved.namespaceRecord;
             } catch (err: any) {
                 debugOutput += `Error: ${err?.message || "Couldn't get vector database connector"}\n\n`;
                 return {
@@ -164,6 +166,9 @@ export class DataSourceIndexer extends DataSourceComponent {
                     _error: err?.message || "Couldn't get vector database connector",
                 };
             }
+
+            debugOutput += `[Selected data space] \n${namespaceRecord.label}\n\n`;
+
             const vecDbClient = vecDbConnector.requester(AccessCandidate.team(teamId));
 
             const inputSchema = this.validateInput(input);
@@ -184,10 +189,10 @@ export class DataSourceIndexer extends DataSourceComponent {
                 throw new Error(`Invalid id. Accepted characters: 'a-z', 'A-Z', '0-9', '-', '_', '.'`);
             }
 
-            const dsId = DataSourceIndexer.normalizeDsId(providedId, teamId, namespaceLabel);
+            const dsId = DataSourceIndexer.normalizeDsId(providedId, teamId, namespaceRecord.label);
 
             // check if the datasource already exists
-            const dsExists = await vecDbClient.getDatasource(namespaceLabel, dsId);
+            const dsExists = await vecDbClient.getDatasource(namespaceRecord.label, dsId);
             if (dsExists) {
                 debugOutput += `Datasource already exists\n\n`;
                 return {
@@ -198,7 +203,7 @@ export class DataSourceIndexer extends DataSourceComponent {
 
             debugOutput += `STEP: Parsing input as text\n\n`;
 
-            const response = await vecDbClient.createDatasource(namespaceLabel, {
+            const response = await vecDbClient.createDatasource(namespaceRecord.label, {
                 text: inputSchema.value.Source,
                 metadata: JSONContentHelper.create(_config.metadata).tryParse() || null,
                 id: dsId,

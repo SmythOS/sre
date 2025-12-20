@@ -34,23 +34,16 @@ export class DataSourceComponent extends Component {
         super();
     }
 
-    public async resolveVectorDbConnector(namespace: string | NsRecord, teamId: string): Promise<VectorDBConnector> {
+    public async resolveVectorDbConnector(
+        namespace: string | NsRecord,
+        teamId: string
+    ): Promise<{ vecDbConnector: VectorDBConnector; namespaceRecord: NsRecord }> {
         // resolve the ns record, if not exist, throw an error (new in v2)
         // then we also need to resolve the credentials
         let namespaceRecord = namespace as NsRecord;
 
         if (typeof namespace === 'string') {
-            // if it's a string, we need to get the namespace record from the NKV
-            const nkvConnector = ConnectorService.getNKVConnector();
-            const nkvClient = nkvConnector.requester(AccessCandidate.team(teamId));
-            const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespace);
-
-            if (!rawNsRecord) {
-                throw new DataSourceCompError(`Namespace ${namespace} does not exist`, TDataSourceCompErrorCodes.NAMESPACE_NOT_FOUND);
-            }
-
-            // const { credentialId, embeddings: embeddingsOptions } = JSON.parse(rawNsRecord.toString());
-            namespaceRecord = JSON.parse(rawNsRecord.toString()) as NsRecord;
+            namespaceRecord = await this.resolveNamespaceRecord(namespace, teamId);
         }
 
         const accountConnector = ConnectorService.getAccountConnector();
@@ -75,7 +68,40 @@ export class DataSourceComponent extends Component {
             embeddings: await this.buildEmbeddingConfig(namespaceRecord.embeddings, teamId),
         });
 
-        return vecDbConnector;
+        return { vecDbConnector, namespaceRecord };
+    }
+
+    private async resolveNamespaceRecord(namespace: string, teamId: string): Promise<NsRecord> {
+        // if it's a string, we need to get the namespace record from the NKV
+        // TRY 1) try to get namespace using the label provided from teamSettings
+        const nkvConnector = ConnectorService.getNKVConnector();
+        const nkvClient = nkvConnector.requester(AccessCandidate.team(teamId));
+        const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespace);
+
+        if (rawNsRecord) {
+            return JSON.parse(rawNsRecord.toString()) as NsRecord;
+        } else {
+            // throw new DataSourceCompError(`Namespace ${namespace} does not exist`, TDataSourceCompErrorCodes.NAMESPACE_NOT_FOUND);
+            console.warn(`Namespace ${namespace} does not exist using the label ${namespace}. Trying to get namespace by mapping legacy id to V2 id`);
+        }
+
+        // TRY 2) try to get namespace using the legacy id. list all namespaces and find the one that matches the legacy id
+        const namespaces = (await nkvClient.list(`vectorDB:namespaces`))
+            .map((namespace) => {
+                try {
+                    return JSON.parse(namespace.data.toString());
+                } catch (error) {
+                    return null;
+                }
+            })
+            .filter((namespace) => namespace !== null);
+
+        const matchingNamespace = namespaces.find((ns) => ns.__legacy_id === namespace);
+        if (!matchingNamespace) {
+            console.warn(`Namespace ${namespace} does not exist using the legacy id ${namespace}.`);
+            throw new DataSourceCompError(`Namespace ${namespace} does not exist`, TDataSourceCompErrorCodes.NAMESPACE_NOT_FOUND);
+        }
+        return matchingNamespace;
     }
 
     public async buildEmbeddingConfig(embedding: { dimensions: string; modelId: string }, teamId: string): Promise<TEmbeddings> {

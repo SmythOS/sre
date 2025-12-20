@@ -201,8 +201,19 @@ export class PineconeVectorDB extends VectorDBConnector {
         for (const match of results.matches) {
             if (match.metadata?.isSkeletonVector) continue;
 
+            // priortize user metadata over the default flat metadata
             if (match.metadata?.[this.USER_METADATA_KEY]) {
                 match.metadata[this.USER_METADATA_KEY] = JSONContentHelper.create(match.metadata[this.USER_METADATA_KEY].toString()).tryParse();
+            }
+
+            // if legacy metadata is present, we add it to the fallback metadata obj
+            if (match.metadata?.[this.LEGACY_USER_METADATA_KEY]) {
+                const parsedMetadata = JSONContentHelper.create(match.metadata[this.LEGACY_USER_METADATA_KEY].toString()).tryParse();
+                match.metadata = {
+                    ...match.metadata,
+                    ...parsedMetadata,
+                };
+                delete match.metadata?.[this.LEGACY_USER_METADATA_KEY];
             }
 
             const text = match.metadata?.text as string | undefined;
