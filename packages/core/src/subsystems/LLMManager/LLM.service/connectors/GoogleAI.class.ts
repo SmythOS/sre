@@ -126,6 +126,9 @@ export class GoogleAIConnector extends LLMConnector {
             let useTool = false;
 
             if (toolCalls && toolCalls.length > 0) {
+                // Extract the thoughtSignature from the first tool call (Google AI only attaches it to the first one)
+                const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+
                 toolsData = toolCalls.map((toolCall, index) => ({
                     index,
                     id: `tool-${index}`,
@@ -136,7 +139,8 @@ export class GoogleAIConnector extends LLMConnector {
                             ? toolCall.functionCall?.args
                             : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
-                    thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
+                    // All parallel tool calls share the same thoughtSignature from the first one
+                    thoughtSignature: (toolCall as any).thoughtSignature || sharedThoughtSignature,
                 }));
                 useTool = true;
             }
@@ -179,6 +183,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             let toolsData: ToolData[] = [];
             let usage: UsageMetadataWithThoughtsToken | undefined;
+            let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
 
             (async () => {
                 try {
@@ -192,18 +197,30 @@ export class GoogleAIConnector extends LLMConnector {
 
                         const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
                         if (toolCalls && toolCalls.length > 0) {
-                            toolsData = toolCalls.map((toolCall, index) => ({
-                                index,
-                                id: `tool-${index}`,
-                                type: 'function',
-                                name: toolCall.functionCall?.name,
-                                arguments:
-                                    typeof toolCall.functionCall?.args === 'string'
-                                        ? toolCall.functionCall?.args
-                                        : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                                role: TLLMMessageRole.Assistant,
-                                thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
-                            }));
+                            // Capture thoughtSignature from the first tool call chunk if we haven't already
+                            if (!streamThoughtSignature) {
+                                streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                            }
+
+                            // For streaming, accumulate tool calls with shared signature
+                            const newToolCalls = toolCalls.map((toolCall, index) => {
+                                const baseIndex = toolsData.length + index;
+                                return {
+                                    index: baseIndex,
+                                    id: `tool-${baseIndex}`,
+                                    type: 'function' as const,
+                                    name: toolCall.functionCall?.name,
+                                    arguments:
+                                        typeof toolCall.functionCall?.args === 'string'
+                                            ? toolCall.functionCall?.args
+                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
+                                    role: TLLMMessageRole.Assistant as any,
+                                    // Use the signature from this tool call, or the shared one from the first chunk
+                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
+                                } as ToolData;
+                            });
+
+                            toolsData = [...toolsData, ...newToolCalls];
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
 
@@ -699,6 +716,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         if (messageBlock) {
             const content: any[] = [];
+            let partFunctionCallIndex = 0; // Track function calls within this message block
 
             if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {
                 for (const part of messageBlock.parts) {
@@ -716,11 +734,12 @@ export class GoogleAIConnector extends LLMConnector {
                                 args: parseFunctionArgs(part.functionCall.args),
                             },
                         };
-                        // Preserve thoughtSignature if present for Google AI reasoning context
-                        if ((part as any).thoughtSignature) {
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (partFunctionCallIndex === 0 && (part as any).thoughtSignature) {
                             functionCallPart.thoughtSignature = (part as any).thoughtSignature;
                         }
                         content.push(functionCallPart);
+                        partFunctionCallIndex++;
                         continue;
                     }
 
@@ -748,15 +767,15 @@ export class GoogleAIConnector extends LLMConnector {
 
             const hasFunctionCall = content.some((part) => part.functionCall);
             if (!hasFunctionCall && toolsData.length > 0) {
-                toolsData.forEach((toolCall) => {
+                toolsData.forEach((toolCall, index) => {
                     const functionCallPart: any = {
                         functionCall: {
                             name: toolCall.name,
                             args: parseFunctionArgs(toolCall.arguments),
                         },
                     };
-                    // Preserve thoughtSignature if present for Google AI reasoning context
-                    if (toolCall.thoughtSignature) {
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (index === 0 && toolCall.thoughtSignature) {
                         functionCallPart.thoughtSignature = toolCall.thoughtSignature;
                     }
                     content.push(functionCallPart);
@@ -833,6 +852,7 @@ export class GoogleAIConnector extends LLMConnector {
             };
 
             const normalizedParts: any[] = [];
+            let functionCallCount = 0; // Track function call parts for thoughtSignature handling
 
             // Map roles to valid Google AI roles
             switch (_message.role) {
@@ -866,10 +886,11 @@ export class GoogleAIConnector extends LLMConnector {
                             name: part.functionCall.name,
                             args: parseFunctionArgs(part.functionCall.args),
                         };
-                        // Preserve thoughtSignature if present for Google AI reasoning context
-                        if ((part as any).thoughtSignature) {
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (functionCallCount === 0 && (part as any).thoughtSignature) {
                             normalizedPart.thoughtSignature = (part as any).thoughtSignature;
                         }
+                        functionCallCount++;
                     }
 
                     if (part.functionResponse) {
@@ -904,11 +925,12 @@ export class GoogleAIConnector extends LLMConnector {
                                     args: parseFunctionArgs(functionCallPart.args),
                                 },
                             };
-                            // Preserve thoughtSignature if present for Google AI reasoning context
-                            if ((contentPart as any).thoughtSignature) {
+                            // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                            if (functionCallCount === 0 && (contentPart as any).thoughtSignature) {
                                 normalizedFunctionCall.thoughtSignature = (contentPart as any).thoughtSignature;
                             }
                             normalizedParts.push(normalizedFunctionCall);
+                            functionCallCount++;
                         } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
                             const functionResponsePart = (contentPart as any).functionResponse;
                             normalizedParts.push({
@@ -943,6 +965,7 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+                let functionCallIndex = 0;
                 for (const toolCall of message.tool_calls) {
                     if (!toolCall?.function?.name) continue;
 
@@ -952,11 +975,12 @@ export class GoogleAIConnector extends LLMConnector {
                             args: parseFunctionArgs(toolCall.function.arguments),
                         },
                     };
-                    // Preserve thoughtSignature if present for Google AI reasoning context
-                    if ((toolCall as any).thoughtSignature) {
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (functionCallIndex === 0 && (toolCall as any).thoughtSignature) {
                         normalizedFunctionCall.thoughtSignature = (toolCall as any).thoughtSignature;
                     }
                     normalizedParts.push(normalizedFunctionCall);
+                    functionCallIndex++;
                 }
             }
 
