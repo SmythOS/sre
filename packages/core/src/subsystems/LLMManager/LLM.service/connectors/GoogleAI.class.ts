@@ -128,10 +128,12 @@ export class GoogleAIConnector extends LLMConnector {
             if (toolCalls && toolCalls.length > 0) {
                 // Extract the thoughtSignature from the first tool call (Google AI only attaches it to the first one)
                 const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                // Generate unique request ID for this tool call set
+                const requestId = uid();
 
                 toolsData = toolCalls.map((toolCall, index) => ({
                     index,
-                    id: `tool-${index}`,
+                    id: `tool-${requestId}-${index}`,
                     type: 'function',
                     name: toolCall.functionCall?.name,
                     arguments:
@@ -184,6 +186,8 @@ export class GoogleAIConnector extends LLMConnector {
             let toolsData: ToolData[] = [];
             let usage: UsageMetadataWithThoughtsToken | undefined;
             let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
+            // Generate unique request ID once per streamRequest call
+            const requestId = uid();
 
             (async () => {
                 try {
@@ -202,31 +206,31 @@ export class GoogleAIConnector extends LLMConnector {
                                 streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
                             }
 
-                            // For streaming, accumulate tool calls with shared signature
-                            const newToolCalls = toolCalls.map((toolCall, index) => {
-                                const baseIndex = toolsData.length + index;
-                                return {
-                                    index: baseIndex,
-                                    id: `tool-${baseIndex}`,
-                                    type: 'function' as const,
-                                    name: toolCall.functionCall?.name,
-                                    arguments:
-                                        typeof toolCall.functionCall?.args === 'string'
-                                            ? toolCall.functionCall?.args
-                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                                    role: TLLMMessageRole.Assistant as any,
-                                    // Use the signature from this tool call, or the shared one from the first chunk
-                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
-                                } as ToolData;
-                            });
-
-                            toolsData = [...toolsData, ...newToolCalls];
-                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                            // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
+                            // All tool calls in this request share the same requestId for uniqueness
+                            toolsData = toolCalls.map((toolCall, index) => ({
+                                index,
+                                id: `tool-${requestId}-${index}`,
+                                type: 'function' as const,
+                                name: toolCall.functionCall?.name,
+                                arguments:
+                                    typeof toolCall.functionCall?.args === 'string'
+                                        ? toolCall.functionCall?.args
+                                        : JSON.stringify(toolCall.functionCall?.args ?? {}),
+                                role: TLLMMessageRole.Assistant as any,
+                                // All tool calls share the thoughtSignature from the first chunk
+                                thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
+                            }));
                         }
 
                         if (chunk.usageMetadata) {
                             usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
                         }
+                    }
+
+                    // Emit ToolInfo once after all chunks are processed (similar to Anthropic's finalMessage pattern)
+                    if (toolsData.length > 0) {
+                        emitter.emit(TLLMEvent.ToolInfo, toolsData);
                     }
 
                     const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
