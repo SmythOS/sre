@@ -78,7 +78,7 @@ export class Conversation extends EventEmitter {
 
     // Tool call limit tracking
     private _toolCallCount: number = 0;
-    private _maxToolCallsPerSession: number = 2; // Default limit
+    private _maxToolCallsPerSession: number = 25; // Default limit
     private _disableToolsForNextCall: boolean = false;
 
     public get context() {
@@ -433,13 +433,43 @@ export class Conversation extends EventEmitter {
                     llmMessage.thinkingBlocks = thinkingBlocks;
                 }
 
+                // Check if we're at or over the tool call limit BEFORE processing this batch
+                const remainingToolCalls = this._maxToolCallsPerSession - this._toolCallCount;
+
+                if (remainingToolCalls <= 0) {
+                    // Already at limit, don't execute any tools from this batch
+                    const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+                    this._context.addUserMessage(systemInstruction, message_id, { internal: true });
+                    this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
+                    this._disableToolsForNextCall = true;
+
+                    // Continue to get final synthesis without executing tools
+                    this.streamPrompt(null, toolHeaders, concurrentToolCalls, abortSignal).then(resolve).catch(reject);
+                    return;
+                }
+
+                // If this batch would exceed the limit, truncate to only execute remaining quota
+                let actualToolsData = toolsData;
+                let skippedToolsData: ToolData[] = [];
+
+                if (toolsData.length > remainingToolCalls) {
+                    actualToolsData = toolsData.slice(0, remainingToolCalls);
+                    skippedToolsData = toolsData.slice(remainingToolCalls);
+
+                    const skippedToolNames = skippedToolsData.map((t) => t.name).join(', ');
+                    console.warn(
+                        `Tool call limit will be reached. Executing only ${remainingToolCalls} of ${toolsData.length} requested tools. ` +
+                            `Skipped tools: ${skippedToolNames}`
+                    );
+                }
+
                 //add tool status for every tool entry
-                toolsData.forEach((tool) => {
+                actualToolsData.forEach((tool) => {
                     tool.status = tool.name ? this._toolStatusMap?.[tool.name] : undefined;
                 });
-                toolsData.content = _content;
-                toolsData.requestId = llmReqUid;
-                toolsData.contextWindow = contextWindow;
+                actualToolsData.content = _content;
+                actualToolsData.requestId = llmReqUid;
+                actualToolsData.contextWindow = contextWindow;
 
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
@@ -454,7 +484,8 @@ export class Conversation extends EventEmitter {
 
                 //if (llmMessage.tool_calls?.length <= 0) return;
 
-                this.emit(TLLMEvent.ToolInfo, toolsData);
+                // Emit ToolInfo with only the tools we'll actually execute
+                this.emit(TLLMEvent.ToolInfo, actualToolsData);
 
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
@@ -489,7 +520,8 @@ export class Conversation extends EventEmitter {
                     //eventEmitter.emit('content', data);
                 };
 
-                const toolProcessingTasks = toolsData.map(
+                // Only process tools up to the limit
+                const toolProcessingTasks = actualToolsData.map(
                     (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                         const endpoint = endpoints?.get(tool?.name) || tool?.name;
                         // Sometimes we have object response from the LLM such as Anthropic
@@ -543,16 +575,38 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
+                // Add skipped tools with error results indicating they were not executed
+                const skippedToolsWithErrors = skippedToolsData.map((tool) => ({
+                    ...tool,
+                    result: JSON.stringify({
+                        error: 'Tool not executed',
+                        reason: `Maximum tool call limit (${this._maxToolCallsPerSession}) reached. This tool was skipped.`,
+                        skipped: true,
+                    }),
+                }));
+
+                // Combine executed tools and skipped tools for context
+                const allToolsData = [...processedToolsData, ...skippedToolsWithErrors];
+
+                // Emit error events for skipped tools
+                skippedToolsWithErrors.forEach((tool) => {
+                    this.emit(TLLMEvent.ToolResult, {
+                        tool,
+                        result: { error: 'Tool not executed', reason: 'Maximum tool call limit reached', skipped: true },
+                        requestId: llmReqUid,
+                    });
+                });
+
                 //if (!passThroughContent) {
 
                 if (!passThroughContent) {
-                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                    this._context.addToolMessage(llmMessage, allToolsData, message_id);
                     //delete toolHeaders['x-passthrough'];
                 } else {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
 
                     //llmMessage.content += '\n' + passThroughContent;
-                    this._context.addToolMessage(llmMessage, processedToolsData, message_id, { passThrough: true });
+                    this._context.addToolMessage(llmMessage, allToolsData, message_id, { passThrough: true });
 
                     //this._context.addAssistantMessage(passThroughContent, message_id, { passthrough: true });
                     //this should not be stored in the persistent conversation store
@@ -561,7 +615,7 @@ export class Conversation extends EventEmitter {
                     //toolHeaders['x-passthrough'] = 'true';
                 }
 
-                // Check if tool call limit has been reached
+                // Check if tool call limit has been reached AFTER processing this batch
                 if (this._toolCallCount >= this._maxToolCallsPerSession) {
                     // Add a system message instructing the LLM to provide a final response
                     const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
