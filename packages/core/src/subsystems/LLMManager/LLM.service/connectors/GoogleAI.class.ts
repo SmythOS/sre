@@ -128,7 +128,12 @@ export class GoogleAIConnector extends LLMConnector {
             if (toolCalls && toolCalls.length > 0) {
                 // Extract the thoughtSignature from the first tool call (Google AI only attaches it to the first one)
                 const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
-                // Generate unique request ID for this tool call set
+
+                /**
+                 * Unique ID per streamRequest call to prevent tool ID collisions.
+                 * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+                 * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+                 */
                 const requestId = uid();
 
                 toolsData = toolCalls.map((toolCall, index) => ({
@@ -186,7 +191,12 @@ export class GoogleAIConnector extends LLMConnector {
             let toolsData: ToolData[] = [];
             let usage: UsageMetadataWithThoughtsToken | undefined;
             let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
-            // Generate unique request ID once per streamRequest call
+
+            /**
+             * Unique ID per streamRequest call to prevent tool ID collisions.
+             * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+             * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+             */
             const requestId = uid();
 
             // Defer async processing to next tick to ensure event listeners are attached first
@@ -195,70 +205,70 @@ export class GoogleAIConnector extends LLMConnector {
                 (async () => {
                     try {
                         for await (const chunk of stream) {
-                        emitter.emit(TLLMEvent.Data, chunk);
+                            emitter.emit(TLLMEvent.Data, chunk);
 
-                        const chunkText = chunk.text ?? '';
-                        if (chunkText) {
-                            emitter.emit(TLLMEvent.Content, chunkText);
-                        }
-
-                        const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
-                        if (toolCalls && toolCalls.length > 0) {
-                            // Capture thoughtSignature from the first tool call chunk if we haven't already
-                            if (!streamThoughtSignature) {
-                                streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                            const chunkText = chunk.text ?? '';
+                            if (chunkText) {
+                                emitter.emit(TLLMEvent.Content, chunkText);
                             }
 
-                            // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
-                            // All tool calls in this request share the same requestId for uniqueness
-                            toolsData = toolCalls.map((toolCall, index) => ({
-                                index,
-                                id: `tool-${requestId}-${index}`,
-                                type: 'function' as const,
-                                name: toolCall.functionCall?.name,
-                                arguments:
-                                    typeof toolCall.functionCall?.args === 'string'
-                                        ? toolCall.functionCall?.args
-                                        : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                                role: TLLMMessageRole.Assistant as any,
-                                // All tool calls share the thoughtSignature from the first chunk
-                                thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
-                            }));
+                            const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                            if (toolCalls && toolCalls.length > 0) {
+                                // Capture thoughtSignature from the first tool call chunk if we haven't already
+                                if (!streamThoughtSignature) {
+                                    streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                                }
+
+                                // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
+                                // All tool calls in this request share the same requestId for uniqueness
+                                toolsData = toolCalls.map((toolCall, index) => ({
+                                    index,
+                                    id: `tool-${requestId}-${index}`,
+                                    type: 'function' as const,
+                                    name: toolCall.functionCall?.name,
+                                    arguments:
+                                        typeof toolCall.functionCall?.args === 'string'
+                                            ? toolCall.functionCall?.args
+                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
+                                    role: TLLMMessageRole.Assistant as any,
+                                    // All tool calls share the thoughtSignature from the first chunk
+                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
+                                }));
+                            }
+
+                            if (chunk.usageMetadata) {
+                                usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                            }
                         }
 
-                        if (chunk.usageMetadata) {
-                            usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                        // Emit ToolInfo once after all chunks are processed (similar to Anthropic's finalMessage pattern)
+                        if (toolsData.length > 0) {
+                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
+
+                        const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
+                        const reportedUsage: any[] = [];
+
+                        if (usage) {
+                            const reported = this.reportUsage(usage, {
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
+                            });
+                            reportedUsage.push(reported);
+                        }
+
+                        // Note: GoogleAI stream doesn't provide explicit finish reasons
+                        // If we had a non-stop finish reason, we would emit Interrupted here
+
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error) {
+                        logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                        emitter.emit(TLLMEvent.Error, error);
                     }
-
-                    // Emit ToolInfo once after all chunks are processed (similar to Anthropic's finalMessage pattern)
-                    if (toolsData.length > 0) {
-                        emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                    }
-
-                    const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
-                    const reportedUsage: any[] = [];
-
-                    if (usage) {
-                        const reported = this.reportUsage(usage, {
-                            modelEntryName: context.modelEntryName,
-                            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                            agentId: context.agentId,
-                            teamId: context.teamId,
-                        });
-                        reportedUsage.push(reported);
-                    }
-
-                    // Note: GoogleAI stream doesn't provide explicit finish reasons
-                    // If we had a non-stop finish reason, we would emit Interrupted here
-
-                    setTimeout(() => {
-                        emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                    }, 100);
-                } catch (error) {
-                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                    emitter.emit(TLLMEvent.Error, error);
-                }
                 })();
             });
 
