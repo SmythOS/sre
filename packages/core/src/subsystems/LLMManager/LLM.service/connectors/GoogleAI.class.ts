@@ -189,9 +189,12 @@ export class GoogleAIConnector extends LLMConnector {
             // Generate unique request ID once per streamRequest call
             const requestId = uid();
 
-            (async () => {
-                try {
-                    for await (const chunk of stream) {
+            // Defer async processing to next tick to ensure event listeners are attached first
+            // This prevents race condition where fast tool calls emit events before listeners are ready
+            setImmediate(() => {
+                (async () => {
+                    try {
+                        for await (const chunk of stream) {
                         emitter.emit(TLLMEvent.Data, chunk);
 
                         const chunkText = chunk.text ?? '';
@@ -256,7 +259,8 @@ export class GoogleAIConnector extends LLMConnector {
                     logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
                     emitter.emit(TLLMEvent.Error, error);
                 }
-            })();
+                })();
+            });
 
             return emitter;
         } catch (error: any) {
@@ -707,12 +711,15 @@ export class GoogleAIConnector extends LLMConnector {
             if (typeof response === 'string') {
                 try {
                     const parsed = JSON.parse(response);
+                    // If parsed result is still a string, try parsing again (handles double-stringified JSON)
                     if (typeof parsed === 'string' && parsed !== response) {
                         return parseFunctionResponse(parsed);
                     }
                     return parsed;
-                } catch {
-                    return response;
+                } catch (error) {
+                    // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
+                    // Google AI expects function responses to be objects, not plain strings
+                    return { result: response };
                 }
             }
             return response ?? {};
@@ -862,13 +869,19 @@ export class GoogleAIConnector extends LLMConnector {
             const parseFunctionResponse = (response: unknown) => {
                 if (typeof response === 'string') {
                     try {
-                        return JSON.parse(response);
+                        const parsed = JSON.parse(response);
+                        // If parsed result is still a string, try parsing again (handles double-stringified JSON)
+                        if (typeof parsed === 'string' && parsed !== response) {
+                            return parseFunctionResponse(parsed);
+                        }
+                        return parsed;
                     } catch {
-                        return response;
+                        // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
+                        return { result: response };
                     }
                 }
 
-                return response;
+                return response ?? {};
             };
 
             const pushTextPart = (parts: any[], text?: string) => {
