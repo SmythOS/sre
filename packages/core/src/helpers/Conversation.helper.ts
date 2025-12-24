@@ -437,8 +437,9 @@ export class Conversation extends EventEmitter {
                 const remainingToolCalls = this._maxToolCallsPerSession - this._toolCallCount;
 
                 if (remainingToolCalls <= 0) {
-                    // Already at limit, don't execute any tools from this batch
-                    const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+                    // Already at limit, don't execute any tools from this batch - all will be pending
+                    const pendingToolNames = toolsData.map((t: ToolData) => t.name).join(', ');
+                    const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). The following tools were requested but marked as "pending": ${pendingToolNames}. Please provide a helpful response based on the information you've gathered so far. You may acknowledge these pending tools and suggest the user can continue in a follow-up request.`;
                     this._context.addUserMessage(systemInstruction, message_id, { internal: true });
                     this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
                     this._disableToolsForNextCall = true;
@@ -575,24 +576,24 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                // Add skipped tools with error results indicating they were not executed
-                const skippedToolsWithErrors = skippedToolsData.map((tool) => ({
+                // Add skipped tools with pending status (not errors - they can be executed in next request)
+                const skippedToolsWithPendingStatus = skippedToolsData.map((tool) => ({
                     ...tool,
                     result: JSON.stringify({
-                        error: 'Tool not executed',
-                        reason: `Maximum tool call limit (${this._maxToolCallsPerSession}) reached. This tool was skipped.`,
-                        skipped: true,
+                        status: 'pending',
+                        message: `Tool execution deferred - maximum tool call limit (${this._maxToolCallsPerSession}) reached for this request. This tool can be executed in a follow-up request.`,
+                        pending: true,
                     }),
                 }));
 
-                // Combine executed tools and skipped tools for context
-                const allToolsData = [...processedToolsData, ...skippedToolsWithErrors];
+                // Combine executed tools and pending tools for context
+                const allToolsData = [...processedToolsData, ...skippedToolsWithPendingStatus];
 
-                // Emit error events for skipped tools
-                skippedToolsWithErrors.forEach((tool) => {
+                // Emit pending status for skipped tools (not errors - these are valid requests)
+                skippedToolsWithPendingStatus.forEach((tool) => {
                     this.emit(TLLMEvent.ToolResult, {
                         tool,
-                        result: { error: 'Tool not executed', reason: 'Maximum tool call limit reached', skipped: true },
+                        result: { status: 'pending', message: 'Tool execution deferred - limit reached', pending: true },
                         requestId: llmReqUid,
                     });
                 });
@@ -617,8 +618,12 @@ export class Conversation extends EventEmitter {
 
                 // Check if tool call limit has been reached AFTER processing this batch
                 if (this._toolCallCount >= this._maxToolCallsPerSession) {
-                    // Add a system message instructing the LLM to provide a final response
-                    const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+                    // Add a system message instructing the LLM to provide a response with what's available
+                    const hasPendingTools = skippedToolsWithPendingStatus.length > 0;
+                    const systemInstruction = hasPendingTools
+                        ? `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}) for this request. Some tools are marked as "pending" and were not executed. Please provide a helpful response based on the information you've gathered so far. You may acknowledge the pending tools and suggest the user can continue in a follow-up request.`
+                        : `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+
                     this._context.addUserMessage(systemInstruction, message_id, { internal: true });
 
                     this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
