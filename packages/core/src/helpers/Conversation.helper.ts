@@ -617,19 +617,21 @@ export class Conversation extends EventEmitter {
                 }
 
                 // Check if tool call limit has been reached AFTER processing this batch
-                if (this._toolCallCount >= this._maxToolCallsPerSession) {
-                    // Add a system message instructing the LLM to provide a response with what's available
-                    const hasPendingTools = skippedToolsWithPendingStatus.length > 0;
-                    const systemInstruction = hasPendingTools
-                        ? `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}) for this request. Some tools are marked as "pending" and were not executed. Please provide a helpful response based on the information you've gathered so far. You may acknowledge the pending tools and suggest the user can continue in a follow-up request.`
-                        : `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). Please provide a final response based on the information gathered so far without making any more tool calls.`;
+                const limitReached = this._toolCallCount >= this._maxToolCallsPerSession;
+                const hasPendingTools = skippedToolsWithPendingStatus.length > 0;
 
-                    this._context.addUserMessage(systemInstruction, message_id, { internal: true });
-
-                    this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
-
-                    // Set flag to disable tools for the next (final) call
+                if (limitReached) {
+                    // Disable tools for the next (final) call to prevent infinite loops
                     this._disableToolsForNextCall = true;
+
+                    if (hasPendingTools) {
+                        // Only add system instruction if there are pending tools
+                        // If no pending tools, LLM completed naturally - don't confuse it with limit messages
+                        const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}) for this request. Some tools are marked as "pending" and were not executed. Please provide a helpful response based on the information you've gathered so far. You may acknowledge these pending tools and suggest the user can continue in a follow-up request.`;
+
+                        this._context.addUserMessage(systemInstruction, message_id, { internal: true });
+                        this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
+                    }
                 }
 
                 this.streamPrompt(null, toolHeaders, concurrentToolCalls, abortSignal).then(resolve).catch(reject);
