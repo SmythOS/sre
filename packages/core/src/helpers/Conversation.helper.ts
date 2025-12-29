@@ -84,6 +84,11 @@ export class Conversation extends EventEmitter {
         return this._llmContextStore?.id;
     }
 
+    /**
+     * Headers to be added to all tool call requests
+     */
+    public headers: Record<string, string> = {};
+
     private _lastError;
     private _spec;
     private _customToolsDeclarations: FunctionDeclaration[] = [];
@@ -309,6 +314,9 @@ export class Conversation extends EventEmitter {
         const baseUrl = this._baseUrl;
         const message_id = 'msg_' + randomUUID();
         const isDebugSession = toolHeaders['X-DEBUG'];
+        for (let [key, value] of Object.entries(this.headers)) {
+            toolHeaders[key] = value;
+        }
 
         /* ==================== STEP ENTRY ==================== */
         // console.debug('Request to LLM with the given model, messages and functions properties.', {

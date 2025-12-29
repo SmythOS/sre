@@ -5,7 +5,7 @@ import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TelemetryConnector } from '../../TelemetryConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
 
-import { trace, context, SpanStatusCode, Tracer } from '@opentelemetry/api';
+import { trace, context, SpanStatusCode, Tracer, propagation } from '@opentelemetry/api';
 import { Logger as OTelLogger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTelContextRegistry } from './OTelContextRegistry';
 import { HookService, THook } from '@sre/Core/HookService';
@@ -375,6 +375,17 @@ export class OTel extends TelemetryConnector {
                 hookContext.teamId = teamId;
                 hookContext.orgSlot = orgSlot;
 
+                // Inject trace context into conversation headers for distributed tracing
+                let headers = {};
+                const traceContext = trace.setSpan(context.active(), convSpan);
+                propagation.inject(traceContext, headers);
+                for (let [key, value] of Object.entries(headers)) {
+                    conversation.headers[key] = value as string;
+                }
+                if (OTEL_DEBUG_LOGS) {
+                    outputLogger.debug('Injected trace headers into conversation', { processId, headers });
+                }
+
                 hookContext.dataHandler = createDataHandler(hookContext);
                 conversation.on(TLLMEvent.Data, hookContext.dataHandler);
 
@@ -511,12 +522,32 @@ export class OTel extends TelemetryConnector {
                 const input = { body, query, headers, processInput: agentInput };
 
                 let convSpan;
-                const ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
+                let parentContext = context.active();
+
+                //try reading ctx from local registry (local execution)
+                let ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
 
                 if (ctx) {
                     convSpan = ctx.rootSpan;
                     _hookContext.otelSpan = convSpan;
+                    parentContext = trace.setSpan(context.active(), convSpan);
+                } else {
+                    // No local context found - try extracting from headers (remote execution)
+                    const extractedContext = propagation.extract(context.active(), agentRequest.headers);
+                    const extractedSpan = trace.getSpan(extractedContext);
+
+                    if (extractedSpan) {
+                        // Successfully extracted parent span from headers
+                        parentContext = extractedContext;
+                        if (OTEL_DEBUG_LOGS) {
+                            outputLogger.debug('SREAgent.process extracted remote parent context from headers', {
+                                processId,
+                                traceId: extractedSpan.spanContext().traceId,
+                            });
+                        }
+                    }
                 }
+
                 const agentSpan = tracer.startSpan(
                     'Agent.Skill',
                     {
@@ -529,7 +560,7 @@ export class OTel extends TelemetryConnector {
                             'org.tier': orgTier,
                         },
                     },
-                    convSpan ? trace.setSpan(context.active(), convSpan) : undefined
+                    parentContext
                 );
 
                 // Add start event
