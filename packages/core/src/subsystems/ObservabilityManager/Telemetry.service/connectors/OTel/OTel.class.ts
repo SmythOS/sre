@@ -283,6 +283,7 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
                             'llm.model': modelId || 'unknown',
                         },
                     },
@@ -316,6 +317,7 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
                             'request.id': reqInfo.requestId,
                             'llm.model': modelId || 'unknown',
                             'metric.type': 'ttfb',
