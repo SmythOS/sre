@@ -349,8 +349,8 @@ export class OTel extends TelemetryConnector {
                 const isDebugSession = agentData.debugSessionEnabled || false;
                 const isTestDomain = agentData.usingTestDomain || false;
                 const sessionId = processId;
-                const workflowId = (agentData as any)?.workflowReqId || (agentData as any)?.workflowID || (agentData as any)?.workflowId || undefined;
-                const logTags = (agentData as any)?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
 
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
@@ -469,8 +469,8 @@ export class OTel extends TelemetryConnector {
                 const isTestDomain = hookContext.isTestDomain || conversation.agentData?.usingTestDomain || false;
                 const agentData = conversation.agentData || {};
                 const sessionId = processId;
-                const workflowId = (agentData as any)?.workflowReqId || (agentData as any)?.workflowID || (agentData as any)?.workflowId || undefined;
-                const logTags = (agentData as any)?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
 
                 if (message == null) {
                     return;
@@ -544,13 +544,13 @@ export class OTel extends TelemetryConnector {
                 const teamId = agent.teamId;
                 const _hookContext: any = this.context;
 
-                const sessionId = (agent as any).callerSessionId || undefined;
+                const sessionId = agent.callerSessionId || undefined;
                 const workflowId = agent.agentRuntime?.workflowReqId || undefined;
 
-                const isDebugSession = (agent as any).debugSessionEnabled || agent.agentRuntime?.debug || false;
-                const logTags = (agent as any).sessionTag || (isDebugSession ? 'DEBUG' : undefined);
-                const isTestDomain = (agent as any).usingTestDomain || false;
-                const domain = (agent as any).domain || undefined;
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
 
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process started', { processId, agentProcessId, endpointPath }, accessCandidate);
@@ -668,13 +668,13 @@ export class OTel extends TelemetryConnector {
                 const orgTier = 'standard';
                 const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
 
-                const sessionId = (agent as any).callerSessionId || undefined;
+                const sessionId = agent.callerSessionId || undefined;
                 const workflowId = agent.agentRuntime?.workflowReqId || undefined;
 
-                const isDebugSession = (agent as any).debugSessionEnabled || agent.agentRuntime?.debug || false;
-                const logTags = (agent as any).sessionTag || (isDebugSession ? 'DEBUG' : undefined);
-                const isTestDomain = (agent as any).usingTestDomain || false;
-                const domain = (agent as any).domain || undefined;
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
 
                 const ctx = OTelContextRegistry.get(agentId, agentProcessId);
                 if (!ctx) return;
