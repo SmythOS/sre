@@ -632,7 +632,6 @@ export class OTel extends TelemetryConnector {
                             trace_id: spanCtx.traceId,
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
-                            // OTel-style attributes (used by ClickHouse queries)
                             'agent.id': agentId,
                             'process.id': agentProcessId,
                             input: agentInput,
@@ -709,7 +708,6 @@ export class OTel extends TelemetryConnector {
                     trace_id: spanCtx.traceId,
                     span_id: spanCtx.spanId,
                     trace_flags: spanCtx.traceFlags,
-                    // OTel-style attributes (used by ClickHouse queries)
                     'agent.id': agentId,
                     'process.id': agentProcessId,
                     hasError: !!error,
