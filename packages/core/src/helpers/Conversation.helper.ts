@@ -78,7 +78,7 @@ export class Conversation extends EventEmitter {
 
     // Tool call limit tracking
     private _toolCallCount: number = 0;
-    private _maxToolCallsPerSession: number = 25; // Default limit
+    private _maxToolCallsPerSession: number = Infinity; // Default limit
     private _disableToolsForNextCall: boolean = false;
 
     public get context() {
