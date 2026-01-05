@@ -237,6 +237,7 @@ export type TLLMModel = {
     isCustomLLM?: boolean;
     isUserCustomLLM?: boolean;
     modelId?: string;
+    modelEntryName?: string;
     tokens?: number;
     completionTokens?: number;
     components?: string[];

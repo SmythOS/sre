@@ -275,7 +275,7 @@ export abstract class LLMConnector extends Connector {
         const teamId = await this.getTeamId(candidate);
 
         // We need the model entry name for usage reporting
-        _params.modelEntryName = typeof model === 'string' ? model : (model as TLLMModel).modelId;
+        _params.modelEntryName = typeof model === 'string' ? model : model?.modelEntryName || model?.modelId;
         _params.teamId = teamId;
 
         const modelProviderCandidate = modelsProvider.requester(candidate);
