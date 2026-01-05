@@ -18,6 +18,8 @@ export class ForEach extends Component {
         let _in_progress = true;
         const logger = this.createComponentLogger(agent, config);
         try {
+            logger.debug(`=== ForEach Log ===`);
+
             const inputObject = input.Input;
             let inputArray;
 
@@ -38,18 +40,30 @@ export class ForEach extends Component {
             const runtimeData = agent.agentRuntime.getRuntimeData(config.id);
             const _ForEachData = runtimeData._LoopData || { parentId: config.id, loopIndex: 0, loopLength: inputArray.length };
 
-            logger.debug(`Loop: ${_ForEachData.loopIndex} / ${_ForEachData.loopLength}`);
             delete _ForEachData.branches; //reset branches (the number of branches is calculated in CallComponent@Agent.class.ts )
 
             if (_ForEachData.result) {
                 _temp_result = _ForEachData.result;
-                logger.debug(`  => Loop Result : ${JSON.stringify(Loop, null, 2)}`);
-                logger.debug(`---------------------------------------------------`);
             }
 
             Loop = inputArray[_ForEachData.loopIndex];
 
-            logger.debug(`  => Loop Data : ${JSON.stringify(Loop, null, 2)}`);
+            // Log each iteration: show iteration number, input, and previous iteration details (if available)
+            if (Loop !== undefined) {
+                logger.debug(` Iteration ${_ForEachData.loopIndex + 1}/${_ForEachData.loopLength}`);
+                logger.debug(` In Progress: ${_in_progress}`);
+                logger.debug(` Input: \n${JSON.stringify(Loop, null, 2)}`);
+
+                // Show previous iteration's input and result if available
+                if (_ForEachData.loopIndex > 0 && _temp_result && _temp_result[_ForEachData.loopIndex - 1]) {
+                    const prevInput = inputArray[_ForEachData.loopIndex - 1];
+                    const prevItem = _temp_result[_ForEachData.loopIndex - 1];
+                    logger.debug(''); // empty line
+                    logger.debug(` Previous Input: \n${JSON.stringify(prevInput, null, 2)}`);
+                    logger.debug(''); // empty line
+                    logger.debug(` Previous Result: \n${JSON.stringify(prevItem.result || prevItem, null, 2)}`);
+                }
+            }
 
             _in_progress = Loop !== undefined;
             if (_in_progress) {
@@ -67,12 +81,26 @@ export class ForEach extends Component {
 
             switch (config?.data?.format) {
                 case 'minimal':
-                    Result = Result.map((item) => cleanupResult(item.result));
+                    Result = Result.map((item) => cleanupResult(item.result || item));
                     break;
                 case 'results-array':
-                    Result = Result.map((item) => Object.values(cleanupResult(item.result))).flat(Infinity);
+                    Result = Result.map((item) => Object.values(cleanupResult(item.result || item))).flat(Infinity);
                     break;
             }
+
+            // Final summary: Input array, total iterations, and result
+            logger.debug(` Total Iterations: ${Result.length}`);
+            logger.debug(` In Progress: ${_in_progress}`);
+            logger.debug(''); // empty line
+            logger.debug(` Input: \n${JSON.stringify(input.Input, null, 2)}`);
+            logger.debug(''); // empty line
+            logger.debug(
+                ` Result: \n${JSON.stringify(
+                    Result.map((item) => item.result || item),
+                    null,
+                    2
+                )}`
+            );
         }
 
         return { Loop, Result, _temp_result, _error, _in_progress, _debug: logger.output };
