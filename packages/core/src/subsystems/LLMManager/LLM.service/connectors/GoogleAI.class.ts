@@ -207,9 +207,14 @@ export class GoogleAIConnector extends LLMConnector {
                         for await (const chunk of stream) {
                             emitter.emit(TLLMEvent.Data, chunk);
 
-                            const chunkText = chunk.text ?? '';
-                            if (chunkText) {
-                                emitter.emit(TLLMEvent.Content, chunkText);
+                            const parts = chunk.candidates?.[0]?.content?.parts || [];
+                            // Extract text from parts, filtering out non-text parts and ensuring type safety
+                            const textParts = parts
+                                .map((part) => part?.text)
+                                .filter((text): text is string => typeof text === 'string')
+                                .join('');
+                            if (textParts) {
+                                emitter.emit(TLLMEvent.Content, textParts);
                             }
 
                             const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
