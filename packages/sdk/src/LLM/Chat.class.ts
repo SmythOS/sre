@@ -57,7 +57,12 @@ class ChatCommand {
     private async run(): Promise<string> {
         await this.chat.ready;
         await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
-        const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
+        const result = await this._conversation.streamPrompt(
+            this.prompt,
+            this.options?.headers,
+            this.options?.concurrentCalls,
+            this.options?.abortSignal
+        );
         return result;
     }
 
@@ -151,7 +156,12 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.Data, dataHandler);
 
         // Start the streaming process - don't await as we want to return the eventEmitter immediately
-        this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls).catch((error) => {
+        this._conversation.streamPrompt(
+            this.prompt,
+            this.options?.headers,
+            this.options?.concurrentCalls,
+            this.options?.abortSignal
+        ).catch((error) => {
             eventEmitter.emit(TLLMEvent.Error, error);
         });
         return eventEmitter;

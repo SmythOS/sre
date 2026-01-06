@@ -291,11 +291,8 @@ export class Conversation extends EventEmitter {
         // Add an abort handler
         if (abortSignal) {
             abortSignal.addEventListener('abort', () => {
-                //this.emit('error', { name: 'AbortError', message: 'Request aborted by user!' });
+                this.stop = true;
                 this.emit('aborted', 'Aborted by user!');
-                //const error = new Error('Request aborted by user!');
-                //error.name = 'AbortError';
-                //throw error;
             });
         }
 
@@ -364,6 +361,7 @@ export class Conversation extends EventEmitter {
         // remove listeners from llm event emitter to stop receiving stream data
         if (abortSignal) {
             abortSignal.addEventListener('abort', () => {
+                this.stop = true;
                 eventEmitter.removeAllListeners();
             });
         }

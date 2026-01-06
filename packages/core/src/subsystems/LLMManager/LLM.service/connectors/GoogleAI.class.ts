@@ -167,9 +167,18 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
+
+        // Handle abort signal to stop receiving events
+        let isAborted = false;
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                isAborted = true;
+                emitter.removeAllListeners();
+            });
+        }
 
         const promptSource = body.messages ?? body.contents ?? '';
         const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
@@ -205,6 +214,9 @@ export class GoogleAIConnector extends LLMConnector {
                 (async () => {
                     try {
                         for await (const chunk of stream) {
+                            // Break out of the loop if aborted
+                            if (isAborted) break;
+
                             emitter.emit(TLLMEvent.Data, chunk);
 
                             const chunkText = chunk.text ?? '';

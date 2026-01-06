@@ -31,10 +31,17 @@ export class EchoConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
+
+            // Handle abort signal to stop receiving events
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    emitter.removeAllListeners();
+                });
+            }
             let content = '';
 
             if (Array.isArray(body?.messages)) {

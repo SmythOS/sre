@@ -124,11 +124,20 @@ export class OllamaConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
             const usage_data = [];
+
+            // Handle abort signal to stop receiving events
+            let isAborted = false;
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    isAborted = true;
+                    emitter.removeAllListeners();
+                });
+            }
 
             const ollama = this.getClient(context);
             const stream = (await ollama.chat({
@@ -142,6 +151,9 @@ export class OllamaConnector extends LLMConnector {
 
             (async () => {
                 for await (const chunk of stream) {
+                    // Break out of the loop if aborted
+                    if (isAborted) break;
+
                     emitter.emit(TLLMEvent.Data, chunk);
 
                     // Emit content deltas

@@ -152,7 +152,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
 
@@ -176,6 +176,13 @@ export class OpenAIConnector extends LLMConnector {
             const stream = await apiInterface.createStream(body, context);
 
             const emitter = apiInterface.handleStream(stream, context);
+
+            // Handle abort signal to stop receiving events
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    emitter.removeAllListeners();
+                });
+            }
 
             return emitter;
         } catch (error) {

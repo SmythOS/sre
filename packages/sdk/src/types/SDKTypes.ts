@@ -63,6 +63,8 @@ export type ChatOptions = {
 export type PromptOptions = {
     headers?: Record<string, string>;
     concurrentCalls?: number;
+    /** AbortSignal to cancel the prompt request */
+    abortSignal?: AbortSignal;
 };
 
 export enum Scope {

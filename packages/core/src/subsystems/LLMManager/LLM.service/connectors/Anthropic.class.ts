@@ -137,14 +137,21 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
             const usage_data = [];
 
             const anthropic = await this.getClient(context);
-            let stream = anthropic.messages.stream(body);
+            const stream = anthropic.messages.stream(body);
+
+            // Handle abort signal to stop the stream
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    stream.controller.abort();
+                });
+            }
 
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks

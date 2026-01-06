@@ -1,26 +1,26 @@
-import Groq from 'groq-sdk';
 import EventEmitter from 'events';
+import Groq from 'groq-sdk';
 
-import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import { BUILT_IN_MODEL_PREFIX, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import {
-    TLLMMessageBlock,
-    ToolData,
-    TLLMMessageRole,
     APIKeySource,
-    TLLMEvent,
     BasicCredentials,
+    ILLMRequestContext,
     ILLMRequestFuncParams,
     TLLMChatResponse,
-    ILLMRequestContext,
+    TLLMEvent,
+    TLLMMessageBlock,
+    TLLMMessageRole,
     TLLMPreparedParams,
     TLLMToolResultMessageBlock,
+    ToolData,
 } from '@sre/types/LLM.types';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { LLMConnector } from '../LLMConnector';
+import { hookAsync } from '@sre/Core/HookService';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
-import { hookAsync } from '@sre/Core/HookService';
+import { LLMConnector } from '../LLMConnector';
 
 const logger = Logger('GroqConnector');
 
@@ -98,7 +98,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
@@ -107,11 +107,23 @@ export class GroqConnector extends LLMConnector {
             const groq = await this.getClient(context);
             const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
 
+            // Handle abort signal to stop the stream
+            let isAborted = false;
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    isAborted = true;
+                    emitter.removeAllListeners();
+                });
+            }
+
             let toolsData: ToolData[] = [];
             let finishReason = 'stop';
 
             (async () => {
                 for await (const chunk of stream as any) {
+                    // Break out of the loop if aborted
+                    if (isAborted) break;
+
                     const delta = chunk.choices[0]?.delta;
                     const usage = chunk['x_groq']?.usage || chunk['usage'];
 

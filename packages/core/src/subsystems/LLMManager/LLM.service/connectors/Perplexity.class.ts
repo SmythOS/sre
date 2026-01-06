@@ -93,10 +93,17 @@ export class PerplexityConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest
         const emitter = new EventEmitter();
+
+        // Handle abort signal to stop receiving events
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                emitter.removeAllListeners();
+            });
+        }
 
         // TODO: need to implement proper streaming for Perplexity
 

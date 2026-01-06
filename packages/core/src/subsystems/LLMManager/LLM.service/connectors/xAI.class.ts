@@ -157,7 +157,7 @@ export class xAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
         try {
@@ -168,8 +168,17 @@ export class xAIConnector extends LLMConnector {
                 { ...body, stream: true, stream_options: { include_usage: true } },
                 {
                     responseType: 'stream',
+                    signal: abortSignal,
                 }
             );
+
+            // Handle abort signal to stop receiving events
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    response.data.destroy();
+                    emitter.removeAllListeners();
+                });
+            }
 
             const reportedUsage: any[] = [];
             let finishReason = 'stop';

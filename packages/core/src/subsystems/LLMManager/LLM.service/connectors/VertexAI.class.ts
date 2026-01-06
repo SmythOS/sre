@@ -113,8 +113,17 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
+
+        // Handle abort signal to stop receiving events
+        let isAborted = false;
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                isAborted = true;
+                emitter.removeAllListeners();
+            });
+        }
 
         setTimeout(async () => {
             try {
@@ -136,6 +145,9 @@ export class VertexAIConnector extends LLMConnector {
                 let usageData: any[] = [];
 
                 for await (const chunk of streamResult.stream) {
+                    // Break out of the loop if aborted
+                    if (isAborted) break;
+
                     const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (chunkText) {
                         emitter.emit(TLLMEvent.Content, chunkText);

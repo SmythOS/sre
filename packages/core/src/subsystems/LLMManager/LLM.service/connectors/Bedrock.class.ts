@@ -102,8 +102,17 @@ export class BedrockConnector extends LLMConnector {
         }
     }
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
+
+        // Handle abort signal to stop receiving events
+        let isAborted = false;
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                isAborted = true;
+                emitter.removeAllListeners();
+            });
+        }
 
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
@@ -123,6 +132,8 @@ export class BedrockConnector extends LLMConnector {
                     };
 
                     for await (const chunk of stream) {
+                        // Break out of the loop if aborted
+                        if (isAborted) break;
                         // Handle message start
                         if (chunk.messageStart) {
                             currentMessage.role = chunk.messageStart.role || '';

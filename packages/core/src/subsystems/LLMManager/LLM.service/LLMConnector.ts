@@ -149,6 +149,7 @@ export abstract class LLMConnector extends Connector {
                             [provider]: preparedParams.toolsInfo[provider],
                         } as TToolsInfo,
                     },
+                    abortSignal: params.abortSignal,
                 };
 
                 const response = await this.streamRequest(requestParams);
