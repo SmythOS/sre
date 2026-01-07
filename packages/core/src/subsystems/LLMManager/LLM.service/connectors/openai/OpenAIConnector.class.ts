@@ -20,6 +20,7 @@ import {
     TLLMToolResultMessageBlock,
     ToolData,
     TOpenAIRequestBody,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -153,6 +154,8 @@ export class OpenAIConnector extends LLMConnector {
 
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        let emitter: EventEmitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
 
@@ -175,11 +178,23 @@ export class OpenAIConnector extends LLMConnector {
 
             const stream = await apiInterface.createStream(body, context, abortSignal);
 
-            const emitter = apiInterface.handleStream(stream, context);
+            emitter = apiInterface.handleStream(stream, context);
 
             return emitter;
         } catch (error) {
+            const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                const abortError = (error as any) instanceof Error ? (error as Error) : new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+            emitter.emit(TLLMEvent.Error, error);
             throw error;
         }
     }

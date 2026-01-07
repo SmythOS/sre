@@ -269,19 +269,37 @@ export class GoogleAIConnector extends LLMConnector {
                         // Note: GoogleAI stream doesn't provide explicit finish reasons
                         // If we had a non-stop finish reason, we would emit Interrupted here
 
-                        setTimeout(() => {
-                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                        }, 100);
-                    } catch (error) {
-                        logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Error, error);
-                    }
+                setTimeout(() => {
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                }, 100);
+            } catch (error) {
+                const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+                if (isAbort) {
+                    logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                    emitter.emit(TLLMEvent.Abort, error);
+                } else {
+                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                    emitter.emit(TLLMEvent.Error, error);
+                }
+            }
                 })();
             });
 
             return emitter;
         } catch (error: any) {
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+            emitter.emit(TLLMEvent.Error, error);
             throw error;
         }
     }

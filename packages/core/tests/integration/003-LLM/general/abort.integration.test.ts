@@ -104,6 +104,7 @@ async function expectStreamAbortWithModel(modelId: string) {
                 }
             };
 
+            stream.once(TLLMEvent.Abort, () => finish());
             stream.once(TLLMEvent.Error, finish);
             stream.once(TLLMEvent.Interrupted, () => finish());
             stream.once(TLLMEvent.End, () => {

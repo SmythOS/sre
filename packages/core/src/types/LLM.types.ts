@@ -513,6 +513,8 @@ export enum TLLMEvent {
     Thinking = 'thinking',
     /** End of the response */
     End = 'end',
+    /** Request aborted (terminal; End is not emitted on abort) */
+    Abort = 'abort',
     /** Error */
     Error = 'error',
     /** Tool information : emitted by the LLM determines the next tool call */

@@ -138,12 +138,22 @@ export class AnthropicConnector extends LLMConnector {
 
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+
+            // Pre-flight: already aborted before we start — emit Abort immediately.
+            // This is especially important for Anthropic because if we try to start the stream
+            // with an already-aborted signal, the SDK may never emit abort/error, leaving callers hanging.
             if (abortSignal?.aborted) {
-                throw new DOMException('Request aborted', 'AbortError');
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                });
+                return emitter;
             }
-            const emitter = new EventEmitter();
+
             const usage_data = [];
 
             const anthropic = await this.getClient(context);
@@ -167,6 +177,12 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Error, error);
             });
 
+            // Anthropic emits a dedicated abort event; translate it to our Abort signal
+            stream.on(AnthropicStreamEvent.abort, (error) => {
+                logger.debug(`streamRequest ${this.name} stream abort`, error);
+                emitter.emit(TLLMEvent.Abort, error);
+            });
+
             stream.on(AnthropicStreamEvent.message, (message) => {
                 emitter.emit(TLLMEvent.Data, message);
             });
@@ -187,12 +203,13 @@ export class AnthropicConnector extends LLMConnector {
             });
 
             if (abortSignal) {
+                // Catch mid-flight cancellations even if the Anthropic stream never emits its own abort
+                // (e.g., aborted during setup before stream listeners attach).
                 abortSignal.addEventListener(
                     'abort',
                     () => {
                         logger.debug(`streamRequest ${this.name} abortSignal triggered`, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Error, new DOMException('Request aborted', 'AbortError'));
-                        emitter.emit(TLLMEvent.End);
+                        emitter.emit(TLLMEvent.Abort, new DOMException('Request aborted', 'AbortError'));
                     },
                     { once: true }
                 );
@@ -247,6 +264,16 @@ export class AnthropicConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            // #region Safety net for aborts that happen while creating the stream (before stream events/listeners exist).
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+            if (isAbort) {
+                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                emitter.emit(TLLMEvent.Abort, abortError);
+                return emitter;
+            }
+            // #endregion Abort error handling
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             throw error;
         }

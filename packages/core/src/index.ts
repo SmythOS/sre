@@ -191,7 +191,6 @@ export * from './subsystems/LLMManager/LLM.service/connectors/GoogleAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Groq.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Ollama.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
-export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/xAI.class';
 export * from './subsystems/LLMManager/ModelsProvider.service/connectors/JSONModelsProvider.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/LocalStorageCache.class';

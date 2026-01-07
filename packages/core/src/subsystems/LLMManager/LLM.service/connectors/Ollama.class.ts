@@ -142,9 +142,10 @@ export class OllamaConnector extends LLMConnector {
 
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            const emitter = new EventEmitter();
             const usage_data = [];
 
             const ollama = this.getClient(context, abortSignal);
@@ -160,7 +161,7 @@ export class OllamaConnector extends LLMConnector {
                         (stream as any).abort();
                     }
                     // Emit abort event on the emitter for proper cleanup
-                    emitter.emit(TLLMEvent.Error, new DOMException('Request aborted', 'AbortError'));
+                    emitter.emit(TLLMEvent.Abort, new DOMException('Request aborted', 'AbortError'));
                 });
             }
 
@@ -254,7 +255,7 @@ export class OllamaConnector extends LLMConnector {
                     // Handle AbortError specifically - this is expected when abortSignal is triggered
                     if (error?.name === 'AbortError' || abortSignal?.aborted) {
                         logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Error, error);
+                        emitter.emit(TLLMEvent.Abort, error);
                     } else {
                         logger.error(`streamRequest ${this.name} error`, error, acRequest.candidate);
                         emitter.emit(TLLMEvent.Error, error);
@@ -267,7 +268,9 @@ export class OllamaConnector extends LLMConnector {
             // Handle AbortError specifically - this is expected when abortSignal is triggered
             if (error?.name === 'AbortError' || abortSignal?.aborted) {
                 logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
-                throw error;
+                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                emitter.emit(TLLMEvent.Abort, abortError);
+                return emitter;
             }
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             throw error;

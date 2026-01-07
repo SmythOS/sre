@@ -99,9 +99,10 @@ export class GroqConnector extends LLMConnector {
 
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            const emitter = new EventEmitter();
             const usage_data = [];
 
             const groq = await this.getClient(context);
@@ -113,71 +114,96 @@ export class GroqConnector extends LLMConnector {
             let toolsData: ToolData[] = [];
             let finishReason = 'stop';
 
-            (async () => {
-                for await (const chunk of stream as any) {
-                    const delta = chunk.choices[0]?.delta;
-                    const usage = chunk['x_groq']?.usage || chunk['usage'];
+            setImmediate(() => {
+                (async () => {
+                    try {
+                        for await (const chunk of stream as any) {
+                            const delta = chunk.choices[0]?.delta;
+                            const usage = chunk['x_groq']?.usage || chunk['usage'];
 
-                    if (usage) {
-                        usage_data.push(usage);
-                    }
-                    emitter.emit(TLLMEvent.Data, delta);
-
-                    if (delta?.content) {
-                        emitter.emit(TLLMEvent.Content, delta.content);
-                    }
-
-                    if (delta?.tool_calls) {
-                        delta.tool_calls.forEach((toolCall, index) => {
-                            if (!toolsData[index]) {
-                                toolsData[index] = {
-                                    index,
-                                    id: toolCall.id,
-                                    type: toolCall.type,
-                                    name: toolCall.function?.name,
-                                    arguments: toolCall.function?.arguments,
-                                    role: 'assistant',
-                                };
-                            } else {
-                                toolsData[index].arguments += toolCall.function?.arguments || '';
+                            if (usage) {
+                                usage_data.push(usage);
                             }
+                            emitter.emit(TLLMEvent.Data, delta);
+
+                            if (delta?.content) {
+                                emitter.emit(TLLMEvent.Content, delta.content);
+                            }
+
+                            if (delta?.tool_calls) {
+                                delta.tool_calls.forEach((toolCall, index) => {
+                                    if (!toolsData[index]) {
+                                        toolsData[index] = {
+                                            index,
+                                            id: toolCall.id,
+                                            type: toolCall.type,
+                                            name: toolCall.function?.name,
+                                            arguments: toolCall.function?.arguments,
+                                            role: 'assistant',
+                                        };
+                                    } else {
+                                        toolsData[index].arguments += toolCall.function?.arguments || '';
+                                    }
+                                });
+                            }
+
+                            // Capture finish reason
+                            if (chunk.choices[0]?.finish_reason) {
+                                finishReason = chunk.choices[0].finish_reason;
+                            }
+                        }
+
+                        if (toolsData.length > 0) {
+                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                        }
+
+                        const reportedUsage: any[] = [];
+                        usage_data.forEach((usage) => {
+                            const reported = this.reportUsage(usage, {
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
+                            });
+                            reportedUsage.push(reported);
                         });
+
+                        // Emit interrupted event if finishReason is not 'stop'
+                        if (finishReason !== 'stop') {
+                            emitter.emit(TLLMEvent.Interrupted, finishReason);
+                        }
+
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error: any) {
+                        const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+                        if (isAbort) {
+                            logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                            emitter.emit(TLLMEvent.Abort, error);
+                        } else {
+                            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                            emitter.emit(TLLMEvent.Error, error);
+                        }
                     }
-
-                    // Capture finish reason
-                    if (chunk.choices[0]?.finish_reason) {
-                        finishReason = chunk.choices[0].finish_reason;
-                    }
-                }
-
-                if (toolsData.length > 0) {
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                const reportedUsage: any[] = [];
-                usage_data.forEach((usage) => {
-                    const reported = this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    });
-                    reportedUsage.push(reported);
-                });
-
-                // Emit interrupted event if finishReason is not 'stop'
-                if (finishReason !== 'stop') {
-                    emitter.emit(TLLMEvent.Interrupted, finishReason);
-                }
-
-                setTimeout(() => {
-                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                }, 100);
-            })();
+                })();
+            });
 
             return emitter;
         } catch (error: any) {
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+            emitter.emit(TLLMEvent.Error, error);
             throw error;
         }
     }
