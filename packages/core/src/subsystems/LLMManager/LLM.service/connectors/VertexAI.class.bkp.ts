@@ -1,4 +1,4 @@
-import { GoogleGenAI, type GenerateContentResponseUsageMetadata } from '@google/genai/node';
+import { VertexAI, type GenerationConfig, type UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -16,12 +16,10 @@ import {
     TLLMMessageRole,
     TLLMChatResponse,
     TLLMEvent,
-    VertexAICredentials,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { uid } from '@sre/utils';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
@@ -30,110 +28,66 @@ import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('VertexAIConnector');
 
-// Type alias for usage metadata compatibility
-type UsageMetadataWithThoughtsToken = GenerateContentResponseUsageMetadata & { thoughtsTokenCount?: number; cost?: number };
+//TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
+// we had no access to VertexAI so we assumed it is working (potential bug)
 
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    private async getClient(params: ILLMRequestContext): Promise<GoogleGenAI> {
-        const credentials = params.credentials as VertexAICredentials;
+    private async getClient(params: ILLMRequestContext): Promise<VertexAI> {
+        const credentials = params.credentials as any;
         const modelInfo = params.modelInfo as TCustomLLMModel;
-        const settings = modelInfo?.settings as TVertexAISettings;
-        const projectId = settings?.projectId;
-        const region = (modelInfo?.settings as any)?.region;
+        const projectId = (modelInfo?.settings as TVertexAISettings)?.projectId;
+        const region = modelInfo?.settings?.region;
 
-        if (!projectId) {
-            throw new Error('Please provide a project ID for Vertex AI');
-        }
-
-        if (!region) {
-            throw new Error('Please provide a region for Vertex AI');
-        }
-
-        // @google/genai automatically uses Google Cloud authentication when vertexai: true is set
-        // It will use service account credentials from the environment or the provided credentials
-        const clientOptions: any = {
-            vertexai: true,
+        return new VertexAI({
             project: projectId,
             location: region,
-        };
-
-        // If credentials are provided explicitly, pass them via googleAuthOptions
-        // This maintains backward compatibility with the old @google-cloud/vertexai implementation
-        if (credentials) {
-            clientOptions.googleAuthOptions = {
+            apiEndpoint: (modelInfo?.settings as TVertexAISettings)?.apiEndpoint,
+            googleAuthOptions: {
                 credentials: credentials as any,
-            };
-        }
-
-        // If custom API endpoint is provided, we need to handle it via httpOptions
-        // Note: @google/genai may not directly support custom apiEndpoint in constructor
-        // For now, we'll log a warning if apiEndpoint is set
-        if (settings?.apiEndpoint) {
-            logger.warn('Custom apiEndpoint is set but may not be fully supported by @google/genai. Using default Vertex AI endpoint.');
-        }
-
-        return new GoogleGenAI(clientOptions);
+            },
+        });
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
-            const genAI = await this.getClient(context);
+            const vertexAI = await this.getClient(context);
 
-            // Normalize the prompt format (similar to GoogleAI connector)
-            const promptSource = body.messages ?? body.contents ?? '';
-            const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
-            const requestConfig = this.buildRequestConfig({
-                generationConfig: body.generationConfig,
-                systemInstruction: body.systemInstruction,
-                promptConfig,
-                abortSignal,
-            });
+            // Separate contents from model configuration
+            const contents = body.contents;
+            delete body.contents;
 
-            const requestPayload: Record<string, any> = {
-                model: body.model,
-                contents: contents ?? '',
-            };
+            // VertexAI expects contents in a specific format: {contents: [...]}
+            const requestParam = { contents };
 
-            if (requestConfig) {
-                requestPayload.config = requestConfig;
-            }
+            const model = vertexAI.getGenerativeModel(body);
 
-            const response = await genAI.models.generateContent(requestPayload as any);
-            const content = response.text ?? '';
-            const finishReason = (response.candidates?.[0]?.finishReason || 'stop').toLowerCase();
-            const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
+            const result = await model.generateContent(requestParam);
+            const response = await result.response;
+
+            const content = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const finishReason = response.candidates?.[0]?.finishReason || 'stop';
+            const usage = response.usageMetadata;
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
             // Check for function calls in the response
-            const toolCalls = response.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
-            if (toolCalls && toolCalls.length > 0) {
-                // Extract the thoughtSignature from the first tool call (if available)
-                const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
-
-                /**
-                 * Unique ID per request call to prevent tool ID collisions.
-                 */
-                const requestId = uid();
-
-                toolsData = toolCalls.map((toolCall, index) => ({
-                    index,
-                    id: `tool-${requestId}-${index}`,
-                    type: 'function',
-                    name: toolCall.functionCall?.name,
-                    arguments:
-                        typeof toolCall.functionCall?.args === 'string'
-                            ? toolCall.functionCall?.args
-                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                    role: TLLMMessageRole.Assistant,
-                    // All parallel tool calls share the same thoughtSignature from the first one
-                    thoughtSignature: (toolCall as any).thoughtSignature || sharedThoughtSignature,
-                }));
+            const functionCalls = response.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+            if (functionCalls && functionCalls.length > 0) {
+                functionCalls.forEach((call, index) => {
+                    toolsData.push({
+                        index,
+                        id: call.functionCall?.name + '_' + index, // VertexAI doesn't provide IDs like Anthropic
+                        type: 'function',
+                        name: call.functionCall?.name,
+                        arguments: call.functionCall?.args,
+                        role: TLLMMessageRole.Assistant,
+                    });
+                });
                 useTool = true;
             }
 
@@ -159,116 +113,84 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
-        const promptSource = body.messages ?? body.contents ?? '';
-        const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
-        const requestConfig = this.buildRequestConfig({
-            generationConfig: body.generationConfig,
-            systemInstruction: body.systemInstruction,
-            promptConfig,
-            abortSignal,
-        });
+        setTimeout(async () => {
+            try {
+                logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+                const vertexAI = await this.getClient(context);
 
-        const genAI = await this.getClient(context);
+                // Separate contents from model configuration
+                const contents = body.contents;
+                delete body.contents;
 
-        try {
-            const stream = await genAI.models.generateContentStream({
-                model: body.model,
-                contents: contents ?? '',
-                ...(requestConfig ? { config: requestConfig } : {}),
-            } as any);
+                const vertexModel = vertexAI.getGenerativeModel(body);
 
-            let toolsData: ToolData[] = [];
-            let usage: UsageMetadataWithThoughtsToken | undefined;
-            let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
+                // VertexAI expects contents in a specific format: {contents: [...]}
+                const requestParam = { contents };
 
-            /**
-             * Unique ID per streamRequest call to prevent tool ID collisions.
-             */
-            const requestId = uid();
+                const streamResult = await vertexModel.generateContentStream(requestParam);
 
-            // Defer async processing to next tick to ensure event listeners are attached first
-            setImmediate(() => {
-                (async () => {
-                    try {
-                        for await (const chunk of stream) {
-                            emitter.emit(TLLMEvent.Data, chunk);
+                let toolsData: ToolData[] = [];
+                let usageData: any[] = [];
 
-                            const parts = chunk.candidates?.[0]?.content?.parts || [];
-                            // Extract text from parts, filtering out non-text parts and ensuring type safety
-                            const textParts = parts
-                                .map((part) => part?.text)
-                                .filter((text): text is string => typeof text === 'string')
-                                .join('');
-                            if (textParts) {
-                                emitter.emit(TLLMEvent.Content, textParts);
-                            }
-
-                            const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
-                            if (toolCalls && toolCalls.length > 0) {
-                                // Capture thoughtSignature from the first tool call chunk if we haven't already
-                                if (!streamThoughtSignature) {
-                                    streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
-                                }
-
-                                // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
-                                toolsData = toolCalls.map((toolCall, index) => ({
-                                    index,
-                                    id: `tool-${requestId}-${index}`,
-                                    type: 'function' as const,
-                                    name: toolCall.functionCall?.name,
-                                    arguments:
-                                        typeof toolCall.functionCall?.args === 'string'
-                                            ? toolCall.functionCall?.args
-                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                                    role: TLLMMessageRole.Assistant as any,
-                                    // All tool calls share the thoughtSignature from the first chunk
-                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
-                                }));
-                            }
-
-                            if (chunk.usageMetadata) {
-                                usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
-                            }
-                        }
-
-                        // Emit ToolInfo once after all chunks are processed
-                        if (toolsData.length > 0) {
-                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                        }
-
-                        const finishReason = 'stop'; // Vertex AI doesn't provide explicit finishReason in streaming
-                        const reportedUsage: any[] = [];
-
-                        if (usage) {
-                            const reported = this.reportUsage(usage, {
-                                modelEntryName: context.modelEntryName,
-                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                                agentId: context.agentId,
-                                teamId: context.teamId,
-                            });
-                            reportedUsage.push(reported);
-                        }
-
-                        setTimeout(() => {
-                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                        }, 100);
-                    } catch (error) {
-                        logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Error, error);
+                for await (const chunk of streamResult.stream) {
+                    const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    if (chunkText) {
+                        emitter.emit(TLLMEvent.Content, chunkText);
                     }
-                })();
-            });
+                }
 
-            return emitter;
-        } catch (error) {
-            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            emitter.emit(TLLMEvent.Error, error);
-            return emitter;
-        }
+                const aggregatedResponse = await streamResult.response;
+
+                emitter.emit(TLLMEvent.Data, aggregatedResponse);
+
+                // Check for function calls in the final response (like Anthropic does)
+                const functionCalls = aggregatedResponse.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                if (functionCalls && functionCalls.length > 0) {
+                    functionCalls.forEach((call, index) => {
+                        toolsData.push({
+                            index,
+                            id: call.functionCall?.name + '_' + index,
+                            type: 'function',
+                            name: call.functionCall?.name,
+                            arguments: call.functionCall?.args,
+                            role: TLLMMessageRole.Assistant,
+                        });
+                    });
+
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                }
+
+                const usage = aggregatedResponse.usageMetadata;
+
+                if (usage) {
+                    const reportedUsage = this.reportUsage(usage, {
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
+                    });
+                    usageData.push(reportedUsage);
+                }
+
+                const finishReason = (aggregatedResponse.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+
+                if (finishReason !== 'stop') {
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
+                }
+
+                setTimeout(() => {
+                    emitter.emit(TLLMEvent.End, toolsData, usageData, finishReason);
+                }, 100);
+            } catch (error) {
+                logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                emitter.emit(TLLMEvent.Error, error);
+            }
+        }, 100);
+
+        return emitter;
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
@@ -277,7 +199,7 @@ export class VertexAIConnector extends LLMConnector {
 
         let body: any = {
             model: model as string,
-            contents: messages, // This will be normalized in the request methods
+            contents: messages, // This will be separated in the request methods
         };
 
         const responseFormat = params?.responseFormat || '';
@@ -287,7 +209,7 @@ export class VertexAIConnector extends LLMConnector {
             systemInstruction += (systemInstruction ? '\n\n' : '') + JSON_RESPONSE_INSTRUCTION;
         }
 
-        const config: Record<string, any> = {};
+        const config: GenerationConfig = {};
 
         if (params.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
         if (params.temperature !== undefined) config.temperature = params.temperature;
@@ -296,7 +218,10 @@ export class VertexAIConnector extends LLMConnector {
         if (params.stopSequences?.length) config.stopSequences = params.stopSequences;
 
         if (systemInstruction) {
-            body.systemInstruction = systemInstruction;
+            body.systemInstruction = {
+                role: 'system',
+                parts: [{ text: systemInstruction }],
+            };
         }
 
         if (Object.keys(config).length > 0) {
@@ -311,10 +236,7 @@ export class VertexAIConnector extends LLMConnector {
         return body;
     }
 
-    protected reportUsage(
-        usage: UsageMetadataWithThoughtsToken,
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
+    protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
@@ -339,7 +261,7 @@ export class VertexAIConnector extends LLMConnector {
 
         let processedMessages = [...messages];
 
-        // Handle system messages - Vertex AI uses systemInstruction separately
+        // Handle system messages - VertexAI uses systemInstruction separately
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(processedMessages);
         processedMessages = otherMessages;
 
@@ -358,7 +280,7 @@ export class VertexAIConnector extends LLMConnector {
             }
         }
 
-        // Convert messages to Vertex AI format (same as Google AI format)
+        // Convert messages to VertexAI format
         let vertexAIMessages = this.convertMessagesToVertexAIFormat(processedMessages);
 
         // Ensure we have at least one message with content
@@ -432,86 +354,6 @@ export class VertexAIConnector extends LLMConnector {
                 })),
             },
         ];
-    }
-
-    /**
-     * Normalize prompt format for @google/genai API
-     * Similar to GoogleAI connector's normalizePrompt method
-     */
-    private normalizePrompt(prompt: TGoogleAIRequestBody['messages'] | TGoogleAIRequestBody['contents']): {
-        contents: any;
-        config?: Record<string, any>;
-    } {
-        if (prompt == null) {
-            return { contents: '' };
-        }
-
-        if (typeof prompt === 'string' || Array.isArray(prompt)) {
-            return { contents: prompt };
-        }
-
-        // Handle tool prompt format if needed
-        if (typeof prompt === 'object' && 'contents' in (prompt as any)) {
-            const { contents, systemInstruction, tools, toolConfig } = prompt as any;
-            const config: Record<string, any> = {};
-
-            if (systemInstruction) config.systemInstruction = systemInstruction;
-            if (tools) config.tools = tools;
-            if (toolConfig) config.toolConfig = toolConfig;
-
-            return {
-                contents,
-                config: Object.keys(config).length > 0 ? config : undefined,
-            };
-        }
-
-        return { contents: prompt };
-    }
-
-    /**
-     * Build request configuration from various sources
-     * Similar to GoogleAI connector's buildRequestConfig method
-     */
-    private buildRequestConfig({
-        generationConfig,
-        systemInstruction,
-        promptConfig,
-        abortSignal,
-    }: {
-        generationConfig?: TGoogleAIRequestBody['generationConfig'];
-        systemInstruction?: TGoogleAIRequestBody['systemInstruction'];
-        promptConfig?: Record<string, any>;
-        abortSignal?: AbortSignal;
-    }): Record<string, any> | undefined {
-        const config: Record<string, any> = {};
-
-        if (generationConfig) {
-            for (const [key, value] of Object.entries(generationConfig)) {
-                if (value !== undefined) {
-                    config[key] = value;
-                }
-            }
-        }
-
-        if (promptConfig?.tools) {
-            config.tools = promptConfig.tools;
-        }
-
-        if (promptConfig?.toolConfig) {
-            config.toolConfig = promptConfig.toolConfig;
-        }
-
-        if (promptConfig?.systemInstruction) {
-            config.systemInstruction = promptConfig.systemInstruction;
-        } else if (systemInstruction) {
-            config.systemInstruction = systemInstruction;
-        }
-
-        if (abortSignal) {
-            config.abortSignal = abortSignal;
-        }
-
-        return Object.keys(config).length > 0 ? config : undefined;
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
