@@ -207,9 +207,14 @@ export class GoogleAIConnector extends LLMConnector {
                         for await (const chunk of stream) {
                             emitter.emit(TLLMEvent.Data, chunk);
 
-                            const chunkText = chunk.text ?? '';
-                            if (chunkText) {
-                                emitter.emit(TLLMEvent.Content, chunkText);
+                            const parts = chunk.candidates?.[0]?.content?.parts || [];
+                            // Extract text from parts, filtering out non-text parts and ensuring type safety
+                            const textParts = parts
+                                .map((part) => part?.text)
+                                .filter((text): text is string => typeof text === 'string')
+                                .join('');
+                            if (textParts) {
+                                emitter.emit(TLLMEvent.Content, textParts);
                             }
 
                             const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
@@ -664,6 +669,39 @@ export class GoogleAIConnector extends LLMConnector {
         SystemEvents.emit('USAGE:API', imageUsageData);
     }
 
+    /**
+     * Normalizes function response values to ensure they conform to Google AI's STRUCT requirement.
+     * Gemini expects functionResponse.response to be a STRUCT (JSON object format), not a list or scalar.
+     */
+    private normalizeFunctionResponse(value: unknown): any {
+        // Return objects as-is (but not arrays, which are also objects in JS)
+        if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
+            return value;
+        }
+        // Wrap all other types (arrays, scalars, null, undefined) in result key
+        return { result: value ?? null };
+    }
+
+    /**
+     * Parses and normalizes function response values, handling string JSON and various data types.
+     */
+    private parseFunctionResponse(response: unknown): any {
+        if (typeof response === 'string') {
+            try {
+                const parsed = JSON.parse(response);
+                // If parsed result is still a string, try parsing again (handles double-stringified JSON)
+                if (typeof parsed === 'string' && parsed !== response) {
+                    return this.parseFunctionResponse(parsed);
+                }
+                return this.normalizeFunctionResponse(parsed);
+            } catch (error) {
+                // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
+                return { result: response };
+            }
+        }
+        return this.normalizeFunctionResponse(response);
+    }
+
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
         const tools = toolDefinitions.map((tool) => {
             const { name, description, properties, requiredFields } = tool;
@@ -717,24 +755,7 @@ export class GoogleAIConnector extends LLMConnector {
             return args ?? {};
         };
 
-        const parseFunctionResponse = (response: unknown): any => {
-            if (typeof response === 'string') {
-                try {
-                    const parsed = JSON.parse(response);
-                    // If parsed result is still a string, try parsing again (handles double-stringified JSON)
-                    if (typeof parsed === 'string' && parsed !== response) {
-                        return parseFunctionResponse(parsed);
-                    }
-                    return parsed;
-                } catch (error) {
-                    // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
-                    // Google AI expects function responses to be objects, not plain strings
-                    return { result: response };
-                }
-            }
-            return response ?? {};
-        };
-
+        //#region Function call parts
         if (messageBlock) {
             const content: any[] = [];
             let partFunctionCallIndex = 0; // Track function calls within this message block
@@ -768,7 +789,7 @@ export class GoogleAIConnector extends LLMConnector {
                         content.push({
                             functionResponse: {
                                 name: part.functionResponse.name,
-                                response: parseFunctionResponse(part.functionResponse.response),
+                                response: this.parseFunctionResponse(part.functionResponse.response),
                             },
                         });
                         continue;
@@ -815,38 +836,17 @@ export class GoogleAIConnector extends LLMConnector {
                 });
             }
         }
+        //#endregion Function call parts
 
-        // Build function response parts - each tool needs BOTH functionCall (with thoughtSignature) AND functionResponse
+        //#region Function response parts
         const functionResponseParts = toolsData
             .filter((toolData) => toolData.result !== undefined)
-            .flatMap((toolData) => {
-                const parts: any[] = [];
-
-                // 1. Include the original functionCall with thoughtSignature
-                const functionCallPart: any = {
-                    functionCall: {
-                        name: toolData.name,
-                        args: parseFunctionArgs(toolData.arguments),
-                    },
-                };
-
-                // Preserve thoughtSignature if present (required by Google AI)
-                if (toolData.thoughtSignature) {
-                    functionCallPart.thoughtSignature = toolData.thoughtSignature;
-                }
-
-                parts.push(functionCallPart);
-
-                // 2. Add the functionResponse
-                parts.push({
-                    functionResponse: {
-                        name: toolData.name,
-                        response: parseFunctionResponse(toolData.result),
-                    },
-                });
-
-                return parts;
-            });
+            .map((toolData) => ({
+                functionResponse: {
+                    name: toolData.name,
+                    response: this.parseFunctionResponse(toolData.result),
+                },
+            }));
 
         if (functionResponseParts.length > 0) {
             messageBlocks.push({
@@ -854,6 +854,7 @@ export class GoogleAIConnector extends LLMConnector {
                 parts: functionResponseParts,
             });
         }
+        //#endregion Function response parts
 
         return messageBlocks;
     }
@@ -874,24 +875,6 @@ export class GoogleAIConnector extends LLMConnector {
                 }
 
                 return args ?? {};
-            };
-
-            const parseFunctionResponse = (response: unknown) => {
-                if (typeof response === 'string') {
-                    try {
-                        const parsed = JSON.parse(response);
-                        // If parsed result is still a string, try parsing again (handles double-stringified JSON)
-                        if (typeof parsed === 'string' && parsed !== response) {
-                            return parseFunctionResponse(parsed);
-                        }
-                        return parsed;
-                    } catch {
-                        // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
-                        return { result: response };
-                    }
-                }
-
-                return response ?? {};
             };
 
             const pushTextPart = (parts: any[], text?: string) => {
@@ -946,7 +929,7 @@ export class GoogleAIConnector extends LLMConnector {
                     if (part.functionResponse) {
                         normalizedPart.functionResponse = {
                             name: part.functionResponse.name,
-                            response: parseFunctionResponse(part.functionResponse.response),
+                            response: this.parseFunctionResponse(part.functionResponse.response),
                         };
                     }
 
@@ -986,7 +969,7 @@ export class GoogleAIConnector extends LLMConnector {
                             normalizedParts.push({
                                 functionResponse: {
                                     name: functionResponsePart.name,
-                                    response: parseFunctionResponse(functionResponsePart.response),
+                                    response: this.parseFunctionResponse(functionResponsePart.response),
                                 },
                             });
                         } else {
