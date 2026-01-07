@@ -84,7 +84,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
 
@@ -94,6 +94,7 @@ export class GoogleAIConnector extends LLMConnector {
                 generationConfig: body.generationConfig,
                 systemInstruction: body.systemInstruction,
                 promptConfig,
+                abortSignal,
             });
 
             const genAI = await this.getClient(context);
@@ -167,7 +168,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
 
@@ -177,6 +178,7 @@ export class GoogleAIConnector extends LLMConnector {
             generationConfig: body.generationConfig,
             systemInstruction: body.systemInstruction,
             promptConfig,
+            abortSignal,
         });
 
         const genAI = await this.getClient(context);
@@ -528,10 +530,12 @@ export class GoogleAIConnector extends LLMConnector {
         generationConfig,
         systemInstruction,
         promptConfig,
+        abortSignal,
     }: {
         generationConfig?: TGoogleAIRequestBody['generationConfig'];
         systemInstruction?: TGoogleAIRequestBody['systemInstruction'];
         promptConfig?: Record<string, any>;
+        abortSignal?: AbortSignal;
     }): Record<string, any> | undefined {
         const config: Record<string, any> = {};
 
@@ -555,6 +559,10 @@ export class GoogleAIConnector extends LLMConnector {
             config.systemInstruction = promptConfig.systemInstruction;
         } else if (systemInstruction) {
             config.systemInstruction = systemInstruction;
+        }
+
+        if (abortSignal) {
+            config.abortSignal = abortSignal;
         }
 
         return Object.keys(config).length > 0 ? config : undefined;

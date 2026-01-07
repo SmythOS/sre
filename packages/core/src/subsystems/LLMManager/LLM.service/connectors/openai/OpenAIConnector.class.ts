@@ -85,7 +85,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const _body = body as OpenAI.ChatCompletionCreateParams;
@@ -107,7 +107,7 @@ export class OpenAIConnector extends LLMConnector {
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const result = await apiInterface.createRequest(body, context);
+            const result = await apiInterface.createRequest(body, context, abortSignal);
 
             const message = result?.choices?.[0]?.message || { content: result?.output_text };
             const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
@@ -152,7 +152,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
 
@@ -173,7 +173,7 @@ export class OpenAIConnector extends LLMConnector {
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const stream = await apiInterface.createStream(body, context);
+            const stream = await apiInterface.createStream(body, context, abortSignal);
 
             const emitter = apiInterface.handleStream(stream, context);
 

@@ -73,11 +73,11 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const anthropic = await this.getClient(context);
-            const result = await anthropic.messages.create(body);
+            const result = await anthropic.messages.create(body, { signal: abortSignal });
             const message: Anthropic.MessageParam = {
                 role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
                 content: result?.content || '',
@@ -137,14 +137,17 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
+            if (abortSignal?.aborted) {
+                throw new DOMException('Request aborted', 'AbortError');
+            }
             const emitter = new EventEmitter();
             const usage_data = [];
 
             const anthropic = await this.getClient(context);
-            let stream = anthropic.messages.stream(body);
+            let stream = anthropic.messages.stream(body, { signal: abortSignal });
 
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks
@@ -160,8 +163,7 @@ export class AnthropicConnector extends LLMConnector {
             });
 
             stream.on(AnthropicStreamEvent.error, (error) => {
-                //console.log('error', error);
-
+                logger.debug(`streamRequest ${this.name} stream error`, error);
                 emitter.emit(TLLMEvent.Error, error);
             });
 
@@ -183,6 +185,18 @@ export class AnthropicConnector extends LLMConnector {
                 // Handle thinking blocks during streaming
                 emitter.emit(TLLMEvent.Thinking, thinking);
             });
+
+            if (abortSignal) {
+                abortSignal.addEventListener(
+                    'abort',
+                    () => {
+                        logger.debug(`streamRequest ${this.name} abortSignal triggered`, acRequest.candidate);
+                        emitter.emit(TLLMEvent.Error, new DOMException('Request aborted', 'AbortError'));
+                        emitter.emit(TLLMEvent.End);
+                    },
+                    { once: true }
+                );
+            }
 
             stream.on(AnthropicStreamEvent.finalMessage, (finalMessage) => {
                 let finishReason = 'stop';

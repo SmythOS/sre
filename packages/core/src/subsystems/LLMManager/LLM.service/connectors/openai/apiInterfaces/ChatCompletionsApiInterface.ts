@@ -32,24 +32,35 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         this.deps = deps;
     }
 
-    public async createRequest(body: OpenAI.ChatCompletionCreateParams, context: ILLMRequestContext): Promise<OpenAI.ChatCompletion> {
+    public async createRequest(
+        body: OpenAI.ChatCompletionCreateParams,
+        context: ILLMRequestContext,
+        abortSignal?: AbortSignal
+    ): Promise<OpenAI.ChatCompletion> {
         const openai = await this.deps.getClient(context);
-        return await openai.chat.completions.create({
-            ...body,
-            stream: false,
-        });
+        return await openai.chat.completions.create(
+            {
+                ...body,
+                stream: false,
+            },
+            { signal: abortSignal }
+        );
     }
 
     public async createStream(
         body: OpenAI.ChatCompletionCreateParams,
-        context: ILLMRequestContext
+        context: ILLMRequestContext,
+        abortSignal?: AbortSignal
     ): Promise<AsyncIterable<OpenAI.ChatCompletionChunk>> {
         const openai = await this.deps.getClient(context);
-        return await openai.chat.completions.create({
-            ...body,
-            stream: true,
-            stream_options: { include_usage: true },
-        });
+        return await openai.chat.completions.create(
+            {
+                ...body,
+                stream: true,
+                stream_options: { include_usage: true },
+            },
+            { signal: abortSignal }
+        );
     }
 
     public handleStream(stream: AsyncIterable<OpenAI.ChatCompletionChunk>, context: ILLMRequestContext): EventEmitter {

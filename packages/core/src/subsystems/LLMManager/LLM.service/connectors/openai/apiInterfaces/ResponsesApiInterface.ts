@@ -79,23 +79,34 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         this.deps = deps;
     }
 
-    async createRequest(body: OpenAI.Responses.ResponseCreateParams, context: ILLMRequestContext): Promise<OpenAI.Responses.Response> {
+    async createRequest(
+        body: OpenAI.Responses.ResponseCreateParams,
+        context: ILLMRequestContext,
+        abortSignal?: AbortSignal
+    ): Promise<OpenAI.Responses.Response> {
         const openai = await this.deps.getClient(context);
-        return await openai.responses.create({
-            ...body,
-            stream: false,
-        });
+        return await openai.responses.create(
+            {
+                ...body,
+                stream: false,
+            },
+            { signal: abortSignal }
+        );
     }
 
     async createStream(
         body: OpenAI.Responses.ResponseCreateParams,
-        context: ILLMRequestContext
+        context: ILLMRequestContext,
+        abortSignal?: AbortSignal
     ): Promise<Stream<OpenAI.Responses.ResponseStreamEvent>> {
         const openai = await this.deps.getClient(context);
-        return (await openai.responses.create({
-            ...body,
-            stream: true,
-        })) as Stream<OpenAI.Responses.ResponseStreamEvent>;
+        return (await openai.responses.create(
+            {
+                ...body,
+                stream: true,
+            },
+            { signal: abortSignal }
+        )) as Stream<OpenAI.Responses.ResponseStreamEvent>;
     }
 
     public handleStream(stream: Stream<OpenAI.Responses.ResponseStreamEvent>, context: ILLMRequestContext): EventEmitter {

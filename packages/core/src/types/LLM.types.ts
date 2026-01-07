@@ -547,6 +547,7 @@ export interface ILLMRequestFuncParams<TBody = any> {
     acRequest: AccessRequest;
     body: TBody;
     context: ILLMRequestContext;
+    abortSignal?: AbortSignal;
 }
 
 // For future providers, you can add similar types:

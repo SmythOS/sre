@@ -42,7 +42,7 @@ type OllamaChatRequest = {
 export class OllamaConnector extends LLMConnector {
     public name = 'LLM:Ollama';
 
-    private getClient(context: ILLMRequestContext): Ollama {
+    private getClient(context: ILLMRequestContext, abortSignal?: AbortSignal): Ollama {
         // Extract baseURL and sanitize it for Ollama SDK
         let host = 'http://localhost:11434';
 
@@ -55,11 +55,23 @@ export class OllamaConnector extends LLMConnector {
             host = url.origin;
         }
 
-        const config: { host: string; headers?: { Authorization?: string } } = { host };
+        const config: { host: string; headers?: { Authorization?: string }; fetch?: typeof fetch } = { host };
 
         if (apiKey) {
             config.headers = {
                 Authorization: `Bearer ${apiKey}`,
+            };
+        }
+
+        // Pass abortSignal through custom fetch function
+        // Best practice: Respect existing signal in init if present, otherwise use our abortSignal
+        if (abortSignal) {
+            config.fetch = (url: RequestInfo | URL, init?: RequestInit) => {
+                return fetch(url, {
+                    ...init,
+                    // Use abortSignal if no signal exists in init, otherwise respect the existing signal
+                    signal: init?.signal || abortSignal,
+                });
             };
         }
 
@@ -68,10 +80,10 @@ export class OllamaConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
-            const ollama = this.getClient(context);
+            const ollama = this.getClient(context, abortSignal);
 
             const result = (await ollama.chat({
                 ...body,
@@ -117,110 +129,146 @@ export class OllamaConnector extends LLMConnector {
                 message: message as any,
                 usage,
             };
-        } catch (error) {
+        } catch (error: any) {
+            // Handle AbortError specifically - this is expected when abortSignal is triggered
+            if (error?.name === 'AbortError' || abortSignal?.aborted) {
+                logger.debug(`request ${this.name} aborted`, acRequest.candidate);
+                throw error;
+            }
             logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
             const usage_data = [];
 
-            const ollama = this.getClient(context);
+            const ollama = this.getClient(context, abortSignal);
             const stream = (await ollama.chat({
                 ...body,
                 stream: true,
             })) as AsyncIterable<ChatResponse>;
+
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', () => {
+                    // Abort the stream if it supports abort
+                    if (typeof (stream as any)?.abort === 'function') {
+                        (stream as any).abort();
+                    }
+                    // Emit abort event on the emitter for proper cleanup
+                    emitter.emit(TLLMEvent.Error, new DOMException('Request aborted', 'AbortError'));
+                });
+            }
 
             let toolsData: ToolData[] = [];
             let fullContent = '';
             let finishReason = 'stop';
 
             (async () => {
-                for await (const chunk of stream) {
-                    emitter.emit(TLLMEvent.Data, chunk);
+                try {
+                    for await (const chunk of stream) {
+                        // Check if aborted before processing chunk
+                        if (abortSignal?.aborted) {
+                            break;
+                        }
+                        emitter.emit(TLLMEvent.Data, chunk);
 
-                    // Emit content deltas
-                    if (chunk.message?.content) {
-                        const content = chunk.message.content;
-                        fullContent += content;
-                        emitter.emit(TLLMEvent.Content, content);
-                    }
+                        // Emit content deltas
+                        if (chunk.message?.content) {
+                            const content = chunk.message.content;
+                            fullContent += content;
+                            emitter.emit(TLLMEvent.Content, content);
+                        }
 
-                    // Handle tool calls accumulation
-                    if (chunk.message?.tool_calls) {
-                        chunk.message.tool_calls.forEach((toolCall, index) => {
-                            if (!toolsData[index]) {
-                                toolsData[index] = {
-                                    index,
-                                    id: toolCall.function?.name || `tool_${index}`,
-                                    type: 'function',
-                                    name: toolCall.function?.name,
-                                    arguments: toolCall.function?.arguments || '',
-                                    role: 'assistant',
-                                };
-                            } else {
-                                // Merge arguments across chunks for string arguments
-                                if (typeof toolsData[index].arguments === 'string' && typeof toolCall.function?.arguments === 'string') {
-                                    toolsData[index].arguments += toolCall.function.arguments;
+                        // Handle tool calls accumulation
+                        if (chunk.message?.tool_calls) {
+                            chunk.message.tool_calls.forEach((toolCall, index) => {
+                                if (!toolsData[index]) {
+                                    toolsData[index] = {
+                                        index,
+                                        id: toolCall.function?.name || `tool_${index}`,
+                                        type: 'function',
+                                        name: toolCall.function?.name,
+                                        arguments: toolCall.function?.arguments || '',
+                                        role: 'assistant',
+                                    };
                                 } else {
-                                    // For object arguments, merge them properly
-                                    toolsData[index].arguments = { ...(toolsData[index].arguments as any), ...toolCall.function?.arguments };
+                                    // Merge arguments across chunks for string arguments
+                                    if (typeof toolsData[index].arguments === 'string' && typeof toolCall.function?.arguments === 'string') {
+                                        toolsData[index].arguments += toolCall.function.arguments;
+                                    } else {
+                                        // For object arguments, merge them properly
+                                        toolsData[index].arguments = { ...(toolsData[index].arguments as any), ...toolCall.function?.arguments };
+                                    }
                                 }
-                            }
+                            });
+                        }
+
+                        // Capture usage data when available
+                        if (chunk.prompt_eval_count !== undefined || chunk.eval_count !== undefined) {
+                            const usage = {
+                                prompt_tokens: chunk.prompt_eval_count || 0,
+                                completion_tokens: chunk.eval_count || 0,
+                                total_tokens: (chunk.prompt_eval_count || 0) + (chunk.eval_count || 0),
+                            };
+                            usage_data.push(usage);
+                        }
+
+                        // Capture finish reason from Ollama's done_reason
+                        if (chunk.done_reason) {
+                            finishReason = chunk.done_reason;
+                        }
+                    }
+
+                    // Emit tool info if tools were requested
+                    if (toolsData.length > 0) {
+                        emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                    }
+
+                    // Report usage
+                    const reportedUsage: any[] = [];
+                    usage_data.forEach((usage) => {
+                        const reported = this.reportUsage(usage, {
+                            modelEntryName: context.modelEntryName,
+                            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                            agentId: context.agentId,
+                            teamId: context.teamId,
                         });
-                    }
-
-                    // Capture usage data when available
-                    if (chunk.prompt_eval_count !== undefined || chunk.eval_count !== undefined) {
-                        const usage = {
-                            prompt_tokens: chunk.prompt_eval_count || 0,
-                            completion_tokens: chunk.eval_count || 0,
-                            total_tokens: (chunk.prompt_eval_count || 0) + (chunk.eval_count || 0),
-                        };
-                        usage_data.push(usage);
-                    }
-
-                    // Capture finish reason from Ollama's done_reason
-                    if (chunk.done_reason) {
-                        finishReason = chunk.done_reason;
-                    }
-                }
-
-                // Emit tool info if tools were requested
-                if (toolsData.length > 0) {
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                // Report usage
-                const reportedUsage: any[] = [];
-                usage_data.forEach((usage) => {
-                    const reported = this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
+                        reportedUsage.push(reported);
                     });
-                    reportedUsage.push(reported);
-                });
 
-                // Emit interrupted event if finishReason is not 'stop'
-                if (finishReason !== 'stop') {
-                    emitter.emit(TLLMEvent.Interrupted, finishReason);
+                    // Emit interrupted event if finishReason is not 'stop'
+                    if (finishReason !== 'stop') {
+                        emitter.emit(TLLMEvent.Interrupted, finishReason);
+                    }
+
+                    // Final end event
+                    setTimeout(() => {
+                        emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                    }, 100);
+                } catch (error: any) {
+                    // Handle AbortError specifically - this is expected when abortSignal is triggered
+                    if (error?.name === 'AbortError' || abortSignal?.aborted) {
+                        logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
+                        emitter.emit(TLLMEvent.Error, error);
+                    } else {
+                        logger.error(`streamRequest ${this.name} error`, error, acRequest.candidate);
+                        emitter.emit(TLLMEvent.Error, error);
+                    }
                 }
-
-                // Final end event
-                setTimeout(() => {
-                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                }, 100);
             })();
 
             return emitter;
         } catch (error: any) {
+            // Handle AbortError specifically - this is expected when abortSignal is triggered
+            if (error?.name === 'AbortError' || abortSignal?.aborted) {
+                logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
+                throw error;
+            }
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
             throw error;
         }

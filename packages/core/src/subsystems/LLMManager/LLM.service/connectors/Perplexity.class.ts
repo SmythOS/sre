@@ -61,11 +61,11 @@ export class PerplexityConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const perplexity = await this.getClient(context);
-            const response = await perplexity.post('/chat/completions', body);
+            const response = await perplexity.post('/chat/completions', body, { signal: abortSignal });
 
             const content = response?.data?.choices?.[0]?.message.content;
             const finishReason = response?.data?.choices?.[0]?.finish_reason;
@@ -93,7 +93,7 @@ export class PerplexityConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest
         const emitter = new EventEmitter();
@@ -103,7 +103,7 @@ export class PerplexityConnector extends LLMConnector {
         setTimeout(() => {
             try {
                 logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-                this.request({ acRequest, body, context })
+                this.request({ acRequest, body, context, abortSignal })
                     .then((respose) => {
                         const finishReason = respose.finishReason;
                         const usage = respose.usage;

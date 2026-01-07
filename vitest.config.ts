@@ -8,6 +8,9 @@ export default defineConfig({
         environment: 'node',
         include: ['packages/*/tests/**/*.test.ts'],
         exclude: ['node_modules', 'dist'],
+        env: {
+            ENABLE_INTEGRATION_TESTS: 'true',
+        },
         coverage: {
             reporter: ['text', 'text-summary', 'html'],
             reportsDirectory: './coverage',

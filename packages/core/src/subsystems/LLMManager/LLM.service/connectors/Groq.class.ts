@@ -52,11 +52,11 @@ export class GroqConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const groq = await this.getClient(context);
-            const result = await groq.chat.completions.create(body);
+            const result = await groq.chat.completions.create(body, { signal: abortSignal });
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
             const toolCalls = message?.tool_calls;
@@ -98,14 +98,17 @@ export class GroqConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const emitter = new EventEmitter();
             const usage_data = [];
 
             const groq = await this.getClient(context);
-            const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
+            const stream = await groq.chat.completions.create(
+                { ...body, stream: true, stream_options: { include_usage: true } },
+                { signal: abortSignal }
+            );
 
             let toolsData: ToolData[] = [];
             let finishReason = 'stop';
