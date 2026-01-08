@@ -1,3 +1,7 @@
+---
+title: 'extend/Custom Subsystems'
+---
+
 # Extending SRE: Custom Subsystems
 
 For advanced use cases, you can extend the SRE by adding entirely new subsystems. A subsystem is a major functional unit of the SRE that provides a specific set of services, powered by its own set of pluggable connectors.

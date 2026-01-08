@@ -5,7 +5,7 @@ import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TelemetryConnector } from '../../TelemetryConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
 
-import { trace, context, SpanStatusCode, Tracer } from '@opentelemetry/api';
+import { trace, context, SpanStatusCode, Tracer, propagation } from '@opentelemetry/api';
 import { Logger as OTelLogger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTelContextRegistry } from './OTelContextRegistry';
 import { HookService, THook } from '@sre/Core/HookService';
@@ -283,6 +283,7 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
                             'llm.model': modelId || 'unknown',
                         },
                     },
@@ -316,6 +317,7 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
                             'request.id': reqInfo.requestId,
                             'llm.model': modelId || 'unknown',
                             'metric.type': 'ttfb',
@@ -343,6 +345,13 @@ export class OTel extends TelemetryConnector {
                 const teamId = conversation.agentData.teamId;
                 const orgTier = 'standard';
                 const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
+                const agentData = conversation.agentData || {};
+                const isDebugSession = agentData.debugSessionEnabled || false;
+                const isTestDomain = agentData.usingTestDomain || false;
+                const sessionId = processId;
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
 
@@ -367,6 +376,10 @@ export class OTel extends TelemetryConnector {
                         'agent.id': agentId,
                         'conv.id': processId,
                         'llm.model': modelId || 'unknown',
+                        'agent.debug': isDebugSession,
+                        'agent.isTest': isTestDomain,
+                        'session.id': sessionId,
+                        'workflow.id': workflowId,
                     },
                 });
                 hookContext.convSpan = convSpan;
@@ -374,6 +387,19 @@ export class OTel extends TelemetryConnector {
                 hookContext.processId = processId;
                 hookContext.teamId = teamId;
                 hookContext.orgSlot = orgSlot;
+                hookContext.isDebugSession = isDebugSession;
+                hookContext.isTestDomain = isTestDomain;
+
+                // Inject trace context into conversation headers for distributed tracing
+                let headers = {};
+                const traceContext = trace.setSpan(context.active(), convSpan);
+                propagation.inject(traceContext, headers);
+                for (let [key, value] of Object.entries(headers)) {
+                    conversation.headers[key] = value as string;
+                }
+                if (OTEL_DEBUG_LOGS) {
+                    outputLogger.debug('Injected trace headers into conversation', { processId, headers });
+                }
 
                 hookContext.dataHandler = createDataHandler(hookContext);
                 conversation.on(TLLMEvent.Data, hookContext.dataHandler);
@@ -415,6 +441,11 @@ export class OTel extends TelemetryConnector {
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
                             'input.preview': message.substring(0, 2000),
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'log.tags': logTags,
                         },
                     });
                 });
@@ -433,6 +464,14 @@ export class OTel extends TelemetryConnector {
                 const teamId = conversation.agentData.teamId;
                 const orgTier = 'standard';
                 const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
+
+                const isDebugSession = hookContext.isDebugSession || conversation.agentData?.debugSessionEnabled || false;
+                const isTestDomain = hookContext.isTestDomain || conversation.agentData?.usingTestDomain || false;
+                const agentData = conversation.agentData || {};
+                const sessionId = processId;
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+
                 if (message == null) {
                     return;
                 }
@@ -472,6 +511,11 @@ export class OTel extends TelemetryConnector {
                             'team.id': teamId,
                             'org.tier': orgTier,
                             'org.slot': orgSlot,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'log.tags': logTags,
                         },
                     });
                 });
@@ -500,6 +544,14 @@ export class OTel extends TelemetryConnector {
                 const teamId = agent.teamId;
                 const _hookContext: any = this.context;
 
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
+
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process started', { processId, agentProcessId, endpointPath }, accessCandidate);
 
@@ -511,12 +563,32 @@ export class OTel extends TelemetryConnector {
                 const input = { body, query, headers, processInput: agentInput };
 
                 let convSpan;
-                const ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
+                let parentContext = context.active();
+
+                //try reading ctx from local registry (local execution)
+                let ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
 
                 if (ctx) {
                     convSpan = ctx.rootSpan;
                     _hookContext.otelSpan = convSpan;
+                    parentContext = trace.setSpan(context.active(), convSpan);
+                } else {
+                    // No local context found - try extracting from headers (remote execution)
+                    const extractedContext = propagation.extract(context.active(), agentRequest.headers);
+                    const extractedSpan = trace.getSpan(extractedContext);
+
+                    if (extractedSpan) {
+                        // Successfully extracted parent span from headers
+                        parentContext = extractedContext;
+                        if (OTEL_DEBUG_LOGS) {
+                            outputLogger.debug('SREAgent.process extracted remote parent context from headers', {
+                                processId,
+                                traceId: extractedSpan.spanContext().traceId,
+                            });
+                        }
+                    }
                 }
+
                 const agentSpan = tracer.startSpan(
                     'Agent.Skill',
                     {
@@ -527,9 +599,14 @@ export class OTel extends TelemetryConnector {
                             'process.id': agentProcessId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'agent.domain': domain,
                         },
                     },
-                    convSpan ? trace.setSpan(context.active(), convSpan) : undefined
+                    parentContext
                 );
 
                 // Add start event
@@ -555,8 +632,8 @@ export class OTel extends TelemetryConnector {
                             trace_id: spanCtx.traceId,
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
-                            agentId,
-                            processId: agentProcessId,
+                            'agent.id': agentId,
+                            'process.id': agentProcessId,
                             input: agentInput,
                             body,
                             query,
@@ -564,6 +641,13 @@ export class OTel extends TelemetryConnector {
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
+                            'conv.id': conversationId,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'log.tags': logTags,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'agent.domain': domain,
                         },
                     } as any);
                 });
@@ -582,6 +666,15 @@ export class OTel extends TelemetryConnector {
                 const teamId = agent.teamId;
                 const orgTier = 'standard';
                 const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
+
                 const ctx = OTelContextRegistry.get(agentId, agentProcessId);
                 if (!ctx) return;
                 const agentSpan = ctx.rootSpan;
@@ -615,8 +708,8 @@ export class OTel extends TelemetryConnector {
                     trace_id: spanCtx.traceId,
                     span_id: spanCtx.spanId,
                     trace_flags: spanCtx.traceFlags,
-                    agentId,
-                    processId: agentProcessId,
+                    'agent.id': agentId,
+                    'process.id': agentProcessId,
                     hasError: !!error,
                     'error.message': error?.message,
                     'error.stack': error?.stack,
@@ -624,6 +717,12 @@ export class OTel extends TelemetryConnector {
                     'org.slot': orgSlot,
                     'org.tier': orgTier,
                     'conv.id': conversationId,
+                    'session.id': sessionId,
+                    'workflow.id': workflowId,
+                    'log.tags': logTags,
+                    'agent.debug': isDebugSession,
+                    'agent.isTest': isTestDomain,
+                    'agent.domain': domain,
                 };
 
                 // Only include output if formatOutputForLog returns a value
@@ -665,7 +764,24 @@ export class OTel extends TelemetryConnector {
                 const teamId = agent.teamId;
                 const orgTier = 'standard';
                 const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId }, accessCandidate);
+
+                const componentData = agent.agentRuntime?.getComponentData?.(componentId);
+                const sourceId = componentData?.sourceId || 'AGENT';
+                const sourceComponentData = sourceId !== 'AGENT' ? agent.components?.[sourceId] : null;
+                const sourceName = sourceComponentData?.displayName || sourceComponentData?.name || sourceId;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+                const workflowStep = agent.agentRuntime?.curStep || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+
+                const inputAction = input?.__action || undefined;
+                const inputStatus = input?.__status || undefined;
+
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId, sourceId }, accessCandidate);
 
                 const ctx = OTelContextRegistry.get(agentId, processId);
                 const parentSpan = ctx?.rootSpan;
@@ -685,13 +801,20 @@ export class OTel extends TelemetryConnector {
                             'team.id': teamId,
                             'org.tier': orgTier,
                             'org.slot': orgSlot,
+                            'source.id': sourceId,
+                            'source.name': sourceName,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'workflow.step': workflowStep,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
                             ...compSettingsData,
                         },
                     },
                     parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined
                 );
 
-                // Add event: Component started
+                // Add event: Component started - includes input.action and input.status for workflow tracking
                 const inputStr = JSON.stringify(input || {});
 
                 const compInputData = oTelInstance.prepareComponentData(input || {});
@@ -699,6 +822,8 @@ export class OTel extends TelemetryConnector {
                     'event.id': eventId,
                     'cmp.input.size': JSON.stringify(input || {}).length,
                     'cmp.input': JSON.stringify(compInputData),
+                    'input.action': inputAction,
+                    'input.status': inputStatus,
                 });
 
                 // Emit structured log with full details
@@ -719,6 +844,14 @@ export class OTel extends TelemetryConnector {
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
+                            'source.id': sourceId,
+                            'source.name': sourceName,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'workflow.step': workflowStep,
+                            'log.tags': logTags,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
                         },
                     });
                 });
@@ -748,6 +881,20 @@ export class OTel extends TelemetryConnector {
                 const teamId = agent.teamId;
                 const orgTier = 'standard';
                 const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+
+                const componentData = agent.agentRuntime?.getComponentData?.(componentId);
+                const sourceId = componentData?.sourceId || 'AGENT';
+                const sourceComponentData = sourceId !== 'AGENT' ? agent.components?.[sourceId] : null;
+                const sourceName = sourceComponentData?.displayName || sourceComponentData?.name || sourceId;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+                const workflowStep = agent.agentRuntime?.curStep || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process completed', { componentId }, accessCandidate);
 
@@ -787,6 +934,14 @@ export class OTel extends TelemetryConnector {
                                 'team.id': teamId,
                                 'org.slot': orgSlot,
                                 'org.tier': orgTier,
+                                'source.id': sourceId,
+                                'source.name': sourceName,
+                                'session.id': sessionId,
+                                'workflow.id': workflowId,
+                                'workflow.step': workflowStep,
+                                'log.tags': logTags,
+                                'agent.debug': isDebugSession,
+                                'agent.isTest': isTestDomain,
                             },
                         });
                     });
@@ -819,6 +974,14 @@ export class OTel extends TelemetryConnector {
                         'team.id': teamId,
                         'org.slot': orgSlot,
                         'org.tier': orgTier,
+                        'source.id': sourceId,
+                        'source.name': sourceName,
+                        'session.id': sessionId,
+                        'workflow.id': workflowId,
+                        'workflow.step': workflowStep,
+                        'log.tags': logTags,
+                        'agent.debug': isDebugSession,
+                        'agent.isTest': isTestDomain,
                     };
 
                     // Only include output if formatOutputForLog returns a value

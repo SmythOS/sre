@@ -1,3 +1,7 @@
+---
+title: 'connectors/NKV (Named Key-Value)'
+---
+
 # NKV (Named Key-Value) Connectors
 
 The NKV (Named Key-Value) subsystem provides persistent key-value storage with namespace support. It serves as a general-purpose data store for application state, configuration data, and structured information.

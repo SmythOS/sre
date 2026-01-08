@@ -1,3 +1,7 @@
+---
+title: 'Overview'
+---
+
 # Smyth Runtime Environment (SRE) Docs
 
 Welcome to the technical documentation for the Smyth Runtime Environment (SRE) core.
