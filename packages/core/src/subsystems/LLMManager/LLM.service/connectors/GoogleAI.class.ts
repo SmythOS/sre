@@ -63,11 +63,8 @@ const VALID_MIME_TYPES = [
 type UsageMetadataWithThoughtsToken = GenerateContentResponseUsageMetadata & { thoughtsTokenCount?: number; cost?: number };
 
 const IMAGE_GEN_FIXED_PRICING = {
-    'imagen-3.0-generate-001': 0.04, // Fixed cost per image
-    'imagen-4.0-generate-001': 0.04, // Fixed cost per image
     'imagen-4': 0.04, // Standard Imagen 4
     'imagen-4-ultra': 0.06, // Imagen 4 Ultra
-    'gemini-2.5-flash-image': 0.039,
 };
 
 export class GoogleAIConnector extends LLMConnector {
@@ -129,9 +126,19 @@ export class GoogleAIConnector extends LLMConnector {
             let useTool = false;
 
             if (toolCalls && toolCalls.length > 0) {
+                // Extract the thoughtSignature from the first tool call (Google AI only attaches it to the first one)
+                const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+
+                /**
+                 * Unique ID per streamRequest call to prevent tool ID collisions.
+                 * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+                 * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+                 */
+                const requestId = uid();
+
                 toolsData = toolCalls.map((toolCall, index) => ({
                     index,
-                    id: `tool-${index}`,
+                    id: `tool-${requestId}-${index}`,
                     type: 'function',
                     name: toolCall.functionCall?.name,
                     arguments:
@@ -139,7 +146,8 @@ export class GoogleAIConnector extends LLMConnector {
                             ? toolCall.functionCall?.args
                             : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
-                    thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
+                    // All parallel tool calls share the same thoughtSignature from the first one
+                    thoughtSignature: (toolCall as any).thoughtSignature || sharedThoughtSignature,
                 }));
                 useTool = true;
             }
@@ -182,63 +190,92 @@ export class GoogleAIConnector extends LLMConnector {
 
             let toolsData: ToolData[] = [];
             let usage: UsageMetadataWithThoughtsToken | undefined;
+            let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
 
-            (async () => {
-                try {
-                    for await (const chunk of stream) {
-                        emitter.emit(TLLMEvent.Data, chunk);
+            /**
+             * Unique ID per streamRequest call to prevent tool ID collisions.
+             * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+             * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+             */
+            const requestId = uid();
 
-                        const chunkText = chunk.text ?? '';
-                        if (chunkText) {
-                            emitter.emit(TLLMEvent.Content, chunkText);
+            // Defer async processing to next tick to ensure event listeners are attached first
+            // This prevents race condition where fast tool calls emit events before listeners are ready
+            setImmediate(() => {
+                (async () => {
+                    try {
+                        for await (const chunk of stream) {
+                            emitter.emit(TLLMEvent.Data, chunk);
+
+                            const parts = chunk.candidates?.[0]?.content?.parts || [];
+                            // Extract text from parts, filtering out non-text parts and ensuring type safety
+                            const textParts = parts
+                                .map((part) => part?.text)
+                                .filter((text): text is string => typeof text === 'string')
+                                .join('');
+                            if (textParts) {
+                                emitter.emit(TLLMEvent.Content, textParts);
+                            }
+
+                            const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                            if (toolCalls && toolCalls.length > 0) {
+                                // Capture thoughtSignature from the first tool call chunk if we haven't already
+                                if (!streamThoughtSignature) {
+                                    streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                                }
+
+                                // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
+                                // All tool calls in this request share the same requestId for uniqueness
+                                toolsData = toolCalls.map((toolCall, index) => ({
+                                    index,
+                                    id: `tool-${requestId}-${index}`,
+                                    type: 'function' as const,
+                                    name: toolCall.functionCall?.name,
+                                    arguments:
+                                        typeof toolCall.functionCall?.args === 'string'
+                                            ? toolCall.functionCall?.args
+                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
+                                    role: TLLMMessageRole.Assistant as any,
+                                    // All tool calls share the thoughtSignature from the first chunk
+                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
+                                }));
+                            }
+
+                            if (chunk.usageMetadata) {
+                                usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                            }
                         }
 
-                        const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
-                        if (toolCalls && toolCalls.length > 0) {
-                            toolsData = toolCalls.map((toolCall, index) => ({
-                                index,
-                                id: `tool-${index}`,
-                                type: 'function',
-                                name: toolCall.functionCall?.name,
-                                arguments:
-                                    typeof toolCall.functionCall?.args === 'string'
-                                        ? toolCall.functionCall?.args
-                                        : JSON.stringify(toolCall.functionCall?.args ?? {}),
-                                role: TLLMMessageRole.Assistant,
-                                thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
-                            }));
+                        // Emit ToolInfo once after all chunks are processed (similar to Anthropic's finalMessage pattern)
+                        if (toolsData.length > 0) {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
 
-                        if (chunk.usageMetadata) {
-                            usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                        const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
+                        const reportedUsage: any[] = [];
+
+                        if (usage) {
+                            const reported = this.reportUsage(usage, {
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
+                            });
+                            reportedUsage.push(reported);
                         }
+
+                        // Note: GoogleAI stream doesn't provide explicit finish reasons
+                        // If we had a non-stop finish reason, we would emit Interrupted here
+
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error) {
+                        logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                        emitter.emit(TLLMEvent.Error, error);
                     }
-
-                    const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
-                    const reportedUsage: any[] = [];
-
-                    if (usage) {
-                        const reported = this.reportUsage(usage, {
-                            modelEntryName: context.modelEntryName,
-                            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                            agentId: context.agentId,
-                            teamId: context.teamId,
-                        });
-                        reportedUsage.push(reported);
-                    }
-
-                    // Note: GoogleAI stream doesn't provide explicit finish reasons
-                    // If we had a non-stop finish reason, we would emit Interrupted here
-
-                    setTimeout(() => {
-                        emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                    }, 100);
-                } catch (error) {
-                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                    emitter.emit(TLLMEvent.Error, error);
-                }
-            })();
+                })();
+            });
 
             return emitter;
         } catch (error: any) {
@@ -294,12 +331,11 @@ export class GoogleAIConnector extends LLMConnector {
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-            this.reportImageUsage({
-                usage: {
-                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                context,
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             if (imageData.length === 0) {
@@ -322,14 +358,23 @@ export class GoogleAIConnector extends LLMConnector {
             // Report input tokens and image cost pricing based on the official pricing page:
             // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
             const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-            this.reportImageUsage({
-                usage: {
+
+            const isImagen4 = modelName.startsWith('imagen-4');
+
+            if (isImagen4) {
+                this.reportImageCost({
                     cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                    usageMetadata,
-                },
-                numberOfImages: config.numberOfImages,
-                context,
-            });
+                    numberOfImages: config.numberOfImages,
+                    context,
+                });
+            } else {
+                this.reportUsage(usageMetadata, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
 
             return {
                 created: Math.floor(Date.now() / 1000),
@@ -356,7 +401,6 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         // Use the prepared body which already contains processed files and contents
         const response = await ai.models.generateContent({
@@ -381,12 +425,11 @@ export class GoogleAIConnector extends LLMConnector {
         // Report pricing for input tokens and image costs
         const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
 
-        this.reportImageUsage({
-            usage: {
-                cost: IMAGE_GEN_FIXED_PRICING[modelName],
-                usageMetadata,
-            },
-            context,
+        this.reportUsage(usageMetadata, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
         });
 
         return {
@@ -528,7 +571,7 @@ export class GoogleAIConnector extends LLMConnector {
         let inputTokens = usage?.promptTokenCount || 0;
 
         // The pricing is the same for output and thinking tokens, so we can add them together.
-        const outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
+        let outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
 
         // If cached input tokens are available, we need to subtract them from the input tokens.
         let cachedInputTokens = usage?.cachedContentTokenCount || 0;
@@ -544,15 +587,11 @@ export class GoogleAIConnector extends LLMConnector {
             'gemini-3-pro': 200_000,
         };
 
-        let inTier = '';
-        let outTier = '';
-        let crTier = '';
+        let tier = '';
 
         const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
         if (modelWithTier) {
-            inTier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            outTier = outputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
-            crTier = cachedInputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            tier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
         // #endregion
 
@@ -560,7 +599,7 @@ export class GoogleAIConnector extends LLMConnector {
         // Since Gemini 2.5 Flash has a different pricing model for audio input tokens, we need to report audio input tokens separately.
         let audioInputTokens = 0;
         let cachedAudioInputTokens = 0;
-        const isFlashModel = ['gemini-2.5-flash'].includes(modelName);
+        const isFlashModel = modelName.includes('flash');
 
         if (isFlashModel) {
             // There is no concept of different pricing for Flash models based on token tiers (e.g., less than or greater than 200k),
@@ -578,10 +617,20 @@ export class GoogleAIConnector extends LLMConnector {
         }
         // #endregion
 
+        // #region Calculate image tokens
+        const imageOutputTokens = usage?.candidatesTokensDetails?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        // Gemini models does not return output text tokens right now for Image Generation, so we need to subtract the output image tokens from the output tokens to get the output text tokens.
+        if (imageOutputTokens) {
+            outputTokens = outputTokens - imageOutputTokens;
+        }
+        // #endregion Calculate image tokens
+
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            output_tokens_image: imageOutputTokens,
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: cachedInputTokens,
             input_tokens_cache_read_audio: cachedAudioInputTokens,
@@ -590,9 +639,7 @@ export class GoogleAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-            inTier,
-            outTier,
-            crTier,
+            tier,
         };
         SystemEvents.emit('USAGE:LLM', usageData);
 
@@ -609,37 +656,50 @@ export class GoogleAIConnector extends LLMConnector {
         return { textTokens, imageTokens };
     }
 
-    protected reportImageUsage({
-        usage,
-        context,
-        numberOfImages = 1,
-    }: {
-        usage: { cost?: number; usageMetadata?: UsageMetadataWithThoughtsToken };
-        context: ILLMRequestContext;
-        numberOfImages?: number;
-    }) {
-        // Extract text and image tokens from rawUsage if available
-        let input_tokens_txt = 0;
-        let input_tokens_img = 0;
-
-        if (usage.usageMetadata) {
-            const { textTokens, imageTokens } = this.extractTokenCounts(usage.usageMetadata);
-            input_tokens_txt = textTokens;
-            input_tokens_img = imageTokens;
-        }
-
+    protected reportImageCost({ cost, context, numberOfImages = 1 }) {
         const imageUsageData = {
             sourceId: `api:imagegen.smyth`,
             keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
 
-            cost: usage.cost * numberOfImages,
-            input_tokens_txt,
-            input_tokens_img,
+            cost: cost * numberOfImages,
 
             agentId: context.agentId,
             teamId: context.teamId,
         };
         SystemEvents.emit('USAGE:API', imageUsageData);
+    }
+
+    /**
+     * Normalizes function response values to ensure they conform to Google AI's STRUCT requirement.
+     * Gemini expects functionResponse.response to be a STRUCT (JSON object format), not a list or scalar.
+     */
+    private normalizeFunctionResponse(value: unknown): any {
+        // Return objects as-is (but not arrays, which are also objects in JS)
+        if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
+            return value;
+        }
+        // Wrap all other types (arrays, scalars, null, undefined) in result key
+        return { result: value ?? null };
+    }
+
+    /**
+     * Parses and normalizes function response values, handling string JSON and various data types.
+     */
+    private parseFunctionResponse(response: unknown): any {
+        if (typeof response === 'string') {
+            try {
+                const parsed = JSON.parse(response);
+                // If parsed result is still a string, try parsing again (handles double-stringified JSON)
+                if (typeof parsed === 'string' && parsed !== response) {
+                    return this.parseFunctionResponse(parsed);
+                }
+                return this.normalizeFunctionResponse(parsed);
+            } catch (error) {
+                // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
+                return { result: response };
+            }
+        }
+        return this.normalizeFunctionResponse(response);
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
@@ -695,23 +755,10 @@ export class GoogleAIConnector extends LLMConnector {
             return args ?? {};
         };
 
-        const parseFunctionResponse = (response: unknown): any => {
-            if (typeof response === 'string') {
-                try {
-                    const parsed = JSON.parse(response);
-                    if (typeof parsed === 'string' && parsed !== response) {
-                        return parseFunctionResponse(parsed);
-                    }
-                    return parsed;
-                } catch {
-                    return response;
-                }
-            }
-            return response ?? {};
-        };
-
+        //#region Function call parts
         if (messageBlock) {
             const content: any[] = [];
+            let partFunctionCallIndex = 0; // Track function calls within this message block
 
             if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {
                 for (const part of messageBlock.parts) {
@@ -729,11 +776,12 @@ export class GoogleAIConnector extends LLMConnector {
                                 args: parseFunctionArgs(part.functionCall.args),
                             },
                         };
-                        // Preserve thoughtSignature if present for Google AI reasoning context
-                        if ((part as any).thoughtSignature) {
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (partFunctionCallIndex === 0 && (part as any).thoughtSignature) {
                             functionCallPart.thoughtSignature = (part as any).thoughtSignature;
                         }
                         content.push(functionCallPart);
+                        partFunctionCallIndex++;
                         continue;
                     }
 
@@ -741,7 +789,7 @@ export class GoogleAIConnector extends LLMConnector {
                         content.push({
                             functionResponse: {
                                 name: part.functionResponse.name,
-                                response: parseFunctionResponse(part.functionResponse.response),
+                                response: this.parseFunctionResponse(part.functionResponse.response),
                             },
                         });
                         continue;
@@ -761,15 +809,15 @@ export class GoogleAIConnector extends LLMConnector {
 
             const hasFunctionCall = content.some((part) => part.functionCall);
             if (!hasFunctionCall && toolsData.length > 0) {
-                toolsData.forEach((toolCall) => {
+                toolsData.forEach((toolCall, index) => {
                     const functionCallPart: any = {
                         functionCall: {
                             name: toolCall.name,
                             args: parseFunctionArgs(toolCall.arguments),
                         },
                     };
-                    // Preserve thoughtSignature if present for Google AI reasoning context
-                    if (toolCall.thoughtSignature) {
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (index === 0 && toolCall.thoughtSignature) {
                         functionCallPart.thoughtSignature = toolCall.thoughtSignature;
                     }
                     content.push(functionCallPart);
@@ -788,13 +836,15 @@ export class GoogleAIConnector extends LLMConnector {
                 });
             }
         }
+        //#endregion Function call parts
 
+        //#region Function response parts
         const functionResponseParts = toolsData
             .filter((toolData) => toolData.result !== undefined)
             .map((toolData) => ({
                 functionResponse: {
                     name: toolData.name,
-                    response: parseFunctionResponse(toolData.result),
+                    response: this.parseFunctionResponse(toolData.result),
                 },
             }));
 
@@ -804,6 +854,7 @@ export class GoogleAIConnector extends LLMConnector {
                 parts: functionResponseParts,
             });
         }
+        //#endregion Function response parts
 
         return messageBlocks;
     }
@@ -826,18 +877,6 @@ export class GoogleAIConnector extends LLMConnector {
                 return args ?? {};
             };
 
-            const parseFunctionResponse = (response: unknown) => {
-                if (typeof response === 'string') {
-                    try {
-                        return JSON.parse(response);
-                    } catch {
-                        return response;
-                    }
-                }
-
-                return response;
-            };
-
             const pushTextPart = (parts: any[], text?: string) => {
                 const value = typeof text === 'string' && text.trim() ? text : undefined;
                 if (value) {
@@ -846,6 +885,7 @@ export class GoogleAIConnector extends LLMConnector {
             };
 
             const normalizedParts: any[] = [];
+            let functionCallCount = 0; // Track function call parts for thoughtSignature handling
 
             // Map roles to valid Google AI roles
             switch (_message.role) {
@@ -879,16 +919,17 @@ export class GoogleAIConnector extends LLMConnector {
                             name: part.functionCall.name,
                             args: parseFunctionArgs(part.functionCall.args),
                         };
-                        // Preserve thoughtSignature if present for Google AI reasoning context
-                        if ((part as any).thoughtSignature) {
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (functionCallCount === 0 && (part as any).thoughtSignature) {
                             normalizedPart.thoughtSignature = (part as any).thoughtSignature;
                         }
+                        functionCallCount++;
                     }
 
                     if (part.functionResponse) {
                         normalizedPart.functionResponse = {
                             name: part.functionResponse.name,
-                            response: parseFunctionResponse(part.functionResponse.response),
+                            response: this.parseFunctionResponse(part.functionResponse.response),
                         };
                     }
 
@@ -917,17 +958,18 @@ export class GoogleAIConnector extends LLMConnector {
                                     args: parseFunctionArgs(functionCallPart.args),
                                 },
                             };
-                            // Preserve thoughtSignature if present for Google AI reasoning context
-                            if ((contentPart as any).thoughtSignature) {
+                            // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                            if (functionCallCount === 0 && (contentPart as any).thoughtSignature) {
                                 normalizedFunctionCall.thoughtSignature = (contentPart as any).thoughtSignature;
                             }
                             normalizedParts.push(normalizedFunctionCall);
+                            functionCallCount++;
                         } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
                             const functionResponsePart = (contentPart as any).functionResponse;
                             normalizedParts.push({
                                 functionResponse: {
                                     name: functionResponsePart.name,
-                                    response: parseFunctionResponse(functionResponsePart.response),
+                                    response: this.parseFunctionResponse(functionResponsePart.response),
                                 },
                             });
                         } else {
@@ -956,6 +998,7 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+                let functionCallIndex = 0;
                 for (const toolCall of message.tool_calls) {
                     if (!toolCall?.function?.name) continue;
 
@@ -965,11 +1008,12 @@ export class GoogleAIConnector extends LLMConnector {
                             args: parseFunctionArgs(toolCall.function.arguments),
                         },
                     };
-                    // Preserve thoughtSignature if present for Google AI reasoning context
-                    if ((toolCall as any).thoughtSignature) {
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (functionCallIndex === 0 && (toolCall as any).thoughtSignature) {
                         normalizedFunctionCall.thoughtSignature = (toolCall as any).thoughtSignature;
                     }
                     normalizedParts.push(normalizedFunctionCall);
+                    functionCallIndex++;
                 }
             }
 

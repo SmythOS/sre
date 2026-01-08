@@ -10,6 +10,9 @@ const console = SDKLog;
 
 class LocalChatStore extends SDKObject implements ILLMContextStore {
     private _storage: StorageInstance;
+    public get id() {
+        return this._conversationId;
+    }
     constructor(private _conversationId: string, candidate: AccessCandidate) {
         super();
         this._storage = new StorageInstance(null, null, candidate);

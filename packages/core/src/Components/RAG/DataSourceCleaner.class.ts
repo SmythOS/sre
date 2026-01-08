@@ -7,8 +7,9 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import { DataSourceIndexer } from './DataSourceIndexer.class';
-import { DataSourceComponent } from './DataSourceComponent.class';
+import { DataSourceComponent, NsRecord } from './DataSourceComponent.class';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import envConfig from '@sre/config';
 
 export class DataSourceCleaner extends DataSourceComponent {
     protected configSchema = Joi.object({
@@ -23,10 +24,10 @@ export class DataSourceCleaner extends DataSourceComponent {
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        if (!config.data.version || config.data.version === 'v1') {
-            return await this.processV1(input, config, agent);
-        } else if (config.data.version === 'v2') {
+        if (envConfig.env.ROLLOUT_RAG_V2) {
             return await this.processV2(input, config, agent);
+        } else {
+            return await this.processV1(input, config, agent);
         }
     }
     async processV1(input, config, agent: Agent) {
@@ -114,14 +115,15 @@ export class DataSourceCleaner extends DataSourceComponent {
             }
 
             // const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
-            const namespaceLabel = /^c[a-z0-9]{24}.+$/.test(configSchema.value.namespaceId)
-                ? configSchema.value.namespaceId.split('_').slice(1).join('_')
-                : configSchema.value.namespaceId;
-            const namespaceId = configSchema.value.namespaceId;
+            const namespaceLabelorId = configSchema.value.namespaceId;
+            // const namespaceId = configSchema.value.namespaceId;
 
             let vecDbConnector: VectorDBConnector = null;
+            let namespaceRecord: NsRecord = null;
             try {
-                vecDbConnector = await this.resolveVectorDbConnector(namespaceId, teamId);
+                const resolved = await this.resolveVectorDbConnector(namespaceLabelorId, teamId);
+                vecDbConnector = resolved.vecDbConnector;
+                namespaceRecord = resolved.namespaceRecord;
             } catch (err: any) {
                 debugOutput += `Error: ${err?.message || "Couldn't get vector database connector"}\n\n`;
                 return {
@@ -142,9 +144,9 @@ export class DataSourceCleaner extends DataSourceComponent {
             }
             debugOutput += `Searching for data source with id: ${providedId}\n`;
 
-            const dsId = DataSourceComponent.normalizeDsId(providedId, teamId, namespaceLabel);
+            const dsId = DataSourceComponent.normalizeDsId(providedId, teamId, namespaceRecord.label);
 
-            await vecDbConnector.requester(AccessCandidate.team(teamId)).deleteDatasource(namespaceLabel, dsId);
+            await vecDbConnector.requester(AccessCandidate.team(teamId)).deleteDatasource(namespaceRecord.label, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;
 

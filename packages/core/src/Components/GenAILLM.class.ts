@@ -107,25 +107,25 @@ export class GenAILLM extends Component {
             },
             webSearchCity: {
                 type: 'string',
-                max: 100,
+                max: 255,
                 label: 'Web Search City',
                 allowEmpty: true,
             },
             webSearchCountry: {
                 type: 'string',
-                max: 2,
+                max: 255,
                 label: 'Web Search Country',
                 allowEmpty: true,
             },
             webSearchRegion: {
                 type: 'string',
-                max: 100,
+                max: 255,
                 label: 'Web Search Region',
                 allowEmpty: true,
             },
             webSearchTimezone: {
                 type: 'string',
-                max: 100,
+                max: 255,
                 label: 'Web Search Timezone',
                 allowEmpty: true,
             },
@@ -165,7 +165,7 @@ export class GenAILLM extends Component {
             },
             searchCountry: {
                 type: 'string',
-                max: 2,
+                max: 255,
                 label: 'Search Country',
                 allowEmpty: true,
             },
@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -295,10 +295,10 @@ export class GenAILLM extends Component {
         // #region Web Search
         useWebSearch: Joi.boolean().optional().label('Use Web Search'),
         webSearchContextSize: Joi.string().valid('high', 'medium', 'low').optional().label('Web Search Context Size'),
-        webSearchCity: Joi.string().max(100).optional().allow('').label('Web Search City'),
-        webSearchCountry: Joi.string().max(2).optional().allow('').label('Web Search Country'),
-        webSearchRegion: Joi.string().max(100).optional().allow('').label('Web Search Region'),
-        webSearchTimezone: Joi.string().max(100).optional().allow('').label('Web Search Timezone'),
+        webSearchCity: Joi.string().max(255).optional().allow('').label('Web Search City'),
+        webSearchCountry: Joi.string().max(255).optional().allow('').label('Web Search Country'),
+        webSearchRegion: Joi.string().max(255).optional().allow('').label('Web Search Region'),
+        webSearchTimezone: Joi.string().max(255).optional().allow('').label('Web Search Timezone'),
         // #endregion
 
         // #region xAI Search
@@ -307,7 +307,7 @@ export class GenAILLM extends Component {
         returnCitations: Joi.boolean().optional().allow('').label('Return Citations'),
         maxSearchResults: Joi.number().min(1).max(100).optional().allow('').label('Max Search Results'),
         searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().allow('').label('Search Data Sources'),
-        searchCountry: Joi.string().length(2).optional().allow('').label('Search Country'),
+        searchCountry: Joi.string().max(255).optional().allow('').label('Search Country'),
         excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
         allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
         includedXHandles: Joi.string().max(1000).optional().allow('').label('Included X Handles'),
@@ -330,7 +330,11 @@ export class GenAILLM extends Component {
 
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
-        reasoningEffort: Joi.string().valid('none', 'default', 'minimal', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
+        reasoningEffort: Joi.string()
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .optional()
+            .allow('')
+            .label('Reasoning Effort'),
         maxThinkingTokens: Joi.number().min(1).optional().label('Maximum Thinking Tokens'),
         // #endregion
     });
@@ -348,13 +352,24 @@ export class GenAILLM extends Component {
             logger.debug(`=== GenAILLM Log ===`);
             let teamId = agent?.teamId;
 
-            const passThrough: boolean = config.data.passthrough || false;
-            const useContextWindow: boolean = config.data.useContextWindow || false;
-            const useSystemPrompt: boolean = config.data.useSystemPrompt || false;
-            const useWebSearch: boolean = config.data.useWebSearch || false;
-            const maxTokens: number = parseInt(config.data.maxTokens) || 1024;
-            const maxContextWindowLength: number = parseInt(config.data.maxContextWindowLength) || 1024;
-            const model: string = config.data.model || 'echo';
+            // Resolve template variables in config.data without mutating original config
+            const resolvedConfigData = {
+                ...config.data,
+                prompt: config.data.prompt && TemplateString(config.data.prompt).parse(input).result,
+                webSearchCity: config.data.webSearchCity && TemplateString(config.data.webSearchCity).parse(input).result,
+                webSearchCountry: config.data.webSearchCountry && TemplateString(config.data.webSearchCountry).parse(input).result,
+                webSearchRegion: config.data.webSearchRegion && TemplateString(config.data.webSearchRegion).parse(input).result,
+                webSearchTimezone: config.data.webSearchTimezone && TemplateString(config.data.webSearchTimezone).parse(input).result,
+
+                searchCountry: config.data.searchCountry && TemplateString(config.data.searchCountry).parse(input).result,
+            };
+
+            const passThrough: boolean = resolvedConfigData.passthrough || false;
+            const useContextWindow: boolean = resolvedConfigData.useContextWindow || false;
+            const useSystemPrompt: boolean = resolvedConfigData.useSystemPrompt || false;
+            const maxTokens: number = parseInt(resolvedConfigData.maxTokens) || 1024;
+            const maxContextWindowLength: number = parseInt(resolvedConfigData.maxContextWindowLength) || 1024;
+            const model: string = resolvedConfigData.model || 'echo';
             const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
@@ -371,7 +386,7 @@ export class GenAILLM extends Component {
 
             logger.debug(` Model : ${modelId || model}`);
 
-            let prompt: any = TemplateString(config.data.prompt).parse(input).result;
+            const prompt: any = resolvedConfigData.prompt;
 
             let files: any[] = parseFiles(input, config);
             let isMultimodalRequest = false;
@@ -403,8 +418,24 @@ export class GenAILLM extends Component {
                 files = validFiles.filter(Boolean);
 
                 if (files.length === 0) {
+                    // No valid files after filtering - determine the cause
+                    const hasDetectedMimeTypes = fileTypes.size > 0;
+
+                    if (!hasDetectedMimeTypes) {
+                        // Case 1: No mime types detected - files are corrupted/invalid
+                        return {
+                            _error: `Unable to process the provided file(s). Please ensure file(s) are not corrupted, have valid formats, and contain readable data.`,
+                            _debug: logger.output,
+                        };
+                    }
+
+                    // Case 2: Files detected but model doesn't support those types
+                    const detectedTypes = Array.from(fileTypes).join(', ');
+                    const supportedTypes = new Set(Object.values(supportedFileTypes).flat());
+                    const supportedTypesText = supportedTypes.size > 0 ? `\nSupported types: ${Array.from(supportedTypes).join(', ')}` : '';
+
                     return {
-                        _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
+                        _error: `Model '${model}' does not support the provided file type(s): ${detectedTypes}.${supportedTypesText}`,
                         _debug: logger.output,
                     };
                 }
@@ -420,7 +451,7 @@ export class GenAILLM extends Component {
 
             // default to json response format
             const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
-            config.data.responseFormat = config.data?.responseFormat || (hasCustomOutputs ? 'json' : '');
+            resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
 
             // request to LLM
             let response: any;
@@ -478,7 +509,7 @@ export class GenAILLM extends Component {
                         contextWindow: messages,
                         files,
                         params: {
-                            ...config.data,
+                            ...resolvedConfigData,
                             agentId: agent.id,
                         },
                         onFallback: (fallbackInfo) => {

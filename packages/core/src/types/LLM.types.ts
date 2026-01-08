@@ -237,6 +237,7 @@ export type TLLMModel = {
     isCustomLLM?: boolean;
     isUserCustomLLM?: boolean;
     modelId?: string;
+    modelEntryName?: string;
     tokens?: number;
     completionTokens?: number;
     components?: string[];
@@ -446,9 +447,32 @@ export type TLLMInputMessage = {
 };
 
 export interface ILLMContextStore {
+    id: string;
     save(messages: any[]): Promise<void>;
     load(count?: number): Promise<any[]>;
     getMessage(message_id: string): Promise<any[]>;
+}
+
+/**
+ * Configuration options for Conversation helper
+ */
+export interface IConversationSettings {
+    maxContextSize?: number;
+    maxOutputTokens?: number;
+    systemPrompt?: string;
+    toolChoice?: string;
+    store?: ILLMContextStore;
+    experimentalCache?: boolean;
+    toolsStrategy?: (toolsConfig: any) => any;
+    agentId?: string;
+    agentVersion?: string;
+    baseUrl?: string;
+    /**
+     * Maximum number of tool calls allowed in a single conversation session.
+     * Prevents infinite loops in tool calling scenarios.
+     * @default 100
+     */
+    maxToolCalls?: number;
 }
 
 export enum APIKeySource {

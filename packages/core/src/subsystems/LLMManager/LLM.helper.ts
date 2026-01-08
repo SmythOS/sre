@@ -248,4 +248,29 @@ export class LLMHelper {
 
         return _messages;
     }
+
+    /**
+     * Checks if the given model is part of the Claude 4 family.
+     *
+     * @param {string} modelId - The model identifier to check.
+     * @returns {boolean} True if the model is Claude 4 family, false otherwise.
+     *
+     * @example
+     * const isClaude4 = LLMHelper.isClaude4Family('claude-sonnet-4-20250514');
+     * console.log(isClaude4); // true
+     *
+     * @example
+     * const isClaude4 = LLMHelper.isClaude4Family('claude-opus-4-5');
+     * console.log(isClaude4); // true
+     *
+     * @example
+     * const isClaude4 = LLMHelper.isClaude4Family('gpt-4-turbo');
+     * console.log(isClaude4); // false
+     */
+    public static isClaude4Family(modelId: string): boolean {
+        if (!modelId) return false;
+        // Match patterns like: claude-4-*, claude-{variant}-4-*, claude-{variant}-4
+        // Examples: claude-opus-4-5, claude-sonnet-4-20250514, claude-4-opus
+        return /claude-(?:\w+-)?4(?:-|$)/i.test(modelId);
+    }
 }
