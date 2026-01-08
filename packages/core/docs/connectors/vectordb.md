@@ -1,3 +1,7 @@
+---
+title: 'connectors/Vector Databases'
+---
+
 # VectorDB Connectors
 
 The VectorDB subsystem provides vector database capabilities for storing and searching high-dimensional embeddings. It supports similarity search, semantic search, and RAG (Retrieval-Augmented Generation) workflows.

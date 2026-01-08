@@ -1,3 +1,7 @@
+---
+title: 'subsystems/Security'
+---
+
 # Security Subsystem
 
 The Security Subsystem is responsible for managing the core security primitives of the SRE, specifically focusing on identity, authentication, and secret management. It works in close conjunction with the [SRE Security Model](../security.md) to provide a comprehensive security posture.
