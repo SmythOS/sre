@@ -40,6 +40,43 @@ SRE.init({
 
 ---
 
+### SQLite
+
+**Role**: SQLite-based agent data storage  
+**Summary**: Stores agent data in a local SQLite database using Node.js built-in SQLite module (v22.5.0+). Agent data is serialized as JSON and stored with version tracking and deployment status.
+
+| Setting        | Type   | Required | Default       | Description                      |
+| -------------- | ------ | -------- | ------------- | -------------------------------- |
+| `databasePath` | string | Yes      | -             | Path to SQLite database file     |
+| `tableName`    | string | No       | 'AiAgentData' | Name of the table for agent data |
+
+**Example Configuration:**
+
+```typescript
+import { SRE } from '@smythos/sre';
+
+SRE.init({
+    AgentData: {
+        Connector: 'SQLite',
+        Settings: {
+            databasePath: '~/.smyth/.sre/agents.db',
+            tableName: 'AiAgentData', // optional
+        },
+    },
+});
+```
+
+**Features:**
+
+-   Automatic table creation on startup
+-   JSON-based agent data storage with version tracking
+-   Efficient agent lookup by ID
+-   Single-file portability
+-   Uses Node.js built-in SQLite (requires Node.js v22.5.0+)
+-   Zero external dependencies
+
+---
+
 ### CLI
 
 **Role**: Command-line agent data provider  
