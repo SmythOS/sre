@@ -167,6 +167,7 @@ export * from './subsystems/Security/Vault.service/VaultConnector';
 export * from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 export * from './subsystems/AgentManager/AgentData.service/connectors/LocalAgentDataConnector.class';
 export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentData.class';
+export * from './subsystems/AgentManager/AgentData.service/connectors/SQLiteAgentDataConnector.class';
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/AgentManager/Scheduler.service/connectors/LocalScheduler.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
