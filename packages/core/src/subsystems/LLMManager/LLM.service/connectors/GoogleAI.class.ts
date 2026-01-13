@@ -1030,6 +1030,31 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
+    /**
+     * Extracts text content from a message block, handling multiple formats (.parts, .content as string/array)
+     * This ensures compatibility with messages that have been normalized by getConsistentMessages or come in various formats
+     */
+    private extractMessageContent(message: TLLMMessageBlock | any): string {
+        if (!message) return '';
+
+        // Handle .parts array format (Google AI native format)
+        if (message.parts && Array.isArray(message.parts)) {
+            return message.parts.map((part) => part?.text || '').join(' ');
+        }
+
+        // Handle .content as string
+        if (typeof message.content === 'string') {
+            return message.content;
+        }
+
+        // Handle .content as array
+        if (Array.isArray(message.content)) {
+            return message.content.map((part) => (typeof part === 'string' ? part : part?.text || '')).join(' ');
+        }
+
+        return '';
+    }
+
     private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | TGoogleAIToolPrompt> {
         let messages: string | TLLMMessageBlock[] | TGoogleAIToolPrompt = (params?.messages as any) || '';
 
@@ -1101,7 +1126,7 @@ export class GoogleAIConnector extends LLMConnector {
         const fileData = this.getFileData(uploadedFiles);
 
         const userMessage: TLLMMessageBlock = Array.isArray(messages) ? messages.pop() : { role: TLLMMessageRole.User, content: '' };
-        let prompt = userMessage?.content || '';
+        let prompt = this.extractMessageContent(userMessage);
 
         // if the the model does not support system instruction, we will add it to the prompt
         if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
@@ -1125,8 +1150,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         if (hasSystemMessage) {
             const separateMessages = LLMHelper.separateSystemMessages(messages);
-            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
-            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+            systemInstruction = this.extractMessageContent(separateMessages.systemMessage as TLLMMessageBlock);
             formattedMessages = separateMessages.otherMessages;
         } else {
             formattedMessages = messages;
@@ -1178,9 +1202,8 @@ export class GoogleAIConnector extends LLMConnector {
 
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(params?.messages as TLLMMessageBlock[]);
 
-        if ('content' in systemMessage) {
-            systemInstruction = systemMessage.content as string;
-        }
+        // Extract system instruction using the helper method
+        systemInstruction = this.extractMessageContent(systemMessage as TLLMMessageBlock);
 
         const responseFormat = params?.responseFormat || '';
         let responseMimeType = '';
@@ -1194,8 +1217,8 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         if (otherMessages?.length > 0) {
-            // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt += otherMessages.map((message) => message?.parts?.[0]?.text || '').join('\n');
+            // Concatenate messages using the helper method
+            prompt += otherMessages.map((message) => this.extractMessageContent(message)).join('\n');
         }
 
         // if the the model does not support system instruction, we will add it to the prompt
