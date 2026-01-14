@@ -39,18 +39,6 @@ import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('GoogleAIConnector');
 
-const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
-    'gemini-1.5-pro-exp-0801',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-001',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash',
-];
-const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
-
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
     ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
@@ -452,6 +440,18 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
+        // Extract system messages before preparing messages
+        // All modern Gemini models (2.0+, 2.5, 3.0) support native system instruction
+        let systemInstruction = '';
+        const originalMessages = params?.messages || [];
+
+        if (LLMHelper.hasSystemMessage(originalMessages)) {
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(originalMessages);
+            systemInstruction = this.extractMessageContent(systemMessage as TLLMMessageBlock);
+            // Pass only non-system messages to prepareMessages
+            params = { ...params, messages: otherMessages };
+        }
+
         const messages = await this.prepareMessages(params);
 
         const body: TGoogleAIRequestBody = {
@@ -461,14 +461,11 @@ export class GoogleAIConnector extends LLMConnector {
 
         const responseFormat = params?.responseFormat || '';
         let responseMimeType = '';
-        let systemInstruction = '';
 
         if (responseFormat === 'json') {
             systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
+            responseMimeType = 'application/json';
         }
 
         const config: Record<string, any> = {};
@@ -888,11 +885,15 @@ export class GoogleAIConnector extends LLMConnector {
             let functionCallCount = 0; // Track function call parts for thoughtSignature handling
 
             // Map roles to valid Google AI roles
+            // Note: System role is preserved so it can be extracted as systemInstruction later
             switch (_message.role) {
                 case TLLMMessageRole.Assistant:
-                case TLLMMessageRole.System:
                 case TLLMMessageRole.Model:
                     _message.role = TLLMMessageRole.Model;
+                    break;
+                case TLLMMessageRole.System:
+                    // Keep system role as-is for later extraction to systemInstruction
+                    _message.role = TLLMMessageRole.System;
                     break;
                 case TLLMMessageRole.Function:
                 case TLLMMessageRole.Tool:
@@ -1075,7 +1076,6 @@ export class GoogleAIConnector extends LLMConnector {
         const model = params.model;
 
         let messages: string | TLLMMessageBlock[] = params?.messages || '';
-        let systemInstruction = '';
         const files: BinaryInput[] = params?.files || [];
 
         // #region Upload files
@@ -1127,11 +1127,6 @@ export class GoogleAIConnector extends LLMConnector {
 
         const userMessage: TLLMMessageBlock = Array.isArray(messages) ? messages.pop() : { role: TLLMMessageRole.User, content: '' };
         let prompt = this.extractMessageContent(userMessage);
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
         //#endregion Separate system message and add JSON response instruction if needed
 
         // Adjust input structure handling for multiple image files to accommodate variations.
@@ -1141,28 +1136,11 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<TGoogleAIToolPrompt> {
-        let formattedMessages: TLLMMessageBlock[];
-        let systemInstruction = '';
-
-        let messages = params?.messages || [];
-
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-
-        if (hasSystemMessage) {
-            const separateMessages = LLMHelper.separateSystemMessages(messages);
-            systemInstruction = this.extractMessageContent(separateMessages.systemMessage as TLLMMessageBlock);
-            formattedMessages = separateMessages.otherMessages;
-        } else {
-            formattedMessages = messages;
-        }
+        const messages = params?.messages || [];
 
         const toolsPrompt: TGoogleAIToolPrompt = {
-            contents: formattedMessages as any,
+            contents: messages as any,
         };
-
-        if (systemInstruction) {
-            toolsPrompt.systemInstruction = systemInstruction;
-        }
 
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
@@ -1196,36 +1174,13 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async prepareMessagesWithTextQuery(params: TLLMPreparedParams): Promise<string> {
-        const model = params.model;
-        let systemInstruction = '';
+        const messages = (params?.messages as TLLMMessageBlock[]) || [];
         let prompt = '';
 
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(params?.messages as TLLMMessageBlock[]);
-
-        // Extract system instruction using the helper method
-        systemInstruction = this.extractMessageContent(systemMessage as TLLMMessageBlock);
-
-        const responseFormat = params?.responseFormat || '';
-        let responseMimeType = '';
-
-        if (responseFormat === 'json') {
-            systemInstruction += JSON_RESPONSE_INSTRUCTION;
-
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
-        }
-
-        if (otherMessages?.length > 0) {
+        if (messages?.length > 0) {
             // Concatenate messages using the helper method
-            prompt += otherMessages.map((message) => this.extractMessageContent(message)).join('\n');
+            prompt = messages.map((message) => this.extractMessageContent(message)).join('\n');
         }
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
 
         return prompt;
     }

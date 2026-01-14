@@ -461,6 +461,7 @@ export abstract class LLMConnector extends Connector {
             }
 
             //FIXME: to revisit by Alaa-eddine
+            // TODO: This part is a bit confusing. We send “consistent” messages to the LLM, but they still aren’t truly consistent. For example, we send { role: 'system', content: 'You are a helpful assistant.' }, which isn’t compatible with Google AI. However, we still need to mark it as `system` because we later convert it to `systemInstruction`. We should revisit the architecture later and make the flow simpler and more straightforward.
             if (key === 'messages') {
                 _value = this.getConsistentMessages(_value);
             }
