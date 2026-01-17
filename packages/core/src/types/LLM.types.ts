@@ -513,7 +513,7 @@ export enum TLLMEvent {
     Thinking = 'thinking',
     /** End of the response */
     End = 'end',
-    /** Request aborted (terminal; End is not emitted on abort) */
+    /** Request aborted */
     Abort = 'abort',
     /** Error */
     Error = 'error',
@@ -531,6 +531,27 @@ export enum TLLMEvent {
     Fallback = 'fallback',
     /** Requested : emitted when a request is sent to the LLM */
     Requested = 'requested',
+}
+
+/**
+ * Enumeration of finish reasons for LLM responses.
+ * Represents why a response stream ended.
+ */
+export enum TLLMFinishReason {
+    /** Response completed normally (reached natural stopping point or stop sequence) */
+    Stop = 'stop',
+    /** Response was truncated due to maximum token limit or context window */
+    Length = 'length',
+    /** Response was filtered by content moderation policies */
+    ContentFilter = 'content_filter',
+    /** Response ended because the model called a tool/function */
+    ToolCalls = 'tool_calls',
+    /** Request was aborted by user or system */
+    Abort = 'abort',
+    /** Request ended due to an error */
+    Error = 'error',
+    /** Unknown or unmapped finish reason from provider */
+    Unknown = 'unknown',
 }
 
 export interface ILLMRequestContext {

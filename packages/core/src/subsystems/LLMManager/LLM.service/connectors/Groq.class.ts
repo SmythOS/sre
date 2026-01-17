@@ -14,6 +14,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     TLLMToolResultMessageBlock,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -58,7 +59,7 @@ export class GroqConnector extends LLMConnector {
             const groq = await this.getClient(context);
             const result = await groq.chat.completions.create(body, { signal: abortSignal });
             const message = result?.choices?.[0]?.message;
-            const finishReason = result?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason);
             const toolCalls = message?.tool_calls;
             const usage = result.usage;
             this.reportUsage(usage, {
@@ -97,6 +98,26 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
@@ -112,7 +133,7 @@ export class GroqConnector extends LLMConnector {
             );
 
             let toolsData: ToolData[] = [];
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
 
             setImmediate(() => {
                 (async () => {
@@ -149,7 +170,7 @@ export class GroqConnector extends LLMConnector {
 
                             // Capture finish reason
                             if (chunk.choices[0]?.finish_reason) {
-                                finishReason = chunk.choices[0].finish_reason;
+                                finishReason = LLMHelper.normalizeFinishReason(chunk.choices[0].finish_reason);
                             }
                         }
 
@@ -169,7 +190,7 @@ export class GroqConnector extends LLMConnector {
                         });
 
                         // Emit interrupted event if finishReason is not 'stop'
-                        if (finishReason !== 'stop') {
+                        if (finishReason !== TLLMFinishReason.Stop) {
                             emitter.emit(TLLMEvent.Interrupted, finishReason);
                         }
 
@@ -180,10 +201,18 @@ export class GroqConnector extends LLMConnector {
                         const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
                         if (isAbort) {
                             logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
-                            emitter.emit(TLLMEvent.Abort, error);
+                            // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                            const abortError = new DOMException('Request aborted', 'AbortError');
+                            emitter.emit(TLLMEvent.Abort, abortError);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                            });
                         } else {
                             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
                             emitter.emit(TLLMEvent.Error, error);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                            });
                         }
                     }
                 })();
@@ -194,17 +223,22 @@ export class GroqConnector extends LLMConnector {
             const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
 
             if (isAbort) {
-                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
                 logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
                 setImmediate(() => {
                     emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                 });
                 return emitter;
             }
 
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            emitter.emit(TLLMEvent.Error, error);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
 

@@ -8,7 +8,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
-import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams } from '@sre/types/LLM.types';
+import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
 
 import { LLMConnector } from './LLM.service/LLMConnector';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
@@ -147,41 +147,34 @@ export class LLMInference {
             onFallback({ model: this._model });
         }
 
-        try {
-            return await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
-        } catch (error) {
-            // Attempt fallback for custom models (only if not already in fallback)
-            if (!isInFallback) {
+        // Connectors now always return emitters (they don't throw errors)
+        // Get the emitter and attach error handler for fallback if needed
+        const emitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
+
+        // Attach error handler for fallback logic (only if not already in fallback)
+        // Note: 'error' and 'end' events are already emitted by connectors for errors/aborts
+        // We just need to catch 'error' to attempt fallback
+        if (!isInFallback) {
+            emitter.on(TLLMEvent.Error, async (error) => {
+                // Attempt fallback for custom models
                 try {
                     const fallbackParams = await this.getSafeFallbackParams(params);
-                    const fallbackResult = await this.executeFallback('promptStream', {
+                    await this.executeFallback('promptStream', {
                         query,
                         contextWindow,
                         files,
                         params: fallbackParams,
                         onFallback,
                     });
-
-                    // If fallback succeeded, return the result
-                    if (fallbackResult !== null) {
-                        return fallbackResult;
-                    }
                 } catch (fallbackError) {
-                    // If fallback also failed, log it but continue to return error emitter
+                    // If fallback also failed, log it
+                    // The original error/end events have already been emitted, so we just log
                     logger.warn('Fallback also failed:', fallbackError);
                 }
-            }
-
-            // If fallback was not attempted or failed, return error emitter
-            logger.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
-            process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
             });
-            return dummyEmitter;
         }
+
+        return emitter;
     }
 
     /**
@@ -280,24 +273,21 @@ export class LLMInference {
     //@deprecated
     public async streamRequest(params: any, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-        try {
-            if (!params.messages || !params.messages?.length) {
-                throw new Error('Input messages are required.');
-            }
-
-            const model = params.model || this._model;
-
-            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
-        } catch (error) {
-            logger.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
+        if (!params.messages || !params.messages?.length) {
+            // Return an emitter with error/end events for validation errors
+            const errorEmitter = new EventEmitter();
+            const validationError = new Error('Input messages are required.');
             process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
+                errorEmitter.emit(TLLMEvent.Error, validationError);
+                errorEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            return dummyEmitter;
+            return errorEmitter;
         }
+
+        const model = params.model || this._model;
+
+        // Connectors now always return emitters (they don't throw errors)
+        return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
     }
 
     //@deprecated

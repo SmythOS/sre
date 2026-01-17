@@ -15,6 +15,7 @@ import {
     TLLMToolResultMessageBlock,
     TLLMRequestBody,
     BasicCredentials,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -91,7 +92,7 @@ export class OllamaConnector extends LLMConnector {
             })) as unknown as ChatResponse;
 
             const message = result.message;
-            const finishReason = result.done_reason || 'stop';
+            const finishReason = LLMHelper.normalizeFinishReason(result.done_reason || 'stop');
             const usage = {
                 prompt_tokens: result.prompt_eval_count || 0,
                 completion_tokens: result.eval_count || 0,
@@ -140,6 +141,26 @@ export class OllamaConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
@@ -161,13 +182,17 @@ export class OllamaConnector extends LLMConnector {
                         (stream as any).abort();
                     }
                     // Emit abort event on the emitter for proper cleanup
-                    emitter.emit(TLLMEvent.Abort, new DOMException('Request aborted', 'AbortError'));
+                    const abortError = new DOMException('Request aborted', 'AbortError');
+                    setImmediate(() => {
+                        emitter.emit(TLLMEvent.Abort, abortError);
+                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                    });
                 });
             }
 
             let toolsData: ToolData[] = [];
             let fullContent = '';
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
 
             (async () => {
                 try {
@@ -221,7 +246,7 @@ export class OllamaConnector extends LLMConnector {
 
                         // Capture finish reason from Ollama's done_reason
                         if (chunk.done_reason) {
-                            finishReason = chunk.done_reason;
+                            finishReason = LLMHelper.normalizeFinishReason(chunk.done_reason);
                         }
                     }
 
@@ -243,7 +268,7 @@ export class OllamaConnector extends LLMConnector {
                     });
 
                     // Emit interrupted event if finishReason is not 'stop'
-                    if (finishReason !== 'stop') {
+                    if (finishReason !== TLLMFinishReason.Stop) {
                         emitter.emit(TLLMEvent.Interrupted, finishReason);
                     }
 
@@ -255,10 +280,18 @@ export class OllamaConnector extends LLMConnector {
                     // Handle AbortError specifically - this is expected when abortSignal is triggered
                     if (error?.name === 'AbortError' || abortSignal?.aborted) {
                         logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Abort, error);
+                        // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                        const abortError = new DOMException('Request aborted', 'AbortError');
+                        setImmediate(() => {
+                            emitter.emit(TLLMEvent.Abort, abortError);
+                            emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                        });
                     } else {
                         logger.error(`streamRequest ${this.name} error`, error, acRequest.candidate);
-                        emitter.emit(TLLMEvent.Error, error);
+                        setImmediate(() => {
+                            emitter.emit(TLLMEvent.Error, error);
+                            emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                        });
                     }
                 }
             })();
@@ -268,12 +301,20 @@ export class OllamaConnector extends LLMConnector {
             // Handle AbortError specifically - this is expected when abortSignal is triggered
             if (error?.name === 'AbortError' || abortSignal?.aborted) {
                 logger.debug(`streamRequest ${this.name} aborted`, acRequest.candidate);
-                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
-                emitter.emit(TLLMEvent.Abort, abortError);
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
                 return emitter;
             }
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
 

@@ -27,6 +27,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     LLMInterface,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -109,7 +110,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             const response = await genAI.models.generateContent(requestPayload as any);
             const content = response.text ?? '';
-            const finishReason = (response.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || 'stop');
             const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
 
             if (usage) {
@@ -167,6 +168,26 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
@@ -253,7 +274,7 @@ export class GoogleAIConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
 
-                        const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
+                        const finishReason: TLLMFinishReason = TLLMFinishReason.Stop; // GoogleAI doesn't provide finishReason in streaming
                         const reportedUsage: any[] = [];
 
                         if (usage) {
@@ -276,10 +297,18 @@ export class GoogleAIConnector extends LLMConnector {
                 const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
                 if (isAbort) {
                     logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
-                    emitter.emit(TLLMEvent.Abort, error);
+                    // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                    const abortError = new DOMException('Request aborted', 'AbortError');
+                    setImmediate(() => {
+                        emitter.emit(TLLMEvent.Abort, abortError);
+                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                    });
                 } else {
                     logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                    emitter.emit(TLLMEvent.Error, error);
+                    setImmediate(() => {
+                        emitter.emit(TLLMEvent.Error, error);
+                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                    });
                 }
             }
                 })();
@@ -290,17 +319,22 @@ export class GoogleAIConnector extends LLMConnector {
             const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
 
             if (isAbort) {
-                const abortError = error instanceof Error ? error : new DOMException('Request aborted', 'AbortError');
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
                 logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
                 setImmediate(() => {
                     emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                 });
                 return emitter;
             }
 
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            emitter.emit(TLLMEvent.Error, error);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
     // #region Image Generation, will be moved to a different subsystem/service

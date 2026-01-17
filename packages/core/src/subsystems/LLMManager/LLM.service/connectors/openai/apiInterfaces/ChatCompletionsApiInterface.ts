@@ -2,7 +2,8 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMPreparedParams, ILLMRequestContext, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { OpenAIApiInterface, ToolConfig } from './OpenAIApiInterface';
 import { HandlerDependencies } from '../types';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -353,20 +354,22 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
     /**
      * Emit final events
      */
-    private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string): void {
+    private emitFinalEvents(emitter: EventEmitter, toolsData: ToolData[], reportedUsage: any[], finishReason: string | TLLMFinishReason): void {
+        const normalizedFinishReason = typeof finishReason === 'string' ? LLMHelper.normalizeFinishReason(finishReason) : finishReason;
+        
         // Emit tool info event if tools were called
         if (toolsData.length > 0) {
             emitter.emit(TLLMEvent.ToolInfo, toolsData);
         }
 
         // Emit interrupted event if finishReason is not 'stop'
-        if (finishReason !== 'stop') {
-            emitter.emit(TLLMEvent.Interrupted, finishReason);
+        if (normalizedFinishReason !== TLLMFinishReason.Stop) {
+            emitter.emit(TLLMEvent.Interrupted, normalizedFinishReason);
         }
 
         // Emit end event with setImmediate to ensure proper event ordering
         setImmediate(() => {
-            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, normalizedFinishReason);
         });
     }
 

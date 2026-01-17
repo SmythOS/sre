@@ -1,4 +1,4 @@
-import { type TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { type TLLMMessageBlock, TLLMMessageRole, TLLMFinishReason } from '@sre/types/LLM.types';
 
 import axios from 'axios';
 import imageSize from 'image-size';
@@ -272,5 +272,50 @@ export class LLMHelper {
         // Match patterns like: claude-4-*, claude-{variant}-4-*, claude-{variant}-4
         // Examples: claude-opus-4-5, claude-sonnet-4-20250514, claude-4-opus
         return /claude-(?:\w+-)?4(?:-|$)/i.test(modelId);
+    }
+
+    /**
+     * Normalizes provider-specific finish reason values to TLLMFinishReason enum.
+     * Handles provider-specific values like Anthropic's 'end_turn' and OpenAI's 'function_call'.
+     * 
+     * @param finishReason - The finish reason from the provider (can be string, null, or undefined)
+     * @returns Normalized TLLMFinishReason enum value
+     * 
+     * @example
+     * const normalized = LLMHelper.normalizeFinishReason('end_turn');
+     * console.log(normalized); // TLLMFinishReason.Stop
+     * 
+     * @example
+     * const normalized = LLMHelper.normalizeFinishReason('function_call');
+     * console.log(normalized); // TLLMFinishReason.ToolCalls
+     */
+    public static normalizeFinishReason(finishReason: string | null | undefined): TLLMFinishReason {
+        if (!finishReason) {
+            return TLLMFinishReason.Stop;
+        }
+
+        const normalized = finishReason.toLowerCase().trim();
+
+        // Map standard values
+        switch (normalized) {
+            case 'stop':
+            case 'end_turn': // Anthropic-specific
+                return TLLMFinishReason.Stop;
+            case 'length':
+            case 'max_tokens':
+                return TLLMFinishReason.Length;
+            case 'content_filter':
+            case 'contentfilter':
+                return TLLMFinishReason.ContentFilter;
+            case 'tool_calls':
+            case 'function_call': // OpenAI deprecated
+                return TLLMFinishReason.ToolCalls;
+            case 'abort':
+                return TLLMFinishReason.Abort;
+            case 'error':
+                return TLLMFinishReason.Error;
+            default:
+                return TLLMFinishReason.Unknown;
+        }
     }
 }
