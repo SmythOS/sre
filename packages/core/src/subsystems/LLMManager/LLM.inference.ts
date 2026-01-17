@@ -148,33 +148,14 @@ export class LLMInference {
         }
 
         // Connectors now always return emitters (they don't throw errors)
-        // Get the emitter and attach error handler for fallback if needed
-        const emitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
+        const primaryEmitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
 
-        // Attach error handler for fallback logic (only if not already in fallback)
-        // Note: 'error' and 'end' events are already emitted by connectors for errors/aborts
-        // We just need to catch 'error' to attempt fallback
+        // Wrap with fallback capability if not already in fallback
         if (!isInFallback) {
-            emitter.on(TLLMEvent.Error, async (error) => {
-                // Attempt fallback for custom models
-                try {
-                    const fallbackParams = await this.getSafeFallbackParams(params);
-                    await this.executeFallback('promptStream', {
-                        query,
-                        contextWindow,
-                        files,
-                        params: fallbackParams,
-                        onFallback,
-                    });
-                } catch (fallbackError) {
-                    // If fallback also failed, log it
-                    // The original error/end events have already been emitted, so we just log
-                    logger.warn('Fallback also failed:', fallbackError);
-                }
-            });
+            return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
         }
 
-        return emitter;
+        return primaryEmitter;
     }
 
     /**
@@ -257,6 +238,90 @@ export class LLMInference {
         } else {
             return await this.promptStream(args, true);
         }
+    }
+
+    /**
+     * Wraps an emitter with fallback capability using a proxy pattern.
+     * This creates a transparent proxy that forwards all events from the source emitter.
+     * On error, it attempts to switch to a fallback model and seamlessly redirects events.
+     *
+     * **Design Pattern**: Proxy/Decorator with listener-based event forwarding
+     * **Coupling**: Minimal - reads event types from TLLMEvent enum (single source of truth)
+     * **Reliability**: Uses listeners (not emit interception) to avoid timing issues with async emits
+     *
+     * Note: We use the TLLMEvent enum as the source of truth for all event types.
+     * This provides a good balance between decoupling and reliability. The enum already
+     * defines all possible LLM events, and connectors emit these standard events.
+     *
+     * @param sourceEmitter - The primary model's event emitter
+     * @param args - The original prompt arguments for fallback execution
+     * @returns A proxy emitter that transparently handles primary/fallback switching
+     */
+    private wrapWithFallback(sourceEmitter: EventEmitter, args: TPromptParams): EventEmitter {
+        const proxyEmitter = new EventEmitter();
+        let fallbackAttempted = false;
+
+        /**
+         * Attaches forwarding listeners for all event types in TLLMEvent.
+         * Uses listeners instead of emit() interception to avoid timing issues with setImmediate.
+         * 
+         * @param source - The emitter to forward events from
+         * @param skipErrors - If true, skips forwarding error events (handled separately)
+         */
+        const forwardAllEvents = (source: EventEmitter, skipErrors: boolean) => {
+            // Get all event types from TLLMEvent enum
+            const eventTypes = Object.values(TLLMEvent);
+            
+            for (const eventType of eventTypes) {
+                // Skip error events if we're intercepting them
+                if (skipErrors && eventType === TLLMEvent.Error) {
+                    continue;
+                }
+                
+                // Attach listener to forward this event type
+                source.on(eventType, (...eventArgs: any[]) => {
+                    proxyEmitter.emit(eventType, ...eventArgs);
+                });
+            }
+        };
+
+        // Handle error events for fallback logic
+        const handleError = async (error: Error) => {
+            if (fallbackAttempted) return;
+            fallbackAttempted = true;
+
+            // Stop forwarding from primary emitter
+            sourceEmitter.removeAllListeners();
+
+            try {
+                const fallbackParams = await this.getSafeFallbackParams(args.params);
+                const fallbackEmitter = await this.executeFallback('promptStream', {
+                    ...args,
+                    params: fallbackParams,
+                });
+
+                if (fallbackEmitter) {
+                    // Forward all events from fallback emitter (including errors)
+                    forwardAllEvents(fallbackEmitter, false);
+                    logger.info('Successfully switched to fallback stream');
+                    return;
+                }
+            } catch (fallbackError) {
+                logger.warn('Fallback attempt failed:', fallbackError);
+            }
+
+            // If we get here, fallback failed or was not available - emit error on proxy
+            proxyEmitter.emit(TLLMEvent.Error, error);
+            proxyEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+        };
+
+        // Attach error handler FIRST to intercept errors
+        sourceEmitter.once(TLLMEvent.Error, handleError);
+
+        // Forward all non-error events from primary emitter
+        forwardAllEvents(sourceEmitter, true);
+
+        return proxyEmitter;
     }
 
     public async imageGenRequest({ query, files, params }: TPromptParams) {
