@@ -17,6 +17,7 @@ import {
     TLLMMessageRole,
     APIKeySource,
     TLLMEvent,
+    TLLMFinishReason,
     BedrockCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
@@ -69,12 +70,12 @@ export class BedrockConnector extends LLMConnector {
             });
 
             const message = response.output?.message;
-            const finishReason = response.stopReason;
+            const finishReason = LLMHelper.normalizeFinishReason(response.stopReason);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_use') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 const toolUseBlocks = message?.content?.filter((block) => block?.toolUse) || [];
 
                 toolsData = toolUseBlocks.map((block, index) => ({

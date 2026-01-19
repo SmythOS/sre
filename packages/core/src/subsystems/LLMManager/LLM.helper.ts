@@ -276,7 +276,7 @@ export class LLMHelper {
 
     /**
      * Normalizes provider-specific finish reason values to TLLMFinishReason enum.
-     * Handles provider-specific values like Anthropic's 'end_turn' and OpenAI's 'function_call'.
+     * Handles provider-specific values from OpenAI, Anthropic, Google AI, and other providers.
      * 
      * @param finishReason - The finish reason from the provider (can be string, null, or undefined)
      * @returns Normalized TLLMFinishReason enum value
@@ -286,8 +286,12 @@ export class LLMHelper {
      * console.log(normalized); // TLLMFinishReason.Stop
      * 
      * @example
-     * const normalized = LLMHelper.normalizeFinishReason('function_call');
+     * const normalized = LLMHelper.normalizeFinishReason('tool_use');
      * console.log(normalized); // TLLMFinishReason.ToolCalls
+     * 
+     * @example
+     * const normalized = LLMHelper.normalizeFinishReason('SAFETY');
+     * console.log(normalized); // TLLMFinishReason.ContentFilter
      */
     public static normalizeFinishReason(finishReason: string | null | undefined): TLLMFinishReason {
         if (!finishReason) {
@@ -296,26 +300,87 @@ export class LLMHelper {
 
         const normalized = finishReason.toLowerCase().trim();
 
-        // Map standard values
+        // Map standard and provider-specific values
         switch (normalized) {
+            // Natural stop
             case 'stop':
-            case 'end_turn': // Anthropic-specific
+            case 'end_turn': // Anthropic - natural end of turn
+            case 'stop_sequence': // Anthropic - custom stop sequence matched
+            case 'pause_turn': // Anthropic - paused for long-running operation
                 return TLLMFinishReason.Stop;
+
+            // Token/length limits
             case 'length':
-            case 'max_tokens':
+            case 'max_tokens': // Anthropic, Google AI
+            case 'incomplete': // OpenAI Responses API - response cut short due to max tokens or content filter
                 return TLLMFinishReason.Length;
+
+            // Content filtering and safety
             case 'content_filter':
             case 'contentfilter':
+            case 'refusal': // Anthropic - refused due to safety/policy
+            case 'safety': // Google AI - flagged by safety filters
+            case 'recitation': // Google AI - copyrighted content recitation
+            case 'language': // Google AI - unsupported language
+            case 'blocklist': // Google AI - forbidden terms
+            case 'prohibited_content': // Google AI - prohibited content
+            case 'spii': // Google AI - sensitive personally identifiable information
                 return TLLMFinishReason.ContentFilter;
+
+            // Tool/function calls
             case 'tool_calls':
+            case 'tool_use': // Anthropic - tool invocation
             case 'function_call': // OpenAI deprecated
                 return TLLMFinishReason.ToolCalls;
+
+            // Abort
             case 'abort':
                 return TLLMFinishReason.Abort;
+
+            // Errors
             case 'error':
+            case 'malformed_function_call': // Google AI - invalid function call
                 return TLLMFinishReason.Error;
+
+            // Unknown/unmapped
             default:
                 return TLLMFinishReason.Unknown;
+        }
+    }
+
+    /**
+     * Gets a user-friendly error message based on the finish reason.
+     * 
+     * @param finishReason - The normalized finish reason enum value
+     * @returns User-friendly error message explaining why the response was interrupted
+     * 
+     * @example
+     * const message = LLMHelper.getFinishReasonErrorMessage(TLLMFinishReason.Length);
+     * console.log(message); // "Empty response. This is usually due to output token limit reached..."
+     */
+    public static getFinishReasonErrorMessage(finishReason: TLLMFinishReason): string {
+        switch (finishReason) {
+            case TLLMFinishReason.Length:
+                return 'Empty response. This is usually due to output token limit reached. Please try again with a higher \'Maximum Output Tokens\'.';
+            
+            case TLLMFinishReason.ContentFilter:
+                return 'The response was blocked by content filtering policies. Please modify your prompt and try again.';
+            
+            case TLLMFinishReason.Abort:
+                return 'The request was aborted before completion.';
+            
+            case TLLMFinishReason.Error:
+                return 'An error occurred while generating the response. Please try again.';
+            
+            case TLLMFinishReason.ToolCalls:
+                return 'The model attempted to call a tool but the response was incomplete.';
+            
+            case TLLMFinishReason.Unknown:
+                return 'The response was interrupted for an unknown reason. Please try again.';
+            
+            case TLLMFinishReason.Stop:
+            default:
+                return 'The model stopped before completing the response.';
         }
     }
 }

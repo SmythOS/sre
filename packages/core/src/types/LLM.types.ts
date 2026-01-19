@@ -579,7 +579,7 @@ export interface ILLMRequestFuncParams<TBody = any> {
 
 export type TLLMChatResponse = {
     content: string;
-    finishReason: string;
+    finishReason: TLLMFinishReason;
     thinkingContent?: string;
     usage?: any;
     useTool?: boolean;

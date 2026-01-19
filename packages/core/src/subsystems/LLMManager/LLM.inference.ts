@@ -10,6 +10,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { IAgent } from '@sre/types/Agent.types';
 import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
 
+import { LLMHelper } from './LLM.helper';
 import { LLMConnector } from './LLM.service/LLMConnector';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
@@ -96,12 +97,13 @@ export class LLMInference {
 
             const result = this._llmConnector.postProcess(response?.content);
             if (result.error) {
-                // If the model stopped before completing the response, this is usually due to output token limit reached.
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                // If the model stopped before completing the response normally, provide specific error message
+                if (response.finishReason !== TLLMFinishReason.Stop) {
+                    const errorMessage = LLMHelper.getFinishReasonErrorMessage(response.finishReason);
+                    throw new Error(errorMessage);
                 }
 
-                // If the model stopped due to other reasons, throw the error
+                // If the model stopped normally but there's a postProcess error, throw the postProcess error
                 throw new Error(result.error);
             }
             return result;
@@ -157,7 +159,7 @@ export class LLMInference {
         // For regular models, return the emitter directly - errors flow naturally to the caller
         if (!isInFallback) {
             const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
-            
+
             if (isCustomModel) {
                 return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
             }

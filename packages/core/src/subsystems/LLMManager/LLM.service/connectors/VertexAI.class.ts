@@ -16,6 +16,7 @@ import {
     TLLMMessageRole,
     TLLMChatResponse,
     TLLMEvent,
+    TLLMFinishReason,
     VertexAICredentials,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
@@ -104,7 +105,7 @@ export class VertexAIConnector extends LLMConnector {
 
             const response = await genAI.models.generateContent(requestPayload as any);
             const content = response.text ?? '';
-            const finishReason = (response.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || 'stop');
             const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
 
             let toolsData: ToolData[] = [];
@@ -240,7 +241,7 @@ export class VertexAIConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
 
-                        const finishReason = 'stop'; // Vertex AI doesn't provide explicit finishReason in streaming
+                        const finishReason = TLLMFinishReason.Stop; // Vertex AI doesn't provide explicit finishReason in streaming
                         const reportedUsage: any[] = [];
 
                         if (usage) {
