@@ -108,17 +108,20 @@ export class LLMInference {
         } catch (error: any) {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
-                try {
-                    const fallbackParams = await this.getSafeFallbackParams(params);
-                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
+                const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+                if (isCustomModel) {
+                    try {
+                        const fallbackParams = await this.getSafeFallbackParams(params);
+                        const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
 
-                    // If fallback succeeded, return the result
-                    if (fallbackResult !== null) {
-                        return fallbackResult;
+                        // If fallback succeeded, return the result
+                        if (fallbackResult !== null) {
+                            return fallbackResult;
+                        }
+                    } catch (fallbackError) {
+                        // If fallback also failed, log it but continue to throw original error
+                        logger.warn('Fallback also failed:', fallbackError);
                     }
-                } catch (fallbackError) {
-                    // If fallback also failed, log it but continue to throw original error
-                    logger.warn('Fallback also failed:', fallbackError);
                 }
             }
 
@@ -150,9 +153,14 @@ export class LLMInference {
         // Connectors now always return emitters (they don't throw errors)
         const primaryEmitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
 
-        // Wrap with fallback capability if not already in fallback
+        // Only wrap with fallback capability if this is a custom model (not already in fallback)
+        // For regular models, return the emitter directly - errors flow naturally to the caller
         if (!isInFallback) {
-            return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
+            const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+            
+            if (isCustomModel) {
+                return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
+            }
         }
 
         return primaryEmitter;
@@ -206,19 +214,20 @@ export class LLMInference {
 
     /**
      * Executes fallback logic for custom models when the primary model fails.
-     * This method checks if a fallback model is configured and invokes the appropriate LLM method.
+     * Checks if a fallback model is configured and switches to it.
      * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
+     *
+     * **Important**: This method should only be called for custom models (already verified by caller).
      *
      * @param methodName - The name of the method being called ('prompt' or 'promptStream')
      * @param args - The original arguments passed to the method
-     * @returns The result from the fallback execution, or null if fallback should not be attempted
+     * @returns The result from the fallback execution, or null if no fallback is configured
      */
     private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
-        const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
         const fallbackModel = await this._modelProviderReq.getFallbackLLM(this._model);
 
-        // Only execute fallback if it's a custom model with a configured fallback
-        if (!isCustomModel || !fallbackModel) {
+        // Only execute fallback if a fallback model is configured
+        if (!fallbackModel) {
             return null;
         }
 
@@ -245,6 +254,9 @@ export class LLMInference {
      * This creates a transparent proxy that forwards all events from the source emitter.
      * On error, it attempts to switch to a fallback model and seamlessly redirects events.
      *
+     * **Important**: This method is only called for custom models that have fallback configured.
+     * Regular models return their emitters directly without wrapping, so errors flow naturally.
+     *
      * **Design Pattern**: Proxy/Decorator with listener-based event forwarding
      * **Coupling**: Minimal - reads event types from TLLMEvent enum (single source of truth)
      * **Reliability**: Uses listeners (not emit interception) to avoid timing issues with async emits
@@ -253,7 +265,7 @@ export class LLMInference {
      * This provides a good balance between decoupling and reliability. The enum already
      * defines all possible LLM events, and connectors emit these standard events.
      *
-     * @param sourceEmitter - The primary model's event emitter
+     * @param sourceEmitter - The custom model's event emitter
      * @param args - The original prompt arguments for fallback execution
      * @returns A proxy emitter that transparently handles primary/fallback switching
      */
