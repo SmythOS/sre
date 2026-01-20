@@ -1,7 +1,7 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
-import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMEvent, TLLMPreparedParams } from '@sre/types/LLM.types';
+import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMEvent, TLLMPreparedParams, TLLMFinishReason } from '@sre/types/LLM.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { delay } from '@sre/utils/index';
 import { hookAsync } from '@sre/Core/HookService';
@@ -18,7 +18,7 @@ export class EchoConnector extends LLMConnector {
             const content = body?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
             return {
                 content,
-                finishReason: 'stop',
+                finishReason: TLLMFinishReason.Stop,
                 useTool: false,
                 toolsData: [],
                 message: { content, role: 'assistant' },
@@ -60,7 +60,7 @@ export class EchoConnector extends LLMConnector {
 
                 // Emit end event after all chunks are processed
                 setTimeout(() => {
-                    emitter.emit(TLLMEvent.End, [], [], 'stop'); // Empty arrays for toolsData and usage_data, with finishReason
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Stop); // Empty arrays for toolsData and usage_data, with finishReason
                 }, 100);
             })();
 

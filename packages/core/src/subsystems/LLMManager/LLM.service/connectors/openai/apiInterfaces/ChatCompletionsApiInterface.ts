@@ -76,7 +76,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                 const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
 
-                const finishReason = streamResult.finishReason || 'stop';
+                const finishReason = streamResult.finishReason || TLLMFinishReason.Stop;
                 const usageData = streamResult.usageData;
 
                 // Step 2: Report usage statistics
@@ -266,7 +266,7 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
         emitter: EventEmitter
     ): Promise<{ toolsData: ToolData[]; finishReason: string; usageData: any[] }> {
         let toolsData: ToolData[] = [];
-        let finishReason = 'stop';
+        let finishReason = TLLMFinishReason.Stop;
         const usageData = [];
 
         for await (const part of stream) {

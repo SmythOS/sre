@@ -112,7 +112,7 @@ export class OpenAIConnector extends LLMConnector {
             const result = await apiInterface.createRequest(body, context, abortSignal);
 
             const message = result?.choices?.[0]?.message || { content: result?.output_text };
-            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop');
+            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason || result?.incomplete_details || TLLMFinishReason.Stop);
 
             let toolsData: ToolData[] = [];
             let useTool = false;

@@ -92,7 +92,7 @@ export class OllamaConnector extends LLMConnector {
             })) as unknown as ChatResponse;
 
             const message = result.message;
-            const finishReason = LLMHelper.normalizeFinishReason(result.done_reason || 'stop');
+            const finishReason = LLMHelper.normalizeFinishReason(result.done_reason || TLLMFinishReason.Stop);
             const usage = {
                 prompt_tokens: result.prompt_eval_count || 0,
                 completion_tokens: result.eval_count || 0,

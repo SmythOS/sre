@@ -122,7 +122,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                 const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
 
-                const finishReason = streamResult.finishReason || 'stop';
+                const finishReason = streamResult.finishReason || TLLMFinishReason.Stop;
                 const usageData = streamResult.usageData;
 
                 // Step 2: Report usage statistics
@@ -144,9 +144,9 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     private async processStream(
         stream: Stream<OpenAI.Responses.ResponseStreamEvent>,
         emitter: EventEmitter
-    ): Promise<{ toolsData: ToolData[]; finishReason: string; usageData: any[] }> {
+    ): Promise<{ toolsData: ToolData[]; finishReason: TLLMFinishReason; usageData: any[] }> {
         let toolsData: ToolData[] = [];
-        let finishReason = 'stop';
+        let finishReason = TLLMFinishReason.Stop;
         const usageData = [];
 
         for await (const part of stream) {
@@ -185,7 +185,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                             break;
 
                         case EVENT_TYPES.RESPONSE_COMPLETED: {
-                            finishReason = 'stop';
+                            finishReason = TLLMFinishReason.Stop;
                             const responseData = (part as any)?.response;
                             if (responseData?.usage) {
                                 usageData.push(responseData.usage);
@@ -194,7 +194,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                         }
 
                         case EVENT_TYPES.INCOMPLETE:
-                            finishReason = 'incomplete';
+                            finishReason = TLLMFinishReason.Length;
                             const responseData = (part as any)?.response;
                             if (responseData?.usage) {
                                 usageData.push(responseData.usage);
@@ -559,11 +559,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Handle completion events and unknown event types
      */
-    private handleCompletionEvent(eventType: string): string {
+    private handleCompletionEvent(eventType: string): TLLMFinishReason {
         if (eventType === EVENT_TYPES.RESPONSE_COMPLETED || eventType.includes('done')) {
-            return 'stop';
+            return TLLMFinishReason.Stop;
         }
-        return 'stop'; // Default finish reason
+        return TLLMFinishReason.Stop; // Default finish reason
     }
 
     public async prepareRequestBody(params: TLLMPreparedParams): Promise<OpenAI.Responses.ResponseCreateParams> {
