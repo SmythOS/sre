@@ -31,6 +31,8 @@ import { HELP, showHelp } from '../utils/help';
 import { Team } from '../Security/Team.class';
 import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
 import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
+import { TCacheProvider, TCacheProviderInstances } from '../types/generated/Cache.types';
+import { CacheInstance } from '../Cache/CacheInstance.class';
 import { TLLMInstanceFactory, TLLMProviderInstances } from '../LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
@@ -293,6 +295,7 @@ export class Agent extends SDKObject {
     #agentDataConnector: AgentDataConnector;
     private _warningDisplayed = {
         storage: false,
+        cache: false,
         vectorDB: false,
         scheduler: false,
     };
@@ -622,6 +625,32 @@ export class Agent extends SDKObject {
         }
 
         return this._storageProviders;
+    }
+
+    private _cacheProviders: TCacheProviderInstances;
+
+    public get cache() {
+        if (!this._cacheProviders) {
+            this._cacheProviders = {} as TCacheProviderInstances;
+            for (const provider of Object.values(TCacheProvider)) {
+                this._cacheProviders[provider] = (cacheSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = cacheSettings || {};
+                    if (!scope) scope = _scope;
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.cache) {
+                        this._warningDisplayed.cache = true;
+                        console.warn(
+                            `You are performing cache operations with an unidentified agent.\nThe data will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the data with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate =
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+
+                    return new CacheInstance(provider as TCacheProvider, connectorSettings, candidate);
+                };
+            }
+        }
+
+        return this._cacheProviders;
     }
 
     /**
