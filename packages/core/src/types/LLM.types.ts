@@ -553,9 +553,32 @@ export interface ILLMRequestFuncParams<TBody = any> {
 // export type TAnthropicRequestBody = Anthropic.MessageCreateParams | Anthropic.MessageStreamParams;
 // export type IAnthropicRequestFuncParams = ILLMRequestFuncParams<TAnthropicRequestBody>;
 
+/**
+ * Standardized finish reasons for LLM responses across all providers.
+ * 
+ * This enum normalizes provider-specific finish reasons (e.g., 'end_turn' from Anthropic,
+ * 'max_tokens' from Google AI) into a consistent set of values.
+ */
+export enum TLLMFinishReason {
+    /** Response completed normally (reached natural stopping point or stop sequence) */
+    Stop = 'stop',
+    /** Response was truncated due to maximum token limit or context window */
+    Length = 'length',
+    /** Response was filtered by content moderation policies */
+    ContentFilter = 'content_filter',
+    /** Response ended because the model called a tool/function */
+    ToolCalls = 'tool_calls',
+    /** Request was aborted by user or system */
+    Abort = 'abort',
+    /** Request ended due to an error */
+    Error = 'error',
+    /** Unknown or unmapped finish reason from provider */
+    Unknown = 'unknown',
+}
+
 export type TLLMChatResponse = {
     content: string;
-    finishReason: string;
+    finishReason: TLLMFinishReason;
     thinkingContent?: string;
     usage?: any;
     useTool?: boolean;
