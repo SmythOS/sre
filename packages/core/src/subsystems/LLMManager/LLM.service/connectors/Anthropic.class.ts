@@ -18,6 +18,7 @@ import {
     TAnthropicRequestBody,
     ILLMRequestContext,
     TLLMPreparedParams,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
@@ -73,11 +74,11 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const anthropic = await this.getClient(context);
-            const result = await anthropic.messages.create(body);
+            const result = await anthropic.messages.create(body, { signal: abortSignal });
             const message: Anthropic.MessageParam = {
                 role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
                 content: result?.content || '',
@@ -136,15 +137,49 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            const emitter = new EventEmitter();
+
+            // Pre-flight: already aborted before we start — emit Abort immediately.
+            // This is especially important for Anthropic because if we try to start the stream
+            // with an already-aborted signal, the SDK may never emit abort/error, leaving callers hanging.
+            if (abortSignal?.aborted) {
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             const usage_data = [];
 
             const anthropic = await this.getClient(context);
-            let stream = anthropic.messages.stream(body);
+            let stream = anthropic.messages.stream(body, { signal: abortSignal });
 
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks
@@ -160,9 +195,22 @@ export class AnthropicConnector extends LLMConnector {
             });
 
             stream.on(AnthropicStreamEvent.error, (error) => {
-                //console.log('error', error);
+                logger.debug(`streamRequest ${this.name} stream error`, error);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Error, error);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                });
+            });
 
-                emitter.emit(TLLMEvent.Error, error);
+            // Anthropic emits a dedicated abort event; translate it to our Abort signal
+            stream.on(AnthropicStreamEvent.abort, (error) => {
+                logger.debug(`streamRequest ${this.name} stream abort`, error);
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
             });
 
             stream.on(AnthropicStreamEvent.message, (message) => {
@@ -184,8 +232,25 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Thinking, thinking);
             });
 
+            if (abortSignal) {
+                // Catch mid-flight cancellations even if the Anthropic stream never emits its own abort
+                // (e.g., aborted during setup before stream listeners attach).
+                abortSignal.addEventListener(
+                    'abort',
+                    () => {
+                        logger.debug(`streamRequest ${this.name} abortSignal triggered`, acRequest.candidate);
+                        const abortError = new DOMException('Request aborted', 'AbortError');
+                        setImmediate(() => {
+                            emitter.emit(TLLMEvent.Abort, abortError);
+                            emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                        });
+                    },
+                    { once: true }
+                );
+            }
+
             stream.on(AnthropicStreamEvent.finalMessage, (finalMessage) => {
-                let finishReason = 'stop';
+                let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
                 // Preserve thinking blocks for subsequent tool interactions
                 thinkingBlocks = finalMessage.content.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
 
@@ -206,7 +271,7 @@ export class AnthropicConnector extends LLMConnector {
 
                     emitter.emit(TLLMEvent.ToolInfo, toolsData, thinkingBlocks);
                 } else {
-                    finishReason = finalMessage.stop_reason;
+                    finishReason = LLMHelper.normalizeFinishReason(finalMessage.stop_reason);
                 }
 
                 if (finalMessage?.usage) {
@@ -221,7 +286,7 @@ export class AnthropicConnector extends LLMConnector {
 
                     usage_data.push(reportedUsage);
                 }
-                if (finishReason !== 'stop' && finishReason !== 'end_turn') {
+                if (finishReason !== TLLMFinishReason.Stop) {
                     emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
@@ -233,8 +298,27 @@ export class AnthropicConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            // #region Safety net for aborts that happen while creating the stream (before stream events/listeners exist).
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+            // #endregion Abort error handling
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            
+            return emitter;
         }
     }
 
