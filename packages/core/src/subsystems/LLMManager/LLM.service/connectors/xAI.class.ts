@@ -15,6 +15,7 @@ import {
     TLLMChatResponse,
     ILLMRequestContext,
     TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -107,14 +108,14 @@ export class xAIConnector extends LLMConnector {
             const response = await grok.post('/chat/completions', body, { signal: abortSignal });
 
             const message = response?.data?.choices?.[0]?.message;
-            const finishReason = response?.data?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(response?.data?.choices?.[0]?.finish_reason);
             const usage = response?.data?.usage as TUsage;
             const citations = response?.data?.citations;
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_calls') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 toolsData =
                     message?.tool_calls?.map((tool, index) => ({
                         index,
@@ -173,7 +174,7 @@ export class xAIConnector extends LLMConnector {
             );
 
             const reportedUsage: any[] = [];
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
             let toolsData: any[] = [];
             let usage: any = {};
             let citations: any[] = [];
@@ -226,7 +227,7 @@ export class xAIConnector extends LLMConnector {
                             }
 
                             if (parsed.choices?.[0]?.finish_reason) {
-                                finishReason = parsed.choices[0].finish_reason;
+                                finishReason = LLMHelper.normalizeFinishReason(parsed.choices[0].finish_reason);
                             }
                         } catch (e) {
                             // Ignore parsing errors for incomplete chunks
@@ -258,7 +259,7 @@ export class xAIConnector extends LLMConnector {
                     reportedUsage.push(_reported);
                 }
 
-                if (finishReason !== 'stop') {
+                if (finishReason !== TLLMFinishReason.Stop) {
                     emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 

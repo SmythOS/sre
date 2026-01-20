@@ -1,4 +1,4 @@
-import { type TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { type TLLMMessageBlock, TLLMMessageRole, TLLMFinishReason } from '@sre/types/LLM.types';
 
 import axios from 'axios';
 import imageSize from 'image-size';
