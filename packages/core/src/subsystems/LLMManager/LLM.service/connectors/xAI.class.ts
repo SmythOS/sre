@@ -174,7 +174,7 @@ export class xAIConnector extends LLMConnector {
             );
 
             const reportedUsage: any[] = [];
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
             let toolsData: any[] = [];
             let usage: any = {};
             let citations: any[] = [];
@@ -227,7 +227,7 @@ export class xAIConnector extends LLMConnector {
                             }
 
                             if (parsed.choices?.[0]?.finish_reason) {
-                                finishReason = parsed.choices[0].finish_reason;
+                                finishReason = LLMHelper.normalizeFinishReason(parsed.choices[0].finish_reason);
                             }
                         } catch (e) {
                             // Ignore parsing errors for incomplete chunks
@@ -259,7 +259,7 @@ export class xAIConnector extends LLMConnector {
                     reportedUsage.push(_reported);
                 }
 
-                if (finishReason !== 'stop') {
+                if (finishReason !== TLLMFinishReason.Stop) {
                     emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 

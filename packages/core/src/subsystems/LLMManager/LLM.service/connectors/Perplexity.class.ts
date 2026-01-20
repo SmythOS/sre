@@ -15,6 +15,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -112,7 +113,7 @@ export class PerplexityConnector extends LLMConnector {
                         emitter.emit(TLLMEvent.Content, respose.content);
 
                         // Only emit Interrupted if finishReason is not 'stop'
-                        if (finishReason !== 'stop') {
+                        if (finishReason !== TLLMFinishReason.Stop) {
                             emitter.emit(TLLMEvent.Interrupted, finishReason);
                         }
 

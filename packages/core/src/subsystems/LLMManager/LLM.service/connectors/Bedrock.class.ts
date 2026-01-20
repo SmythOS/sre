@@ -176,14 +176,14 @@ export class BedrockConnector extends LLMConnector {
 
                         // Handle message completion
                         if (chunk.messageStop) {
-                            const finishReason = chunk.messageStop.stopReason || 'stop';
+                            const finishReason = LLMHelper.normalizeFinishReason(chunk.messageStop.stopReason);
 
                             if (currentMessage.toolCalls.length > 0) {
                                 emitter.emit(TLLMEvent.ToolInfo, currentMessage.toolCalls);
                             }
 
                             // Emit interrupted event if finishReason is not 'stop'
-                            if (finishReason !== 'stop' && finishReason !== 'end_turn') {
+                            if (finishReason !== TLLMFinishReason.Stop) {
                                 emitter.emit(TLLMEvent.Interrupted, finishReason);
                             }
 
