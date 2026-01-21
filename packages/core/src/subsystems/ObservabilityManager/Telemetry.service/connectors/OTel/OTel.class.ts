@@ -561,18 +561,15 @@ export class OTel extends TelemetryConnector {
                 const spanCtx = convSpan.spanContext();
                 const spanContext = trace.setSpan(context.active(), convSpan);
 
-                // Check for errors from both thrown errors and emitted error events
+                // Check for errors - either thrown (error param) or emitted via event (hookContext.hasError)
                 const hasError = error || hookContext.hasError;
-                const errorToReport = error || hookContext.errorDetails;
 
                 if (hasError) {
-                    // Only record error details if not already handled by error event handler
-                    // (hookContext.hasError is set by the error event handler)
-                    if (!hookContext.hasError && errorToReport) {
-                        convSpan.recordException(errorToReport);
-                        convSpan.setStatus({ code: SpanStatusCode.ERROR, message: errorToReport?.message || 'Unknown error' });
+                    if (error && !hookContext.hasError) {
+                        convSpan.recordException(error);
+                        convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message || 'Unknown error' });
                         convSpan.addEvent('conv.error', {
-                            'error.message': errorToReport?.message || 'Unknown error',
+                            'error.message': error.message || 'Unknown error',
                         });
 
                         context.with(spanContext, () => {
@@ -589,8 +586,8 @@ export class OTel extends TelemetryConnector {
                                     'agent.id': agentId,
                                     'agent.name': agentName,
                                     'conv.id': processId,
-                                    'error.message': errorToReport?.message || 'Unknown error',
-                                    'error.stack': errorToReport?.stack,
+                                    'error.message': error.message || 'Unknown error',
+                                    'error.stack': error.stack,
                                     'team.id': teamId,
                                     'org.tier': orgTier,
                                     'org.slot': orgSlot,
