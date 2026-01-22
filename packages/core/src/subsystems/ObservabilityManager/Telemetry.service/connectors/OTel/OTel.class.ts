@@ -300,6 +300,57 @@ export class OTel extends TelemetryConnector {
             };
         };
 
+        const createErrorHandler = function (hookContext: any) {
+            return function (error: Error, metadata?: { requestId?: string }) {
+                if (!hookContext.convSpan) return;
+                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Error event received', { error: error?.message, requestId: metadata?.requestId }, accessCandidate);
+
+                // Mark that an error occurred so after hook knows not to log success
+                hookContext.hasError = true;
+                hookContext.errorDetails = error;
+
+                const convSpan = hookContext.convSpan;
+                const spanCtx = convSpan.spanContext();
+                const spanContext = trace.setSpan(context.active(), convSpan);
+
+                // Record exception on span
+                convSpan.recordException(error);
+                convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error?.message || 'Unknown error' });
+                convSpan.addEvent('conv.error', {
+                    'error.message': error?.message || 'Unknown error',
+                    'request.id': metadata?.requestId || 'unknown',
+                });
+
+                context.with(spanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.ERROR,
+                        severityText: 'ERROR',
+                        body: `Conversation error: ${hookContext.processId}`,
+                        attributes: {
+                            // Explicit trace correlation
+                            trace_id: spanCtx.traceId,
+                            span_id: spanCtx.spanId,
+                            trace_flags: spanCtx.traceFlags,
+
+                            'agent.id': hookContext.agentId,
+                            'agent.name': hookContext.agentName,
+                            'conv.id': hookContext.processId,
+                            'error.message': error?.message || 'Unknown error',
+                            'error.stack': error?.stack,
+                            'team.id': hookContext.teamId,
+                            'org.slot': hookContext.orgSlot,
+                            'agent.debug': hookContext.isDebugSession,
+                            'agent.isTest': hookContext.isTestDomain,
+                            'request.id': metadata?.requestId || 'unknown',
+                        },
+                    });
+                });
+
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Error event handled', { error: error?.message }, accessCandidate);
+            };
+        };
+
         const createRequestedHandler = function (hookContext) {
             return function (reqInfo: any) {
                 if (!hookContext.convSpan) return;
@@ -386,6 +437,7 @@ export class OTel extends TelemetryConnector {
                 });
                 hookContext.convSpan = convSpan;
                 hookContext.agentId = agentId;
+                hookContext.agentName = agentData?.name || undefined;
                 hookContext.processId = processId;
                 hookContext.teamId = teamId;
                 hookContext.orgSlot = orgSlot;
@@ -411,6 +463,9 @@ export class OTel extends TelemetryConnector {
 
                 hookContext.toolInfoHandler = createToolInfoHandler(hookContext);
                 conversation.on(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
+
+                hookContext.errorHandler = createErrorHandler(hookContext);
+                conversation.on(TLLMEvent.Error, hookContext.errorHandler);
 
                 // Add start event
 
@@ -502,47 +557,52 @@ export class OTel extends TelemetryConnector {
                     if (hookContext.requestedHandler) conversation.off(TLLMEvent.Requested, hookContext.requestedHandler);
                 }
 
+                if (hookContext.errorHandler) conversation.off(TLLMEvent.Error, hookContext.errorHandler);
+
                 const { rootSpan: convSpan } = ctx;
 
                 const spanCtx = convSpan.spanContext();
                 const spanContext = trace.setSpan(context.active(), convSpan);
 
-                if (error) {
-                    // Error handling for conversation span
-                    convSpan.recordException(error);
-                    convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-                    convSpan.addEvent('conv.error', {
-                        'error.message': error.message,
-                    });
+                // Check for errors - either thrown (error param) or emitted via event (hookContext.hasError)
+                const hasError = error || hookContext.hasError;
 
-                    // Emit ERROR log
-                    context.with(spanContext, () => {
-                        logger.emit({
-                            severityNumber: SeverityNumber.ERROR,
-                            severityText: 'ERROR',
-                            body: `Conversation.streamPrompt failed: ${processId}`,
-                            attributes: {
-                                // Explicit trace correlation
-                                trace_id: spanCtx.traceId,
-                                span_id: spanCtx.spanId,
-                                trace_flags: spanCtx.traceFlags,
-
-                                'agent.id': agentId,
-                                'agent.name': agentName,
-                                'conv.id': processId,
-                                'error.message': error.message,
-                                'error.stack': error.stack,
-                                'team.id': teamId,
-                                'org.tier': orgTier,
-                                'org.slot': orgSlot,
-                                'agent.debug': isDebugSession,
-                                'agent.isTest': isTestDomain,
-                                'session.id': sessionId,
-                                'workflow.id': workflowId,
-                                'log.tags': logTags,
-                            },
+                if (hasError) {
+                    if (error && !hookContext.hasError) {
+                        convSpan.recordException(error);
+                        convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message || 'Unknown error' });
+                        convSpan.addEvent('conv.error', {
+                            'error.message': error.message || 'Unknown error',
                         });
-                    });
+
+                        context.with(spanContext, () => {
+                            logger.emit({
+                                severityNumber: SeverityNumber.ERROR,
+                                severityText: 'ERROR',
+                                body: `Conversation.streamPrompt failed: ${processId}`,
+                                attributes: {
+                                    // Explicit trace correlation
+                                    trace_id: spanCtx.traceId,
+                                    span_id: spanCtx.spanId,
+                                    trace_flags: spanCtx.traceFlags,
+
+                                    'agent.id': agentId,
+                                    'agent.name': agentName,
+                                    'conv.id': processId,
+                                    'error.message': error.message || 'Unknown error',
+                                    'error.stack': error.stack,
+                                    'team.id': teamId,
+                                    'org.tier': orgTier,
+                                    'org.slot': orgSlot,
+                                    'agent.debug': isDebugSession,
+                                    'agent.isTest': isTestDomain,
+                                    'session.id': sessionId,
+                                    'workflow.id': workflowId,
+                                    'log.tags': logTags,
+                                },
+                            });
+                        });
+                    }
                 } else {
                     // Success handling
                     convSpan.setStatus({ code: SpanStatusCode.OK });

@@ -678,7 +678,6 @@ export class Conversation extends EventEmitter {
 
         const toolsContent = await toolsPromise.catch((error) => {
             console.error('Error in toolsPromise: ', error);
-            //this.emit('error', error);
             this.emit(TLLMEvent.Error, error, { requestId: llmReqUid });
             return '';
         });
