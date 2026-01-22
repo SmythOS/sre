@@ -402,6 +402,7 @@ export class OTel extends TelemetryConnector {
                 const sessionId = processId;
                 const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
                 const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const agentName = agentData?.name || undefined;
 
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
@@ -425,6 +426,7 @@ export class OTel extends TelemetryConnector {
                         'org.tier': orgTier,
                         'org.slot': orgSlot,
                         'agent.id': agentId,
+                        'agent.name': agentName,
                         'conv.id': processId,
                         'llm.model': modelId || 'unknown',
                         'agent.debug': isDebugSession,
@@ -493,6 +495,7 @@ export class OTel extends TelemetryConnector {
                             'org.slot': orgSlot,
 
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
                             'input.preview': message.substring(0, 2000),
@@ -611,6 +614,7 @@ export class OTel extends TelemetryConnector {
                             body: `Conversation.streamPrompt completed: ${processId}`,
                             attributes: {
                                 'agent.id': agentId,
+                                'agent.name': agentName,
                                 'conv.id': processId,
                                 'output.size': JSON.stringify(result || {}).length,
                                 'output.preview':
@@ -659,6 +663,7 @@ export class OTel extends TelemetryConnector {
                 const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
                 const isTestDomain = agent.usingTestDomain || false;
                 const domain = agent.domain || undefined;
+                const agentName = agent.name || undefined;
 
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process started', { processId, agentProcessId, endpointPath }, accessCandidate);
@@ -702,6 +707,7 @@ export class OTel extends TelemetryConnector {
                     {
                         attributes: {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'team.id': teamId,
                             'conv.id': conversationId,
                             'process.id': agentProcessId,
@@ -741,6 +747,7 @@ export class OTel extends TelemetryConnector {
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'process.id': agentProcessId,
                             input: agentInput,
                             body,
@@ -782,6 +789,7 @@ export class OTel extends TelemetryConnector {
                 const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
                 const isTestDomain = agent.usingTestDomain || false;
                 const domain = agent.domain || undefined;
+                const agentName = agent.name || undefined;
 
                 const ctx = OTelContextRegistry.get(agentId, agentProcessId);
                 if (!ctx) return;
@@ -837,6 +845,7 @@ export class OTel extends TelemetryConnector {
                     span_id: spanCtx.spanId,
                     trace_flags: spanCtx.traceFlags,
                     'agent.id': agentId,
+                    'agent.name': agentName,
                     'process.id': agentProcessId,
                     hasError: isError,
                     'error.message': isError ? errorMessage : undefined,
@@ -906,6 +915,7 @@ export class OTel extends TelemetryConnector {
                 const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
                 const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
                 const isTestDomain = agent.usingTestDomain || false;
+                const agentName = agent.name || undefined;
 
                 const inputAction = input?.__action || undefined;
                 const inputStatus = input?.__status || undefined;
@@ -922,6 +932,7 @@ export class OTel extends TelemetryConnector {
                     {
                         attributes: {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'process.id': processId,
                             'event.id': eventId,
                             'cmp.id': componentId,
@@ -964,6 +975,7 @@ export class OTel extends TelemetryConnector {
                         body: `Component ${componentType} started`,
                         attributes: {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'process.id': processId,
                             'event.id': eventId,
                             'cmp.id': componentId,
@@ -1023,6 +1035,7 @@ export class OTel extends TelemetryConnector {
                 const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
                 const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
                 const isTestDomain = agent.usingTestDomain || false;
+                const agentName = agent.name || undefined;
 
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process completed', { componentId }, accessCandidate);
@@ -1052,6 +1065,7 @@ export class OTel extends TelemetryConnector {
                             body: `Component ${componentType} (${componentId}) failed: ${error.message}`,
                             attributes: {
                                 'agent.id': agentId,
+                                'agent.name': agentName,
                                 'process.id': processId,
                                 'event.id': eventId,
                                 'cmp.id': componentId,
@@ -1109,6 +1123,7 @@ export class OTel extends TelemetryConnector {
                                 body: `Component ${componentType} (${componentId}) failed: ${errorMessage}`,
                                 attributes: {
                                     'agent.id': agentId,
+                                    'agent.name': agentName,
                                     'process.id': processId,
                                     'event.id': eventId,
                                     'cmp.id': componentId,
@@ -1150,6 +1165,7 @@ export class OTel extends TelemetryConnector {
                         // Emit success log with output (formatted safely)
                         const logAttributes: Record<string, any> = {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
