@@ -87,6 +87,8 @@ export class PerplexityConnector extends LLMConnector {
                 usage,
             };
         } catch (error) {
+            // set the actual error message from the response
+            error.message = error?.response?.data?.error?.message || error?.message || 'Unknown error';
             logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
