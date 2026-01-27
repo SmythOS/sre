@@ -278,10 +278,10 @@ export class GenAILLM extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
-        temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
+        temperature: Joi.number().min(-0.01).max(5).label('Temperature'), // min is -0.01 to represent "not set" for Anthropic (only one of Temperature/Top P can be used). Max is 2 for OpenAI/TogetherAI, 5 for Cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
-        topP: Joi.number().min(0).max(1).label('Top P'),
+        topP: Joi.number().min(-0.01).max(1).label('Top P'), // min is -0.01 to represent "not set" for Anthropic (only one of Temperature/Top P can be used)
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
