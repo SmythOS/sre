@@ -160,8 +160,15 @@ export class PerplexityConnector extends LLMConnector {
         if (params?.temperature !== undefined) body.temperature = params.temperature;
         if (params?.topP !== undefined) body.top_p = params.topP;
         if (params?.topK !== undefined) body.top_k = params.topK;
-        if (params?.frequencyPenalty) body.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
+
+        // Perplexity API does not allow both presence_penalty and frequency_penalty to be set simultaneously.
+        // A value of 0 means no penalty (same as default), so we only include these parameters when they have a non-zero value.
+        // Apply either frequencyPenalty or presencePenalty, prioritizing frequencyPenalty
+        if (params?.frequencyPenalty) {
+            body.frequency_penalty = params.frequencyPenalty;
+        } else if (params?.presencePenalty) {
+            body.presence_penalty = params.presencePenalty;
+        }
 
         if (params.responseFormat) {
             body.response_format = params.responseFormat;
