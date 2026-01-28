@@ -513,6 +513,8 @@ export enum TLLMEvent {
     Thinking = 'thinking',
     /** End of the response */
     End = 'end',
+    /** Request aborted */
+    Abort = 'abort',
     /** Error */
     Error = 'error',
     /** Tool information : emitted by the LLM determines the next tool call */
@@ -547,6 +549,7 @@ export interface ILLMRequestFuncParams<TBody = any> {
     acRequest: AccessRequest;
     body: TBody;
     context: ILLMRequestContext;
+    abortSignal?: AbortSignal;
 }
 
 // For future providers, you can add similar types:

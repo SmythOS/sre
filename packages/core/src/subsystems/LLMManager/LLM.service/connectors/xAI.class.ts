@@ -100,11 +100,11 @@ export class xAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const grok = await this.getClient(context);
-            const response = await grok.post('/chat/completions', body);
+            const response = await grok.post('/chat/completions', body, { signal: abortSignal });
 
             const message = response?.data?.choices?.[0]?.message;
             const finishReason = response?.data?.choices?.[0]?.finish_reason;
@@ -157,7 +157,7 @@ export class xAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
         try {
@@ -168,6 +168,7 @@ export class xAIConnector extends LLMConnector {
                 { ...body, stream: true, stream_options: { include_usage: true } },
                 {
                     responseType: 'stream',
+                    signal: abortSignal,
                 }
             );
 

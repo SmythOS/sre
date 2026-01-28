@@ -53,12 +53,12 @@ export class BedrockConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseCommand(body);
-            const response: ConverseCommandOutput = await bedrock.send(command);
+            const response: ConverseCommandOutput = await bedrock.send(command, { abortSignal });
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
@@ -102,14 +102,14 @@ export class BedrockConnector extends LLMConnector {
         }
     }
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseStreamCommand(body);
-            const response: ConverseStreamCommandOutput = await bedrock.send(command);
+            const response: ConverseStreamCommandOutput = await bedrock.send(command, { abortSignal });
             const stream = response.stream;
 
             if (stream) {

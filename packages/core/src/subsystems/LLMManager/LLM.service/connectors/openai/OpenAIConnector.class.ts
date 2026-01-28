@@ -20,6 +20,8 @@ import {
     TLLMToolResultMessageBlock,
     ToolData,
     TOpenAIRequestBody,
+    TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -85,7 +87,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const _body = body as OpenAI.ChatCompletionCreateParams;
@@ -107,15 +109,15 @@ export class OpenAIConnector extends LLMConnector {
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const result = await apiInterface.createRequest(body, context);
+            const result = await apiInterface.createRequest(body, context, abortSignal);
 
             const message = result?.choices?.[0]?.message || { content: result?.output_text };
-            const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
+            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop');
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_calls') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 toolsData =
                     message?.tool_calls?.map((tool, index) => ({
                         index,
@@ -151,8 +153,30 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        let emitter: EventEmitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
 
@@ -173,14 +197,32 @@ export class OpenAIConnector extends LLMConnector {
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const stream = await apiInterface.createStream(body, context);
+            const stream = await apiInterface.createStream(body, context, abortSignal);
 
-            const emitter = apiInterface.handleStream(stream, context);
+            emitter = apiInterface.handleStream(stream, context);
 
             return emitter;
         } catch (error) {
+            const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            
+            return emitter;
         }
     }
 
