@@ -15,6 +15,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -68,7 +69,7 @@ export class PerplexityConnector extends LLMConnector {
             const response = await perplexity.post('/chat/completions', body, { signal: abortSignal });
 
             const content = response?.data?.choices?.[0]?.message.content;
-            const finishReason = response?.data?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(response?.data?.choices?.[0]?.finish_reason);
             const usage = response?.data?.usage as any;
 
             this.reportUsage(usage, {
@@ -112,7 +113,7 @@ export class PerplexityConnector extends LLMConnector {
                         emitter.emit(TLLMEvent.Content, respose.content);
 
                         // Only emit Interrupted if finishReason is not 'stop'
-                        if (finishReason !== 'stop') {
+                        if (finishReason !== TLLMFinishReason.Stop) {
                             emitter.emit(TLLMEvent.Interrupted, finishReason);
                         }
 

@@ -83,12 +83,12 @@ export class AnthropicConnector extends LLMConnector {
                 role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
                 content: result?.content || '',
             };
-            const stopReason = result?.stop_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(result?.stop_reason);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if ((stopReason as 'tool_use') === 'tool_use') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 const toolUseContentBlocks = result?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
 
                 if (toolUseContentBlocks?.length === 0) return;
@@ -125,7 +125,7 @@ export class AnthropicConnector extends LLMConnector {
 
             return {
                 content,
-                finishReason: result?.stop_reason,
+                finishReason,
                 useTool,
                 toolsData,
                 message,

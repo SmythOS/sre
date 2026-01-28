@@ -98,7 +98,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             const response = await genAI.models.generateContent(requestPayload as any);
             const content = response.text ?? '';
-            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || 'stop');
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || TLLMFinishReason.Stop);
             const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
 
             if (usage) {

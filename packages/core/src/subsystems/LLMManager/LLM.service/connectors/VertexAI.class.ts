@@ -187,7 +187,10 @@ export class VertexAIConnector extends LLMConnector {
                 }, 100);
             } catch (error) {
                 logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                emitter.emit(TLLMEvent.Error, error);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Error, error);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                });
             }
         }, 100);
 
