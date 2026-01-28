@@ -224,7 +224,7 @@ export class OTel extends TelemetryConnector {
                 const toolNames = toolInfo.map((tool) => tool.name + '(' + tool.arguments + ')');
                 hookContext.curLLMGenSpan.addEvent('llm.gen.tool.calls', {
                     'tool.calls': toolNames.join(', '),
-                    'llm.model': modelId || 'unknown',
+                    'llm.model': modelId || '',
                     'context.preview': JSON.stringify(lastContext).substring(0, 200),
                 });
 
@@ -237,7 +237,7 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
-                            'llm.model': modelId || 'unknown',
+                            'llm.model': modelId || '',
                             'context.preview': JSON.stringify(lastContext).substring(0, 5000),
                         },
                     });
@@ -268,7 +268,7 @@ export class OTel extends TelemetryConnector {
                     ttfbSpan.addEvent('llm.first.byte.received', {
                         'request.id': reqInfo.requestId,
                         'data.size': JSON.stringify(data || {}).length,
-                        'llm.model': modelId || 'unknown',
+                        'llm.model': modelId || '',
                     });
 
                     ttfbSpan.setStatus({ code: SpanStatusCode.OK });
@@ -284,7 +284,7 @@ export class OTel extends TelemetryConnector {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
                             'team.id': hookContext.teamId,
-                            'llm.model': modelId || 'unknown',
+                            'llm.model': modelId || '',
                         },
                     },
                     trace.setSpan(context.active(), hookContext.convSpan)
@@ -292,7 +292,7 @@ export class OTel extends TelemetryConnector {
                 llmGenSpan.addEvent('llm.gen.started', {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
-                    'llm.model': modelId || 'unknown',
+                    'llm.model': modelId || '',
                     'context.preview': JSON.stringify(lastContext).substring(0, 200),
                 });
                 hookContext.curLLMGenSpan = llmGenSpan;
@@ -370,7 +370,7 @@ export class OTel extends TelemetryConnector {
                             'conv.id': hookContext.processId,
                             'team.id': hookContext.teamId,
                             'request.id': reqInfo.requestId,
-                            'llm.model': modelId || 'unknown',
+                            'llm.model': modelId || '',
                             'metric.type': 'ttfb',
                         },
                     },
@@ -418,9 +418,9 @@ export class OTel extends TelemetryConnector {
                     attributes: {
                         // OTel standard attributes
                         'gen_ai.operation.name': 'chat',
-                        'gen_ai.provider.name': conversation?.llmInference?.llmProviderName || 'unknown',
+                        'gen_ai.provider.name': conversation?.llmInference?.llmProviderName || '',
                         'gen_ai.conversation.id': processId,
-                        'gen_ai.request.model': modelId || 'unknown',
+                        'gen_ai.request.model': modelId || '',
                         ////////////////////////////////
                         'team.id': teamId,
                         'org.tier': orgTier,
@@ -428,7 +428,7 @@ export class OTel extends TelemetryConnector {
                         'agent.id': agentId,
                         'agent.name': agentName,
                         'conv.id': processId,
-                        'llm.model': modelId || 'unknown',
+                        'llm.model': modelId || '',
                         'agent.debug': isDebugSession,
                         'agent.isTest': isTestDomain,
                         'session.id': sessionId,
@@ -472,7 +472,7 @@ export class OTel extends TelemetryConnector {
                 convSpan.addEvent('skill.process.started', {
                     'input.size': JSON.stringify(message || {}).length,
                     'input.preview': message.substring(0, 200),
-                    'llm.model': modelId || 'unknown',
+                    'llm.model': modelId || '',
                 });
 
                 OTelContextRegistry.startProcess(agentId, processId, convSpan);
@@ -955,12 +955,19 @@ export class OTel extends TelemetryConnector {
                 );
 
                 // Add event: Component started - includes input.action and input.status for workflow tracking
-                const inputStr = JSON.stringify(input || {});
+                // Use component-specific input (from predecessor nodes), not the merged object with agent variables
+                // For APIEndpoint, use HTTP request body/query as the actual user input
+                const componentInput =
+                    componentType === 'APIEndpoint'
+                        ? agent.agentRequest?.method === 'GET'
+                            ? agent.agentRequest?.query
+                            : agent.agentRequest?.body
+                        : componentData?.runtimeData?.input || {};
 
-                const compInputData = oTelInstance.prepareComponentData(input || {});
+                const compInputData = oTelInstance.prepareComponentData(componentInput || {});
                 span.addEvent('cmp.call', {
                     'event.id': eventId,
-                    'cmp.input.size': JSON.stringify(input || {}).length,
+                    'cmp.input.size': JSON.stringify(componentInput || {}).length,
                     'cmp.input': JSON.stringify(compInputData),
                     'input.action': inputAction,
                     'input.status': inputStatus,
@@ -981,7 +988,7 @@ export class OTel extends TelemetryConnector {
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
-                            'cmp.input': input,
+                            'cmp.input': componentInput,
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
