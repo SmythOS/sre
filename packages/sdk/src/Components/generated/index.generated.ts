@@ -9,6 +9,9 @@ import { FTimestamp } from './FTimestamp';
 import { GenAILLM } from './GenAILLM';
 import { HuggingFace } from './HuggingFace';
 import { ImageGenerator } from './ImageGenerator';
+import { LogicAND } from './LogicAND';
+import { LogicOR } from './LogicOR';
+import { LogicXOR } from './LogicXOR';
 import { MCPClient } from './MCPClient';
 import { ScrapflyWebScrape } from './ScrapflyWebScrape';
 import { ServerlessCode } from './ServerlessCode';
@@ -16,5 +19,5 @@ import { TavilyWebSearch } from './TavilyWebSearch';
 
 
 
-const Components = { APICall, APIOutput, Await, Classifier, ECMASandbox, FTimestamp, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ScrapflyWebScrape, ServerlessCode, TavilyWebSearch, };
+const Components = { APICall, APIOutput, Await, Classifier, ECMASandbox, FTimestamp, GenAILLM, HuggingFace, ImageGenerator, LogicAND, LogicOR, LogicXOR, MCPClient, ScrapflyWebScrape, ServerlessCode, TavilyWebSearch, };
  export default Components; 

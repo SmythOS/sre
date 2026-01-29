@@ -2,6 +2,30 @@ import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicOR extends Component {
+    protected schema = {
+        name: 'LogicOR',
+        description: 'Perform logical OR operation on multiple inputs',
+        inputs: {},
+        outputs: {
+            Output: {
+                type: 'Boolean',
+                default: true,
+                description: 'OR result - true if at least one input is truthy',
+            },
+            Verified: {
+                type: 'Boolean',
+                description: 'Present when at least one input is truthy',
+            },
+            Unverified: {
+                type: 'Boolean',
+                description: 'Present when all inputs are falsy',
+            },
+            _debug: {
+                type: 'Any',
+                description: 'Debug output from the component',
+            },
+        },
+    };
     constructor() {
         super();
     }

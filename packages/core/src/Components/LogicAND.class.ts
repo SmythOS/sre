@@ -2,6 +2,30 @@ import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicAND extends Component {
+    protected schema = {
+        name: 'LogicAND',
+        description: 'Perform logical AND operation on multiple inputs',
+        inputs: {},
+        outputs: {
+            Output: {
+                type: 'Boolean',
+                default: true,
+                description: 'AND result - true if all inputs are truthy',
+            },
+            Verified: {
+                type: 'Boolean',
+                description: 'Present when all inputs are truthy',
+            },
+            Unverified: {
+                type: 'Boolean',
+                description: 'Present when some inputs are falsy',
+            },
+            _debug: {
+                type: 'Any',
+                description: 'Debug output from the component',
+            },
+        },
+    };
     constructor() {
         super();
     }

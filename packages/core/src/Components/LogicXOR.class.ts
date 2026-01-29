@@ -2,6 +2,30 @@ import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicXOR extends Component {
+    protected schema = {
+        name: 'LogicXOR',
+        description: 'Perform logical XOR operation on multiple inputs',
+        inputs: {},
+        outputs: {
+            Output: {
+                type: 'Boolean',
+                default: true,
+                description: 'XOR result - true if exactly one input is truthy',
+            },
+            Verified: {
+                type: 'Boolean',
+                description: 'Present when exactly one input is truthy',
+            },
+            Unverified: {
+                type: 'Boolean',
+                description: 'Present when zero or more than one input is truthy',
+            },
+            _debug: {
+                type: 'Any',
+                description: 'Debug output from the component',
+            },
+        },
+    };
     constructor() {
         super();
     }

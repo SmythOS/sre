@@ -40,6 +40,9 @@ const INCLUDED_COMPONENTS = [
     'ServerlessCode',
     'ScrapflyWebScrape',
     'ECMASandbox',
+    'LogicAND',
+    'LogicOR',
+    'LogicXOR',
 ]; // Example: ['APICall', 'GenAILLM', 'Image']
 
 /**
