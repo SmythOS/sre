@@ -416,13 +416,18 @@ export class Agent implements IAgent {
         //filter out handled errors
         result = result.filter((r) => !(r?.result?._error && r?.result?._error_handled));
 
+        // Preserve debug data if debug mode is enabled or LOG_LEVEL is 'debug'
+        const preserveDebug = this.agentRuntime?.debug || process.env.LOG_LEVEL === 'debug';
+
         for (let i = 0; i < result.length; i++) {
             const _result = result[i];
             if (!_result) continue;
-            if (_result._debug) delete _result._debug;
-            if (_result._debug_time) delete _result._debug_time;
-            if (_result.result?._debug) delete _result.result._debug;
-            if (_result.result?._debug_time) delete _result.result._debug_time;
+            if (!preserveDebug) {
+                if (_result._debug) delete _result._debug;
+                if (_result._debug_time) delete _result._debug_time;
+                if (_result.result?._debug) delete _result.result._debug;
+                if (_result.result?._debug_time) delete _result.result._debug_time;
+            }
             const _componentData = this.components[_result.id];
             if (!_componentData) continue;
             const _component: Component = this._componentInstance[_componentData.name];

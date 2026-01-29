@@ -847,8 +847,11 @@ export class Agent extends SDKObject {
 
             const method = skill.data.method.toUpperCase();
             const path = `/api/${skillName}`;
+            const options = args[1] || {};
+            const debugSessionId = options.debug ? `debug-${Date.now()}-${Math.random().toString(36).slice(2)}` : undefined;
             const headers = {
                 'Content-Type': 'application/json',
+                ...(debugSessionId ? { 'X-DEBUG-RUN': debugSessionId } : {}),
             };
 
             const input = args[0];

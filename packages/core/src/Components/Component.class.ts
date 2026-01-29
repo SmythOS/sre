@@ -44,7 +44,9 @@ export class Component {
     init() {}
 
     createComponentLogger(agent: Agent, configuration: any) {
-        const logger = Logger((configuration.name || this.constructor.name) + `,agent<${agent.id}>`, agent?.agentRuntime?.debug);
+        // Enable memory store if debug mode is active or LOG_LEVEL is 'debug'
+        const enableMemoryStore = agent?.agentRuntime?.debug || process.env.LOG_LEVEL === 'debug';
+        const logger = Logger((configuration.name || this.constructor.name) + `,agent<${agent.id}>`, enableMemoryStore);
 
         logger.on('logged', (info: { level: string; message: string }) => {
             if (agent.sse && configuration.eventId) {
@@ -145,7 +147,9 @@ export class Component {
     }
     async postProcess(output, config, agent: Agent): Promise<any> {
         if (output?.result) {
-            if (!agent.agentRuntime?.debug) delete output?.result?._debug;
+            // Preserve _debug if debug mode is enabled or LOG_LEVEL is 'debug'
+            const preserveDebug = agent.agentRuntime?.debug || process.env.LOG_LEVEL === 'debug';
+            if (!preserveDebug) delete output?.result?._debug;
 
             if (!output?.result?._error) delete output?.result?._error;
         }
