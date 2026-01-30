@@ -2,7 +2,7 @@
 
 For building dynamic, real-time applications, waiting for an agent's full response can lead to a slow user experience. The SmythOS SDK solves this with streaming, allowing you to process the agent's output token-by-token as it's generated. This is perfect for creating "typewriter" effects in UIs and providing immediate feedback to the user.
 
-The script in [`examples/01-agent-code-skill/02-streaming.ts`](../../examples/01-agent-code-skill/02-streaming.ts) provides a complete, runnable example of the concepts below.
+The script in [`examples/01-agent-code-skill/02-streaming.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/02-streaming.ts) provides a complete, runnable example of the concepts below.
 
 ## How Streaming Works
 
@@ -14,9 +14,9 @@ This `EventEmitter` will emit different events during the lifecycle of the agent
 
 The most common use case is to listen for content chunks and the end of the stream.
 
--   `TLLMEvent.Content`: This event fires whenever a new chunk of text (usually a word or a few tokens) is available from the LLM.
--   `TLLMEvent.End`: This event fires once the entire response has been generated and the stream is closed.
--   `TLLMEvent.Error`: This event fires if an error occurs during generation.
+- `TLLMEvent.Content`: This event fires whenever a new chunk of text (usually a word or a few tokens) is available from the LLM.
+- `TLLMEvent.End`: This event fires once the entire response has been generated and the stream is closed.
+- `TLLMEvent.Error`: This event fires if an error occurs during generation.
 
 Here's how you can use it to print a response to the console in real-time:
 
@@ -57,8 +57,8 @@ stream.on(TLLMEvent.Error, (err) => {
 
 The stream doesn't just give you the final text output; it also provides visibility into the agent's "thought process". You can listen for events related to skill execution.
 
--   `TLLMEvent.ToolCall`: Fires when the agent decides to use a skill. The event payload includes the name of the skill and the arguments it's using.
--   `TLLMEvent.ToolResult`: Fires after the skill's `process` function has completed. The payload contains the result that was returned by the skill.
+- `TLLMEvent.ToolCall`: Fires when the agent decides to use a skill. The event payload includes the name of the skill and the arguments it's using.
+- `TLLMEvent.ToolResult`: Fires after the skill's `process` function has completed. The payload contains the result that was returned by the skill.
 
 This is incredibly useful for debugging or showing the user that the agent is performing an action in the background.
 

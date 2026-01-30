@@ -2,7 +2,7 @@
 
 Welcome to the SmythOS SDK! This guide will walk you through creating your very first AI agent. We'll build an agent that can fetch real-time cryptocurrency prices from an API.
 
-The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](../../examples/01-agent-code-skill/01-prompting.ts).
+The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/01-prompting.ts).
 
 ## 1. Installation
 
@@ -33,10 +33,10 @@ npm install
 
 Available templates:
 
--   `empty-sdk-template` - Blank SDK project
--   `minimal-sdk-agent` - Basic agent implementation
--   `interactive-book-assistant` - Fully functional agent with interactive chat
--   `interactive-chat-two-agents` - Two different agent implementations
+- `empty-sdk-template` - Blank SDK project
+- `minimal-sdk-agent` - Basic agent implementation
+- `interactive-book-assistant` - Fully functional agent with interactive chat
+- `interactive-chat-two-agents` - Two different agent implementations
 
 Alternatively, you can install the SDK directly in an existing project:
 
@@ -123,9 +123,9 @@ You'll see the agent think for a moment and then respond with the prices it fetc
 
 Congratulations on building your first agent! You've learned how to:
 
--   Create an agent with a specific behavior.
--   Add a custom skill that calls an external API.
--   Interact with the agent using a natural language prompt.
--   Call a skill directly for more precise control.
+- Create an agent with a specific behavior.
+- Add a custom skill that calls an external API.
+- Interact with the agent using a natural language prompt.
+- Call a skill directly for more precise control.
 
 Now you're ready to dive deeper. Move on to [Building Agents](02-agents.md) to learn how to organize multiple skills, manage agent state, and more.

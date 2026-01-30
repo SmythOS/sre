@@ -4,7 +4,7 @@ Beyond the agent-centric abstractions, the SmythOS SDK provides direct access to
 
 This is useful for tasks like pre-populating a vector database, managing files in your application's storage, or performing a one-off LLM completion.
 
-You can find working examples in scripts like [`10-llm-storage-vectors.ts`](../../examples/01-agent-code-skill/10-llm-storage-vectors.ts) and [`upsert-and-search.ts`](../../examples/05-VectorDB-with-agent/upsert-and-search.ts).
+You can find working examples in scripts like [`10-llm-storage-vectors.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/10-llm-storage-vectors.ts) and [`upsert-and-search.ts`](https://github.com/SmythOS/sre/blob/main/examples/05-VectorDB-with-agent/01-upsert-and-search.ts).
 
 ## Language Models (LLMs)
 

@@ -1,69 +1,376 @@
-<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>01-getting-started | SmythOS SDK</title><meta name="description" content="Documentation for SmythOS SDK"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body>
+<!doctype html>
+<html class="default" lang="en" data-base="../">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="IE=edge" />
+        <title>01-getting-started | SmythOS SDK</title>
+        <meta name="description" content="Documentation for SmythOS SDK" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../assets/style.css" />
+        <link rel="stylesheet" href="../assets/highlight.css" />
+        <link rel="stylesheet" href="../assets/custom.css" />
+        <script defer src="../assets/main.js"></script>
+        <script defer src="../assets/custom.js"></script>
+        <script async src="../assets/icons.js" id="tsd-icons-script"></script>
+        <script async src="../assets/search.js" id="tsd-search-script"></script>
+        <script async src="../assets/navigation.js" id="tsd-nav-script"></script>
+        <script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script>
+    </head>
+    <body>
         <script>
-          // Function to force the theme to light.
-          const forceLightTheme = () => {
-            if (document.documentElement.dataset.theme !== 'light') {
-              document.documentElement.dataset.theme = 'light';
-            }
-          };
+            // Function to force the theme to light.
+            const forceLightTheme = () => {
+                if (document.documentElement.dataset.theme !== 'light') {
+                    document.documentElement.dataset.theme = 'light';
+                }
+            };
 
-          // Set the theme immediately to prevent a flash of the wrong theme.
-          forceLightTheme();
+            // Set the theme immediately to prevent a flash of the wrong theme.
+            forceLightTheme();
 
-          // Create an observer to watch for changes to the data-theme attribute.
-          const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-              if (mutation.attributeName === 'data-theme') {
-                forceLightTheme();
-              }
+            // Create an observer to watch for changes to the data-theme attribute.
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'data-theme') {
+                        forceLightTheme();
+                    }
+                });
             });
-          });
 
-          // Start observing the document element for attribute changes.
-          observer.observe(document.documentElement, { attributes: true });
+            // Start observing the document element for attribute changes.
+            observer.observe(document.documentElement, { attributes: true });
         </script>
-      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS SDK</a><div id="tsd-toolbar-links"><a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">01-getting-started</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="getting-started" class="tsd-anchor-link">Getting Started<a href="#getting-started" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Welcome to the SmythOS SDK! This guide will walk you through creating your very first AI agent. We'll build an agent that can fetch real-time cryptocurrency prices from an API.</p>
-<p>The code in this guide is a more detailed version of the script found in <a href="../../examples/01-agent-code-skill/01-prompting.ts"><code>examples/01-agent-code-skill/01-prompting.ts</code></a>.</p>
-<h2 id="1-installation" class="tsd-anchor-link">1. Installation<a href="#1-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="method-1-using-the-cli-recommended" class="tsd-anchor-link">Method 1: Using the CLI (Recommended)<a href="#method-1-using-the-cli-recommended" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The easiest way to get started is by using the SmythOS CLI to scaffold a new project:</p>
-<pre><code class="bash"><span class="hl-4"># Install the CLI globally</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">i</span><span class="hl-1"> </span><span class="hl-6">-g</span><span class="hl-1"> </span><span class="hl-3">@smythos/cli</span><br/><br/><span class="hl-4"># Create a new project</span><br/><span class="hl-5">sre</span><span class="hl-1"> </span><span class="hl-3">create</span><span class="hl-1"> </span><span class="hl-3">&quot;My First Agent&quot;</span>
+        <script>
+            document.documentElement.dataset.theme = localStorage.getItem('tsd-theme') || 'os';
+            document.body.style.display = 'none';
+            setTimeout(() => (window.app ? app.showPage() : document.body.style.removeProperty('display')), 500);
+        </script>
+        <header class="tsd-page-toolbar">
+            <div class="tsd-toolbar-contents container">
+                <a href="../index.html" class="title">SmythOS SDK</a>
+                <div id="tsd-toolbar-links">
+                    <a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a
+                    ><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a
+                    ><a href="https://github.com/smythos/sre">GitHub</a>
+                </div>
+                <button id="tsd-search-trigger" class="tsd-widget" aria-label="Search">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <use href="../assets/icons.svg#icon-search"></use>
+                    </svg>
+                </button>
+                <dialog id="tsd-search" aria-label="Search">
+                    <input
+                        role="combobox"
+                        id="tsd-search-input"
+                        aria-controls="tsd-search-results"
+                        aria-autocomplete="list"
+                        aria-expanded="true"
+                        autocapitalize="off"
+                        autocomplete="off"
+                        placeholder="Search the docs"
+                        maxlength="100"
+                    />
+                    <ul role="listbox" id="tsd-search-results"></ul>
+                    <div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div>
+                </dialog>
+                <a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"
+                    ><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <use href="../assets/icons.svg#icon-menu"></use></svg
+                ></a>
+            </div>
+        </header>
+        <div class="container container-main">
+            <div class="col-content">
+                <div class="tsd-page-title">
+                    <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+                        <li><a href="" aria-current="page">01-getting-started</a></li>
+                    </ul>
+                </div>
+                <div class="tsd-panel tsd-typography">
+                    <h1 id="getting-started" class="tsd-anchor-link">
+                        Getting Started<a href="#getting-started" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h1>
+                    <p>
+                        Welcome to the SmythOS SDK! This guide will walk you through creating your very first AI agent. We'll build an agent that can
+                        fetch real-time cryptocurrency prices from an API.
+                    </p>
+                    <p>
+                        The code in this guide is a more detailed version of the script found in
+                        <a href="https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/01-prompting.ts"
+                            ><code>examples/01-agent-code-skill/01-prompting.ts</code></a
+                        >.
+                    </p>
+                    <h2 id="1-installation" class="tsd-anchor-link">
+                        1. Installation<a href="#1-installation" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h2>
+                    <h3 id="method-1-using-the-cli-recommended" class="tsd-anchor-link">
+                        Method 1: Using the CLI (Recommended)<a
+                            href="#method-1-using-the-cli-recommended"
+                            aria-label="Permalink"
+                            class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h3>
+                    <p>The easiest way to get started is by using the SmythOS CLI to scaffold a new project:</p>
+                    <pre><code class="bash"><span class="hl-4"># Install the CLI globally</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">i</span><span class="hl-1"> </span><span class="hl-6">-g</span><span class="hl-1"> </span><span class="hl-3">@smythos/cli</span><br/><br/><span class="hl-4"># Create a new project</span><br/><span class="hl-5">sre</span><span class="hl-1"> </span><span class="hl-3">create</span><span class="hl-1"> </span><span class="hl-3">&quot;My First Agent&quot;</span>
 </code><button type="button">Copy</button></pre>
 
-<p>The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs. Select <strong>Empty Project</strong> template when prompted.</p>
-<h3 id="method-2-direct-sdk-installation" class="tsd-anchor-link">Method 2: Direct SDK Installation<a href="#method-2-direct-sdk-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If you prefer to add the SDK to an existing project, we recommend cloning one of our project templates:</p>
-<pre><code class="bash"><span class="hl-4"># Clone a template (replace &#39;template-name&#39; with your desired template)</span><br/><span class="hl-5">git</span><span class="hl-1"> </span><span class="hl-3">clone</span><span class="hl-1"> </span><span class="hl-6">-b</span><span class="hl-1"> </span><span class="hl-3">template-name</span><span class="hl-1"> </span><span class="hl-3">https://github.com/SmythOS/sre-project-templates.git</span><span class="hl-1"> </span><span class="hl-3">my-agent-project</span><br/><span class="hl-5">cd</span><span class="hl-1"> </span><span class="hl-3">my-agent-project</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">install</span>
+                    <p>
+                        The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs. Select
+                        <strong>Empty Project</strong> template when prompted.
+                    </p>
+                    <h3 id="method-2-direct-sdk-installation" class="tsd-anchor-link">
+                        Method 2: Direct SDK Installation<a href="#method-2-direct-sdk-installation" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h3>
+                    <p>If you prefer to add the SDK to an existing project, we recommend cloning one of our project templates:</p>
+                    <pre><code class="bash"><span class="hl-4"># Clone a template (replace &#39;template-name&#39; with your desired template)</span><br/><span class="hl-5">git</span><span class="hl-1"> </span><span class="hl-3">clone</span><span class="hl-1"> </span><span class="hl-6">-b</span><span class="hl-1"> </span><span class="hl-3">template-name</span><span class="hl-1"> </span><span class="hl-3">https://github.com/SmythOS/sre-project-templates.git</span><span class="hl-1"> </span><span class="hl-3">my-agent-project</span><br/><span class="hl-5">cd</span><span class="hl-1"> </span><span class="hl-3">my-agent-project</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">install</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Available templates:</p>
-<ul>
-<li><code>empty-sdk-template</code> - Blank SDK project</li>
-<li><code>minimal-sdk-agent</code> - Basic agent implementation</li>
-<li><code>interactive-book-assistant</code> - Fully functional agent with interactive chat</li>
-<li><code>interactive-chat-two-agents</code> - Two different agent implementations</li>
-</ul>
-<p>Alternatively, you can install the SDK directly in an existing project:</p>
-<pre><code class="bash"><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">install</span><span class="hl-1"> </span><span class="hl-3">@smythos/sdk</span>
+                    <p>Available templates:</p>
+                    <ul>
+                        <li><code>empty-sdk-template</code> - Blank SDK project</li>
+                        <li><code>minimal-sdk-agent</code> - Basic agent implementation</li>
+                        <li><code>interactive-book-assistant</code> - Fully functional agent with interactive chat</li>
+                        <li><code>interactive-chat-two-agents</code> - Two different agent implementations</li>
+                    </ul>
+                    <p>Alternatively, you can install the SDK directly in an existing project:</p>
+                    <pre><code class="bash"><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">install</span><span class="hl-1"> </span><span class="hl-3">@smythos/sdk</span>
 </code><button type="button">Copy</button></pre>
 
-<p>The SDK is designed for a frictionless start. It automatically initializes the Smyth Runtime Environment (SRE) with in-memory components, so you can start building agents right away without any complex setup.</p>
-<h2 id="2-your-first-agent" class="tsd-anchor-link">2. Your First Agent<a href="#2-your-first-agent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Now, let's write the code. Create a file named <code>index.ts</code> and add the following:</p>
-<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">async</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-5">main</span><span class="hl-1">() {</span><br/><span class="hl-1">    </span><span class="hl-4">// First, we define the agent&#39;s core identity.</span><br/><span class="hl-1">    </span><span class="hl-4">// The &#39;name&#39; is for your reference, &#39;behavior&#39; gives the LLM its persona and instructions,</span><br/><span class="hl-1">    </span><span class="hl-4">// and &#39;model&#39; specifies which language model to use.</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;CryptoMarket Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD.&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// Next, we give the agent a new &quot;skill&quot;.</span><br/><span class="hl-1">    </span><span class="hl-4">// Skills are tools the agent can decide to use to answer a prompt.</span><br/><span class="hl-1">    </span><span class="hl-4">// The &#39;name&#39; and &#39;description&#39; help the agent&#39;s underlying LLM understand what the skill does.</span><br/><span class="hl-1">    </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">addSkill</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;MarketData&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">description:</span><span class="hl-1"> </span><span class="hl-3">&#39;Use this skill to get comprehensive market data and statistics for a cryptocurrency&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">// The &#39;process&#39; function is the actual code that runs when the skill is called.</span><br/><span class="hl-1">        </span><span class="hl-4">// It receives arguments extracted from the user&#39;s prompt.</span><br/><span class="hl-1">        </span><span class="hl-5">process</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-2">coin_id</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">url</span><span class="hl-1"> = </span><span class="hl-3">`https://api.coingecko.com/api/v3/coins/</span><span class="hl-6">${</span><span class="hl-2">coin_id</span><span class="hl-6">}</span><span class="hl-3">?localization=false&amp;tickers=false&amp;market_data=true&amp;community_data=false&amp;developer_data=false&amp;sparkline=false`</span><span class="hl-1">;</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">response</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-5">fetch</span><span class="hl-1">(</span><span class="hl-2">url</span><span class="hl-1">);</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">data</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">response</span><span class="hl-1">.</span><span class="hl-5">json</span><span class="hl-1">();</span><br/><span class="hl-1">            </span><span class="hl-4">// The skill returns the relevant data, which the agent will use to form a natural language response.</span><br/><span class="hl-1">            </span><span class="hl-0">return</span><span class="hl-1"> </span><span class="hl-2">data</span><span class="hl-1">.</span><span class="hl-2">market_data</span><span class="hl-1">;</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    });</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// Now, let&#39;s interact with the agent.</span><br/><span class="hl-1">    </span><span class="hl-4">// We send a prompt that requires the new skill. The agent&#39;s LLM will analyze the prompt,</span><br/><span class="hl-1">    </span><span class="hl-4">// identify that it needs market data, and call the &#39;MarketData&#39; skill with the correct parameters (&#39;bitcoin&#39; and &#39;ethereum&#39;).</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Asking the agent for crypto prices...&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">promptResult</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">(</span><span class="hl-3">&#39;What are the current prices of Bitcoin and Ethereum ?&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// The agent synthesizes the data returned by the skill into a user-friendly, natural language response.</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Agent Response:&#39;</span><span class="hl-1">, </span><span class="hl-2">promptResult</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// You are not limited to letting the agent decide. You can also call a skill directly</span><br/><span class="hl-1">    </span><span class="hl-4">// if you know exactly what you want to do. This is faster and more deterministic.</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;</span><span class="hl-9">\n</span><span class="hl-3">Calling the skill directly for Bitcoin...&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">directCallResult</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;MarketData&#39;</span><span class="hl-1">, { </span><span class="hl-2">coin_id:</span><span class="hl-1"> </span><span class="hl-3">&#39;bitcoin&#39;</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Direct Call Result (USD):&#39;</span><span class="hl-1">, </span><span class="hl-2">directCallResult</span><span class="hl-1">.</span><span class="hl-2">current_price</span><span class="hl-1">.</span><span class="hl-2">usd</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">main</span><span class="hl-1">();</span>
+                    <p>
+                        The SDK is designed for a frictionless start. It automatically initializes the Smyth Runtime Environment (SRE) with in-memory
+                        components, so you can start building agents right away without any complex setup.
+                    </p>
+                    <h2 id="2-your-first-agent" class="tsd-anchor-link">
+                        2. Your First Agent<a href="#2-your-first-agent" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h2>
+                    <p>Now, let's write the code. Create a file named <code>index.ts</code> and add the following:</p>
+                    <pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">async</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-5">main</span><span class="hl-1">() {</span><br/><span class="hl-1">    </span><span class="hl-4">// First, we define the agent&#39;s core identity.</span><br/><span class="hl-1">    </span><span class="hl-4">// The &#39;name&#39; is for your reference, &#39;behavior&#39; gives the LLM its persona and instructions,</span><br/><span class="hl-1">    </span><span class="hl-4">// and &#39;model&#39; specifies which language model to use.</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;CryptoMarket Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD.&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// Next, we give the agent a new &quot;skill&quot;.</span><br/><span class="hl-1">    </span><span class="hl-4">// Skills are tools the agent can decide to use to answer a prompt.</span><br/><span class="hl-1">    </span><span class="hl-4">// The &#39;name&#39; and &#39;description&#39; help the agent&#39;s underlying LLM understand what the skill does.</span><br/><span class="hl-1">    </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">addSkill</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;MarketData&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">description:</span><span class="hl-1"> </span><span class="hl-3">&#39;Use this skill to get comprehensive market data and statistics for a cryptocurrency&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">// The &#39;process&#39; function is the actual code that runs when the skill is called.</span><br/><span class="hl-1">        </span><span class="hl-4">// It receives arguments extracted from the user&#39;s prompt.</span><br/><span class="hl-1">        </span><span class="hl-5">process</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-2">coin_id</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">url</span><span class="hl-1"> = </span><span class="hl-3">`https://api.coingecko.com/api/v3/coins/</span><span class="hl-6">${</span><span class="hl-2">coin_id</span><span class="hl-6">}</span><span class="hl-3">?localization=false&amp;tickers=false&amp;market_data=true&amp;community_data=false&amp;developer_data=false&amp;sparkline=false`</span><span class="hl-1">;</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">response</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-5">fetch</span><span class="hl-1">(</span><span class="hl-2">url</span><span class="hl-1">);</span><br/><span class="hl-1">            </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">data</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">response</span><span class="hl-1">.</span><span class="hl-5">json</span><span class="hl-1">();</span><br/><span class="hl-1">            </span><span class="hl-4">// The skill returns the relevant data, which the agent will use to form a natural language response.</span><br/><span class="hl-1">            </span><span class="hl-0">return</span><span class="hl-1"> </span><span class="hl-2">data</span><span class="hl-1">.</span><span class="hl-2">market_data</span><span class="hl-1">;</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    });</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// Now, let&#39;s interact with the agent.</span><br/><span class="hl-1">    </span><span class="hl-4">// We send a prompt that requires the new skill. The agent&#39;s LLM will analyze the prompt,</span><br/><span class="hl-1">    </span><span class="hl-4">// identify that it needs market data, and call the &#39;MarketData&#39; skill with the correct parameters (&#39;bitcoin&#39; and &#39;ethereum&#39;).</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Asking the agent for crypto prices...&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">promptResult</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">(</span><span class="hl-3">&#39;What are the current prices of Bitcoin and Ethereum ?&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// The agent synthesizes the data returned by the skill into a user-friendly, natural language response.</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Agent Response:&#39;</span><span class="hl-1">, </span><span class="hl-2">promptResult</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-4">// You are not limited to letting the agent decide. You can also call a skill directly</span><br/><span class="hl-1">    </span><span class="hl-4">// if you know exactly what you want to do. This is faster and more deterministic.</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;</span><span class="hl-9">\n</span><span class="hl-3">Calling the skill directly for Bitcoin...&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">directCallResult</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">call</span><span class="hl-1">(</span><span class="hl-3">&#39;MarketData&#39;</span><span class="hl-1">, { </span><span class="hl-2">coin_id:</span><span class="hl-1"> </span><span class="hl-3">&#39;bitcoin&#39;</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;Direct Call Result (USD):&#39;</span><span class="hl-1">, </span><span class="hl-2">directCallResult</span><span class="hl-1">.</span><span class="hl-2">current_price</span><span class="hl-1">.</span><span class="hl-2">usd</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">main</span><span class="hl-1">();</span>
 </code><button type="button">Copy</button></pre>
 
-<h2 id="3-run-your-code" class="tsd-anchor-link">3. Run Your Code<a href="#3-run-your-code" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>If you used the CLI to create your project, build and run it:</p>
-<pre><code class="bash"><span class="hl-4"># Build the project</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">run</span><span class="hl-1"> </span><span class="hl-3">build</span><br/><br/><span class="hl-4"># Run your agent</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">start</span>
+                    <h2 id="3-run-your-code" class="tsd-anchor-link">
+                        3. Run Your Code<a href="#3-run-your-code" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h2>
+                    <p>If you used the CLI to create your project, build and run it:</p>
+                    <pre><code class="bash"><span class="hl-4"># Build the project</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">run</span><span class="hl-1"> </span><span class="hl-3">build</span><br/><br/><span class="hl-4"># Run your agent</span><br/><span class="hl-5">npm</span><span class="hl-1"> </span><span class="hl-3">start</span>
 </code><button type="button">Copy</button></pre>
 
-<p>If you're using direct SDK installation, save the file and run it from your terminal:</p>
-<pre><code class="bash"><span class="hl-5">ts-node</span><span class="hl-1"> </span><span class="hl-3">index.ts</span>
+                    <p>If you're using direct SDK installation, save the file and run it from your terminal:</p>
+                    <pre><code class="bash"><span class="hl-5">ts-node</span><span class="hl-1"> </span><span class="hl-3">index.ts</span>
 </code><button type="button">Copy</button></pre>
 
-<p>You'll see the agent think for a moment and then respond with the prices it fetched using the <code>MarketData</code> skill!</p>
-<h2 id="next-steps" class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Congratulations on building your first agent! You've learned how to:</p>
-<ul>
-<li>Create an agent with a specific behavior.</li>
-<li>Add a custom skill that calls an external API.</li>
-<li>Interact with the agent using a natural language prompt.</li>
-<li>Call a skill directly for more precise control.</li>
-</ul>
-<p>Now you're ready to dive deeper. Move on to <a href="02-agents.html">Building Agents</a> to learn how to organize multiple skills, manage agent state, and more.</p>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#getting-started"><span>Getting <wbr/>Started</span></a><ul><li><a href="#1-installation"><span>1. <wbr/>Installation</span></a></li><li><ul><li><a href="#method-1-using-the-cli-recommended"><span>Method 1: <wbr/>Using the <wbr/>CLI (<wbr/>Recommended)</span></a></li><li><a href="#method-2-direct-sdk-installation"><span>Method 2: <wbr/>Direct <wbr/>SDK <wbr/>Installation</span></a></li></ul></li><li><a href="#2-your-first-agent"><span>2. <wbr/>Your <wbr/>First <wbr/>Agent</span></a></li><li><a href="#3-run-your-code"><span>3. <wbr/>Run <wbr/>Your <wbr/>Code</span></a></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS SDK</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+                    <p>
+                        You'll see the agent think for a moment and then respond with the prices it fetched using the <code>MarketData</code> skill!
+                    </p>
+                    <h2 id="next-steps" class="tsd-anchor-link">
+                        Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg
+                        ></a>
+                    </h2>
+                    <p>Congratulations on building your first agent! You've learned how to:</p>
+                    <ul>
+                        <li>Create an agent with a specific behavior.</li>
+                        <li>Add a custom skill that calls an external API.</li>
+                        <li>Interact with the agent using a natural language prompt.</li>
+                        <li>Call a skill directly for more precise control.</li>
+                    </ul>
+                    <p>
+                        Now you're ready to dive deeper. Move on to <a href="02-agents.html">Building Agents</a> to learn how to organize multiple
+                        skills, manage agent state, and more.
+                    </p>
+                </div>
+            </div>
+            <div class="col-sidebar">
+                <div class="page-menu">
+                    <div class="tsd-navigation settings">
+                        <details class="tsd-accordion">
+                            <summary class="tsd-accordion-summary">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <use href="../assets/icons.svg#icon-chevronDown"></use>
+                                </svg>
+                                <h3>Settings</h3>
+                            </summary>
+                            <div class="tsd-accordion-details">
+                                <div class="tsd-filter-visibility">
+                                    <span class="settings-label">Member Visibility</span>
+                                    <ul id="tsd-filter-options">
+                                        <li class="tsd-filter-item">
+                                            <label class="tsd-filter-input"
+                                                ><input type="checkbox" id="tsd-filter-protected" name="protected" /><svg
+                                                    width="32"
+                                                    height="32"
+                                                    viewBox="0 0 32 32"
+                                                    aria-hidden="true"
+                                                >
+                                                    <rect
+                                                        class="tsd-checkbox-background"
+                                                        width="30"
+                                                        height="30"
+                                                        x="1"
+                                                        y="1"
+                                                        rx="6"
+                                                        fill="none"
+                                                    ></rect>
+                                                    <path
+                                                        class="tsd-checkbox-checkmark"
+                                                        d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25"
+                                                        stroke="none"
+                                                        stroke-width="3.5"
+                                                        stroke-linejoin="round"
+                                                        fill="none"
+                                                    ></path></svg
+                                                ><span>Protected</span></label
+                                            >
+                                        </li>
+                                        <li class="tsd-filter-item">
+                                            <label class="tsd-filter-input"
+                                                ><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked /><svg
+                                                    width="32"
+                                                    height="32"
+                                                    viewBox="0 0 32 32"
+                                                    aria-hidden="true"
+                                                >
+                                                    <rect
+                                                        class="tsd-checkbox-background"
+                                                        width="30"
+                                                        height="30"
+                                                        x="1"
+                                                        y="1"
+                                                        rx="6"
+                                                        fill="none"
+                                                    ></rect>
+                                                    <path
+                                                        class="tsd-checkbox-checkmark"
+                                                        d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25"
+                                                        stroke="none"
+                                                        stroke-width="3.5"
+                                                        stroke-linejoin="round"
+                                                        fill="none"
+                                                    ></path></svg
+                                                ><span>Inherited</span></label
+                                            >
+                                        </li>
+                                        <li class="tsd-filter-item">
+                                            <label class="tsd-filter-input"
+                                                ><input type="checkbox" id="tsd-filter-external" name="external" /><svg
+                                                    width="32"
+                                                    height="32"
+                                                    viewBox="0 0 32 32"
+                                                    aria-hidden="true"
+                                                >
+                                                    <rect
+                                                        class="tsd-checkbox-background"
+                                                        width="30"
+                                                        height="30"
+                                                        x="1"
+                                                        y="1"
+                                                        rx="6"
+                                                        fill="none"
+                                                    ></rect>
+                                                    <path
+                                                        class="tsd-checkbox-checkmark"
+                                                        d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25"
+                                                        stroke="none"
+                                                        stroke-width="3.5"
+                                                        stroke-linejoin="round"
+                                                        fill="none"
+                                                    ></path></svg
+                                                ><span>External</span></label
+                                            >
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="tsd-theme-toggle">
+                                    <label class="settings-label" for="tsd-theme">Theme</label
+                                    ><select id="tsd-theme">
+                                        <option value="os">OS</option>
+                                        <option value="light">Light</option>
+                                        <option value="dark">Dark</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    <details open class="tsd-accordion tsd-page-navigation">
+                        <summary class="tsd-accordion-summary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <use href="../assets/icons.svg#icon-chevronDown"></use>
+                            </svg>
+                            <h3>On This Page</h3>
+                        </summary>
+                        <div class="tsd-accordion-details">
+                            <a href="#getting-started"
+                                ><span>Getting <wbr />Started</span></a
+                            >
+                            <ul>
+                                <li>
+                                    <a href="#1-installation"
+                                        ><span>1. <wbr />Installation</span></a
+                                    >
+                                </li>
+                                <li>
+                                    <ul>
+                                        <li>
+                                            <a href="#method-1-using-the-cli-recommended"
+                                                ><span>Method 1: <wbr />Using the <wbr />CLI (<wbr />Recommended)</span></a
+                                            >
+                                        </li>
+                                        <li>
+                                            <a href="#method-2-direct-sdk-installation"
+                                                ><span>Method 2: <wbr />Direct <wbr />SDK <wbr />Installation</span></a
+                                            >
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a href="#2-your-first-agent"
+                                        ><span>2. <wbr />Your <wbr />First <wbr />Agent</span></a
+                                    >
+                                </li>
+                                <li>
+                                    <a href="#3-run-your-code"
+                                        ><span>3. <wbr />Run <wbr />Your <wbr />Code</span></a
+                                    >
+                                </li>
+                                <li>
+                                    <a href="#next-steps"
+                                        ><span>Next <wbr />Steps</span></a
+                                    >
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+                <div class="site-menu">
+                    <nav id="tsd-sidebar-links" class="tsd-navigation">
+                        <a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a
+                        ><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a
+                        ><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a
+                        ><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a
+                        ><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a>
+                    </nav>
+                    <nav class="tsd-navigation">
+                        <a href="../modules.html">SmythOS SDK</a>
+                        <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+                            <li>Loading...</li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <footer>
+            <p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+        </footer>
+        <div class="overlay"></div>
+    </body>
+</html>

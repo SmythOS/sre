@@ -4,11 +4,11 @@ The SmythOS SDK introduces `.smyth` files to bridge the gap between visual agent
 
 This approach offers several advantages:
 
--   **Visual Workflow:** It allows complex agent workflows to be visualized, making them easier to understand and manage, which is especially useful for critical processes.
--   **Collaboration:** It facilitates collaboration between developers and non-developers. Product managers or designers can use the visual builder to create or modify agent logic, which developers can then import and extend in code.
--   **Separation of Concerns:** It promotes a clean separation where the agent's high-level structure is defined in the `.smyth` file, and the application code handles the runtime logic and interaction.
+- **Visual Workflow:** It allows complex agent workflows to be visualized, making them easier to understand and manage, which is especially useful for critical processes.
+- **Collaboration:** It facilitates collaboration between developers and non-developers. Product managers or designers can use the visual builder to create or modify agent logic, which developers can then import and extend in code.
+- **Separation of Concerns:** It promotes a clean separation where the agent's high-level structure is defined in the `.smyth` file, and the application code handles the runtime logic and interaction.
 
-The [`examples/02-agent-smyth-file`](../../examples/02-agent-smyth-file) directory contains a working example of this concept.
+The [`examples/02-agent-smyth-file`](https://github.com/SmythOS/sre/blob/main/examples/02-agent-smyth-file) directory contains a working example of this concept.
 
 ## The `.smyth` File Format
 
@@ -31,8 +31,8 @@ A `.smyth` file is a JSON file that describes the agent's configuration. The for
                 { "name": "headers", "index": 0 },
                 { "name": "body", "index": 1 },
                 { "name": "query", "index": 2 },
-                { "name": "query.coin_id", "index": 3 }
-            ]
+                { "name": "query.coin_id", "index": 3 },
+            ],
         },
         {
             "id": "CP002",
@@ -41,19 +41,19 @@ A `.smyth` file is a JSON file that describes the agent's configuration. The for
             "description": "Calls the CoinGecko API to get the price.",
             "data": {
                 "method": "GET",
-                "url": "https://api.coingecko.com/api/v3/simple/price?ids={{coin_id}}&vs_currencies=usd"
+                "url": "https://api.coingecko.com/api/v3/simple/price?ids={{coin_id}}&vs_currencies=usd",
             },
-            "inputs": [{ "name": "coin_id", "type": "String", "index": 0 }]
-        }
+            "inputs": [{ "name": "coin_id", "type": "String", "index": 0 }],
+        },
     ],
     "connections": [
         {
             "sourceId": "CP001",
             "sourceIndex": "query.coin_id",
             "targetId": "CP002",
-            "targetIndex": "coin_id"
-        }
-    ]
+            "targetIndex": "coin_id",
+        },
+    ],
 }
 ```
 
