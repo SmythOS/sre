@@ -4,6 +4,17 @@ import { Component } from './Component.class';
 import Joi from 'joi';
 import { delay } from '../utils';
 
+interface AsyncResult {
+    JobID: string;
+    _debug?: string;
+    [key: string]: any; // Allow additional properties from input in forked mode
+}
+
+interface AsyncErrorResult {
+    _error: string;
+    _debug: string;
+}
+
 export class Async extends Component {
     static JOBS = {};
     protected configSchema = null;
@@ -18,6 +29,9 @@ export class Async extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
+
+        logger.debug(`=== Async Log ===`);
+
         //we set data.forked to true in the forked component in order to refork it again.
         const forked = config.data.forked;
         let _error = null;
@@ -28,6 +42,8 @@ export class Async extends Component {
             if (!forked) {
                 const forkedAgent: ForkedAgent = new ForkedAgent(agent, config.id);
                 const JobID = forkedAgent.jobID;
+
+                logger.debug(` JobID: ${JobID}`);
 
                 forkedAgent.agent.async = true;
                 forkedAgent.agent.jobID = JobID;
@@ -71,21 +87,38 @@ export class Async extends Component {
                         }
                     });
 
-                return { JobID };
+                logger.debug(''); // empty line
+                const result: AsyncResult = {
+                    JobID,
+                    _debug: logger.output,
+                };
+                logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
+                return result;
             } else {
                 //const Input = input.Input;
-                let result = { JobID: agent.jobID };
+                const result: AsyncResult = {
+                    JobID: agent.jobID,
+                };
                 for (let key in input) {
                     result[key] = input[key];
                 }
 
+                logger.debug(` JobID: ${agent.jobID}`);
+
+                logger.debug(''); // empty line
+                result._debug = logger.output;
+                logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
                 return result;
             }
         } catch (error: any) {
-            _error = error;
+            _error = error?.message || error?.toString() || error;
+            logger.error(` Error: ${_error}`);
+            const errorResult: AsyncErrorResult = {
+                _error,
+                _debug: logger.output,
+            };
+            return errorResult;
         }
-
-        return {};
     }
 
     // private recursiveTagAsyncComponents(component, agent: Agent) {
