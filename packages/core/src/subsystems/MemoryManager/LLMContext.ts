@@ -10,6 +10,9 @@ export class LLMContext {
     private _llmContextStore: ILLMContextStore;
     private _llmCache: LLMCache;
 
+    /** Resolves when the context store has finished loading (if any). Safe to call before push/add/getContextWindow. */
+    private _readyPromise: Promise<void>;
+
     public get systemPrompt() {
         return this._systemPrompt;
     }
@@ -36,21 +39,33 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore) {
-        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
+    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore, cacheId?: string) {
+        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId), cacheId);
+
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;
 
         if (llmContextStore) {
             this._llmContextStore = llmContextStore;
-            this._llmContextStore.load().then((messages) => {
+            this._readyPromise = this._llmContextStore.load().then((messages) => {
                 this._messages = messages;
                 this._llmCache.set('messages', this._messages);
             });
+        } else {
+            this._readyPromise = Promise.resolve();
         }
     }
 
-    private push(...message: any[]) {
+    /**
+     * Returns a promise that resolves when the context is ready (store loaded if present).
+     * Call before pushing or reading messages to avoid race conditions.
+     */
+    public ready(): Promise<void> {
+        return this._readyPromise;
+    }
+
+    private async push(...message: any[]) {
+        await this.ready();
         this._messages.push(...message);
 
         if (this._llmContextStore) {
@@ -58,7 +73,8 @@ export class LLMContext {
         }
         this._llmCache.set('messages', this._messages);
     }
-    public addUserMessage(content: string, message_id: string, metadata?: any) {
+    public async addUserMessage(content: string, message_id: string, metadata?: any): Promise<void> {
+        await this.ready();
         //in the current implementation, we do not support forked conversations
         //we always attatch to the last message in the queue
 
@@ -75,9 +91,10 @@ export class LLMContext {
         const prev = lastMessage?.__smyth_data__?.message_id;
         const next = [];
 
-        this.push({ role: 'user', content, __smyth_data__: { message_id, ...metadata, prev, next } });
+        await this.push({ role: 'user', content, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
-    public addAssistantMessage(content: string, message_id: string, metadata?: any) {
+    public async addAssistantMessage(content: string, message_id: string, metadata?: any): Promise<void> {
+        await this.ready();
         const lastMessage = this._messages[this._messages.length - 1];
 
         if (lastMessage) {
@@ -89,9 +106,10 @@ export class LLMContext {
 
         const prev = lastMessage?.__smyth_data__?.message_id;
         const next = [];
-        this.push({ role: 'assistant', content, __smyth_data__: { message_id, ...metadata, prev, next } });
+        await this.push({ role: 'assistant', content, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
-    public addToolMessage(messageBlock: any, toolsData: any, message_id: string, metadata?: any) {
+    public async addToolMessage(messageBlock: any, toolsData: any, message_id: string, metadata?: any): Promise<void> {
+        await this.ready();
         const lastMessage = this._messages[this._messages.length - 1];
 
         if (lastMessage) {
@@ -103,10 +121,11 @@ export class LLMContext {
 
         const prev = lastMessage?.__smyth_data__?.message_id;
         const next = [];
-        this.push({ messageBlock, toolsData, __smyth_data__: { message_id, ...metadata, prev, next } });
+        await this.push({ messageBlock, toolsData, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
 
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 1024): Promise<any[]> {
+        await this.ready();
         const messages = JSON.parse(JSON.stringify(this._messages));
         // if (messages[0]?.role === 'system') {
         //     messages[0].content = this.systemPrompt;
