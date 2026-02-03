@@ -559,11 +559,17 @@ export class AnthropicConnector extends LLMConnector {
         }
         //#endregion Prepare system message and add JSON response instruction if needed
 
-        const isReasoningModel = params?.capabilities?.reasoning;
+        // Temperature and top_p are mutually exclusive for Anthropic API.
+        // Temperature takes precedence. Guard ensures only one is ever set.
+        if (params?.temperature !== undefined && params.temperature >= 0) {
+            body.temperature = params.temperature;
+            delete body.top_p;
+        } else if (params?.topP !== undefined && params.topP >= 0) {
+            body.top_p = params.topP;
+            delete body.temperature;
+        }
 
-        if (params?.temperature !== undefined && !isReasoningModel) body.temperature = params.temperature;
-        if (params?.topP !== undefined && !isReasoningModel) body.top_p = params.topP;
-        if (params?.topK !== undefined && !isReasoningModel) body.top_k = params.topK;
+        if (params?.topK !== undefined) body.top_k = params.topK;
         if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
 
         // #region Tools
