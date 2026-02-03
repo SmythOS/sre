@@ -177,6 +177,7 @@ export * from './subsystems/IO/Router.service/connectors/ExpressRouter.class';
 export * from './subsystems/IO/Router.service/connectors/NullRouter.class';
 export * from './subsystems/IO/Storage.service/connectors/LocalStorage.class';
 export * from './subsystems/IO/Storage.service/connectors/S3Storage.class';
+export * from './subsystems/IO/Storage.service/connectors/AzureBlobStorage.class'
 export * from './subsystems/IO/VectorDB.service/connectors/MilvusVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/connectors/RAMVecrtorDB.class';
