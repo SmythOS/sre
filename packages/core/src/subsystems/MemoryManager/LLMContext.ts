@@ -10,7 +10,7 @@ export class LLMContext {
     private _llmContextStore: ILLMContextStore;
     private _llmCache: LLMCache;
 
-    /** Resolves when the context store has finished loading (if any). Safe to call before push/add/getContextWindow. */
+    /** Resolves when the context store has finished loading (if any). Safe to call before using addUserMessage, getContextWindow, or other context operations. */
     private _readyPromise: Promise<void>;
 
     public get systemPrompt() {
@@ -39,8 +39,8 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore, cacheId?: string) {
-        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId), cacheId);
+    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore) {
+        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
 
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;
