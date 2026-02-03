@@ -8,8 +8,9 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
-import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams } from '@sre/types/LLM.types';
+import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
 
+import { LLMHelper } from './LLM.helper';
 import { LLMConnector } from './LLM.service/LLMConnector';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
@@ -96,29 +97,33 @@ export class LLMInference {
 
             const result = this._llmConnector.postProcess(response?.content);
             if (result.error) {
-                // If the model stopped before completing the response, this is usually due to output token limit reached.
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                // If the model stopped before completing the response normally, provide specific error message
+                if (response.finishReason !== TLLMFinishReason.Stop) {
+                    const errorMessage = LLMHelper.getFinishReasonErrorMessage(response.finishReason);
+                    throw new Error(errorMessage);
                 }
 
-                // If the model stopped due to other reasons, throw the error
+                // If the model stopped normally but there's a postProcess error, throw the postProcess error
                 throw new Error(result.error);
             }
             return result;
         } catch (error: any) {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
-                try {
-                    const fallbackParams = await this.getSafeFallbackParams(params);
-                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
+                const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+                if (isCustomModel) {
+                    try {
+                        const fallbackParams = await this.getSafeFallbackParams(params);
+                        const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
 
-                    // If fallback succeeded, return the result
-                    if (fallbackResult !== null) {
-                        return fallbackResult;
+                        // If fallback succeeded, return the result
+                        if (fallbackResult !== null) {
+                            return fallbackResult;
+                        }
+                    } catch (fallbackError) {
+                        // If fallback also failed, log it but continue to throw original error
+                        logger.warn('Fallback also failed:', fallbackError);
                     }
-                } catch (fallbackError) {
-                    // If fallback also failed, log it but continue to throw original error
-                    logger.warn('Fallback also failed:', fallbackError);
                 }
             }
 
@@ -147,41 +152,20 @@ export class LLMInference {
             onFallback({ model: this._model });
         }
 
-        try {
-            return await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
-        } catch (error) {
-            // Attempt fallback for custom models (only if not already in fallback)
-            if (!isInFallback) {
-                try {
-                    const fallbackParams = await this.getSafeFallbackParams(params);
-                    const fallbackResult = await this.executeFallback('promptStream', {
-                        query,
-                        contextWindow,
-                        files,
-                        params: fallbackParams,
-                        onFallback,
-                    });
+        // Connectors now always return emitters (they don't throw errors)
+        const primaryEmitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
 
-                    // If fallback succeeded, return the result
-                    if (fallbackResult !== null) {
-                        return fallbackResult;
-                    }
-                } catch (fallbackError) {
-                    // If fallback also failed, log it but continue to return error emitter
-                    logger.warn('Fallback also failed:', fallbackError);
-                }
+        // Only wrap with fallback capability if this is a custom model (not already in fallback)
+        // For regular models, return the emitter directly - errors flow naturally to the caller
+        if (!isInFallback) {
+            const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+
+            if (isCustomModel) {
+                return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
             }
-
-            // If fallback was not attempted or failed, return error emitter
-            logger.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
-            process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
-            });
-            return dummyEmitter;
         }
+
+        return primaryEmitter;
     }
 
     /**
@@ -232,19 +216,20 @@ export class LLMInference {
 
     /**
      * Executes fallback logic for custom models when the primary model fails.
-     * This method checks if a fallback model is configured and invokes the appropriate LLM method.
+     * Checks if a fallback model is configured and switches to it.
      * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
+     *
+     * **Important**: This method should only be called for custom models (already verified by caller).
      *
      * @param methodName - The name of the method being called ('prompt' or 'promptStream')
      * @param args - The original arguments passed to the method
-     * @returns The result from the fallback execution, or null if fallback should not be attempted
+     * @returns The result from the fallback execution, or null if no fallback is configured
      */
     private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
-        const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
         const fallbackModel = await this._modelProviderReq.getFallbackLLM(this._model);
 
-        // Only execute fallback if it's a custom model with a configured fallback
-        if (!isCustomModel || !fallbackModel) {
+        // Only execute fallback if a fallback model is configured
+        if (!fallbackModel) {
             return null;
         }
 
@@ -266,6 +251,93 @@ export class LLMInference {
         }
     }
 
+    /**
+     * Wraps an emitter with fallback capability using a proxy pattern.
+     * This creates a transparent proxy that forwards all events from the source emitter.
+     * On error, it attempts to switch to a fallback model and seamlessly redirects events.
+     *
+     * **Important**: This method is only called for custom models that have fallback configured.
+     * Regular models return their emitters directly without wrapping, so errors flow naturally.
+     *
+     * **Design Pattern**: Proxy/Decorator with listener-based event forwarding
+     * **Coupling**: Minimal - reads event types from TLLMEvent enum (single source of truth)
+     * **Reliability**: Uses listeners (not emit interception) to avoid timing issues with async emits
+     *
+     * Note: We use the TLLMEvent enum as the source of truth for all event types.
+     * This provides a good balance between decoupling and reliability. The enum already
+     * defines all possible LLM events, and connectors emit these standard events.
+     *
+     * @param sourceEmitter - The custom model's event emitter
+     * @param args - The original prompt arguments for fallback execution
+     * @returns A proxy emitter that transparently handles primary/fallback switching
+     */
+    private wrapWithFallback(sourceEmitter: EventEmitter, args: TPromptParams): EventEmitter {
+        const proxyEmitter = new EventEmitter();
+        let fallbackAttempted = false;
+
+        /**
+         * Attaches forwarding listeners for all event types in TLLMEvent.
+         * Uses listeners instead of emit() interception to avoid timing issues with setImmediate.
+         * 
+         * @param source - The emitter to forward events from
+         * @param skipErrors - If true, skips forwarding error events (handled separately)
+         */
+        const forwardAllEvents = (source: EventEmitter, skipErrors: boolean) => {
+            // Get all event types from TLLMEvent enum
+            const eventTypes = Object.values(TLLMEvent);
+            
+            for (const eventType of eventTypes) {
+                // Skip error events if we're intercepting them
+                if (skipErrors && eventType === TLLMEvent.Error) {
+                    continue;
+                }
+                
+                // Attach listener to forward this event type
+                source.on(eventType, (...eventArgs: any[]) => {
+                    proxyEmitter.emit(eventType, ...eventArgs);
+                });
+            }
+        };
+
+        // Handle error events for fallback logic
+        const handleError = async (error: Error) => {
+            if (fallbackAttempted) return;
+            fallbackAttempted = true;
+
+            // Stop forwarding from primary emitter
+            sourceEmitter.removeAllListeners();
+
+            try {
+                const fallbackParams = await this.getSafeFallbackParams(args.params);
+                const fallbackEmitter = await this.executeFallback('promptStream', {
+                    ...args,
+                    params: fallbackParams,
+                });
+
+                if (fallbackEmitter) {
+                    // Forward all events from fallback emitter (including errors)
+                    forwardAllEvents(fallbackEmitter, false);
+                    logger.info('Successfully switched to fallback stream');
+                    return;
+                }
+            } catch (fallbackError) {
+                logger.warn('Fallback attempt failed:', fallbackError);
+            }
+
+            // If we get here, fallback failed or was not available - emit error on proxy
+            proxyEmitter.emit(TLLMEvent.Error, error);
+            proxyEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+        };
+
+        // Attach error handler FIRST to intercept errors
+        sourceEmitter.once(TLLMEvent.Error, handleError);
+
+        // Forward all non-error events from primary emitter
+        forwardAllEvents(sourceEmitter, true);
+
+        return proxyEmitter;
+    }
+
     public async imageGenRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
         return this._llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
@@ -280,24 +352,21 @@ export class LLMInference {
     //@deprecated
     public async streamRequest(params: any, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-        try {
-            if (!params.messages || !params.messages?.length) {
-                throw new Error('Input messages are required.');
-            }
-
-            const model = params.model || this._model;
-
-            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
-        } catch (error) {
-            logger.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
+        if (!params.messages || !params.messages?.length) {
+            // Return an emitter with error/end events for validation errors
+            const errorEmitter = new EventEmitter();
+            const validationError = new Error('Input messages are required.');
             process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
+                errorEmitter.emit(TLLMEvent.Error, validationError);
+                errorEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            return dummyEmitter;
+            return errorEmitter;
         }
+
+        const model = params.model || this._model;
+
+        // Connectors now always return emitters (they don't throw errors)
+        return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
     }
 
     //@deprecated
