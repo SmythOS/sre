@@ -90,6 +90,8 @@ Install the [CLI](packages/cli/) globally and create a new project:
 npm i -g @smythos/cli
 sre create
 ```
+> **Tip**: SmythOS recommends using `pnpm` as the package manager.  
+> For troubleshooting, set `LOG_LEVEL="debug"` before running commands to see detailed logs.
 
 The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs.
 
