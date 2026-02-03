@@ -112,6 +112,7 @@ export abstract class LLMConnector extends Connector {
                 const response = await this.request({
                     acRequest: candidate.readRequest,
                     body: preparedParams.body,
+                    abortSignal: preparedParams.abortSignal,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
@@ -137,6 +138,7 @@ export abstract class LLMConnector extends Connector {
                 const requestParams = {
                     acRequest: candidate.readRequest,
                     body: preparedParams.body,
+                    abortSignal: preparedParams.abortSignal,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
@@ -262,14 +264,17 @@ export abstract class LLMConnector extends Connector {
 
     private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMPreparedParams> {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        // Assign file from the original parameters to avoid overwriting the original constructor
-        const files = params?.files;
-        delete params?.files; // need to remove files to avoid any issues during JSON.stringify() especially when we have large files
+        // Extract files and abortSignal from the original parameters to avoid overwriting the original constructor
+        const { files, abortSignal, ...restParams } = params;
 
-        const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
+        const clonedParams = JSON.parse(JSON.stringify(restParams)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
         const _params: TLLMPreparedParams = this.formatParamValues(clonedParams);
+
+        // Re-attach non-serializable properties ignored before cloning
+        _params.abortSignal = abortSignal;
+        _params.files = files;
 
         const model = _params.model;
         const teamId = await this.getTeamId(candidate);
@@ -307,8 +312,6 @@ export abstract class LLMConnector extends Connector {
         }
 
         _params.model = await modelProviderCandidate.getModelId(model);
-        // Attach the files again after formatting the parameters
-        _params.files = files;
 
         const features = modelInfo?.features || [];
 
@@ -461,6 +464,7 @@ export abstract class LLMConnector extends Connector {
             }
 
             //FIXME: to revisit by Alaa-eddine
+            // TODO: This part is a bit confusing. We send “consistent” messages to the LLM, but they still aren’t truly consistent. For example, we send { role: 'system', content: 'You are a helpful assistant.' }, which isn’t compatible with Google AI. However, we still need to mark it as `system` because we later convert it to `systemInstruction`. We should revisit the architecture later and make the flow simpler and more straightforward.
             if (key === 'messages') {
                 _value = this.getConsistentMessages(_value);
             }

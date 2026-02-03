@@ -27,6 +27,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     LLMInterface,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -38,18 +39,6 @@ import { LLMConnector } from '../LLMConnector';
 import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('GoogleAIConnector');
-
-const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
-    'gemini-1.5-pro-exp-0801',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-001',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash',
-];
-const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
@@ -84,7 +73,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
 
@@ -94,6 +83,7 @@ export class GoogleAIConnector extends LLMConnector {
                 generationConfig: body.generationConfig,
                 systemInstruction: body.systemInstruction,
                 promptConfig,
+                abortSignal,
             });
 
             const genAI = await this.getClient(context);
@@ -108,7 +98,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             const response = await genAI.models.generateContent(requestPayload as any);
             const content = response.text ?? '';
-            const finishReason = (response.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || TLLMFinishReason.Stop);
             const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
 
             if (usage) {
@@ -166,8 +156,28 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
 
@@ -177,6 +187,7 @@ export class GoogleAIConnector extends LLMConnector {
             generationConfig: body.generationConfig,
             systemInstruction: body.systemInstruction,
             promptConfig,
+            abortSignal,
         });
 
         const genAI = await this.getClient(context);
@@ -251,7 +262,7 @@ export class GoogleAIConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
 
-                        const finishReason = 'stop'; // GoogleAI doesn't provide finishReason in streaming
+                        const finishReason: TLLMFinishReason = TLLMFinishReason.Stop; // GoogleAI doesn't provide finishReason in streaming
                         const reportedUsage: any[] = [];
 
                         if (usage) {
@@ -267,20 +278,51 @@ export class GoogleAIConnector extends LLMConnector {
                         // Note: GoogleAI stream doesn't provide explicit finish reasons
                         // If we had a non-stop finish reason, we would emit Interrupted here
 
-                        setTimeout(() => {
-                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                        }, 100);
-                    } catch (error) {
-                        logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                setTimeout(() => {
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                }, 100);
+            } catch (error) {
+                const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+                if (isAbort) {
+                    logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                    // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                    const abortError = new DOMException('Request aborted', 'AbortError');
+                    setImmediate(() => {
+                        emitter.emit(TLLMEvent.Abort, abortError);
+                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                    });
+                } else {
+                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                    setImmediate(() => {
                         emitter.emit(TLLMEvent.Error, error);
-                    }
+                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                    });
+                }
+            }
                 })();
             });
 
             return emitter;
         } catch (error: any) {
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
     // #region Image Generation, will be moved to a different subsystem/service
@@ -452,6 +494,18 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
+        // Extract system messages before preparing messages
+        // All modern Gemini models (2.0+, 2.5, 3.0) support native system instruction
+        let systemInstruction = '';
+        const originalMessages = params?.messages || [];
+
+        if (LLMHelper.hasSystemMessage(originalMessages)) {
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(originalMessages);
+            systemInstruction = this.extractMessageContent(systemMessage as TLLMMessageBlock);
+            // Pass only non-system messages to prepareMessages
+            params = { ...params, messages: otherMessages };
+        }
+
         const messages = await this.prepareMessages(params);
 
         const body: TGoogleAIRequestBody = {
@@ -461,14 +515,11 @@ export class GoogleAIConnector extends LLMConnector {
 
         const responseFormat = params?.responseFormat || '';
         let responseMimeType = '';
-        let systemInstruction = '';
 
         if (responseFormat === 'json') {
             systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
+            responseMimeType = 'application/json';
         }
 
         const config: Record<string, any> = {};
@@ -528,10 +579,12 @@ export class GoogleAIConnector extends LLMConnector {
         generationConfig,
         systemInstruction,
         promptConfig,
+        abortSignal,
     }: {
         generationConfig?: TGoogleAIRequestBody['generationConfig'];
         systemInstruction?: TGoogleAIRequestBody['systemInstruction'];
         promptConfig?: Record<string, any>;
+        abortSignal?: AbortSignal;
     }): Record<string, any> | undefined {
         const config: Record<string, any> = {};
 
@@ -555,6 +608,10 @@ export class GoogleAIConnector extends LLMConnector {
             config.systemInstruction = promptConfig.systemInstruction;
         } else if (systemInstruction) {
             config.systemInstruction = systemInstruction;
+        }
+
+        if (abortSignal) {
+            config.abortSignal = abortSignal;
         }
 
         return Object.keys(config).length > 0 ? config : undefined;
@@ -888,11 +945,15 @@ export class GoogleAIConnector extends LLMConnector {
             let functionCallCount = 0; // Track function call parts for thoughtSignature handling
 
             // Map roles to valid Google AI roles
+            // Note: System role is preserved so it can be extracted as systemInstruction later
             switch (_message.role) {
                 case TLLMMessageRole.Assistant:
-                case TLLMMessageRole.System:
                 case TLLMMessageRole.Model:
                     _message.role = TLLMMessageRole.Model;
+                    break;
+                case TLLMMessageRole.System:
+                    // Keep system role as-is for later extraction to systemInstruction
+                    _message.role = TLLMMessageRole.System;
                     break;
                 case TLLMMessageRole.Function:
                 case TLLMMessageRole.Tool:
@@ -1030,6 +1091,31 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
+    /**
+     * Extracts text content from a message block, handling multiple formats (.parts, .content as string/array)
+     * This ensures compatibility with messages that have been normalized by getConsistentMessages or come in various formats
+     */
+    private extractMessageContent(message: TLLMMessageBlock | any): string {
+        if (!message) return '';
+
+        // Handle .parts array format (Google AI native format)
+        if (message.parts && Array.isArray(message.parts)) {
+            return message.parts.map((part) => part?.text || '').join(' ');
+        }
+
+        // Handle .content as string
+        if (typeof message.content === 'string') {
+            return message.content;
+        }
+
+        // Handle .content as array
+        if (Array.isArray(message.content)) {
+            return message.content.map((part) => (typeof part === 'string' ? part : part?.text || '')).join(' ');
+        }
+
+        return '';
+    }
+
     private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | TGoogleAIToolPrompt> {
         let messages: string | TLLMMessageBlock[] | TGoogleAIToolPrompt = (params?.messages as any) || '';
 
@@ -1050,7 +1136,6 @@ export class GoogleAIConnector extends LLMConnector {
         const model = params.model;
 
         let messages: string | TLLMMessageBlock[] = params?.messages || '';
-        let systemInstruction = '';
         const files: BinaryInput[] = params?.files || [];
 
         // #region Upload files
@@ -1101,12 +1186,7 @@ export class GoogleAIConnector extends LLMConnector {
         const fileData = this.getFileData(uploadedFiles);
 
         const userMessage: TLLMMessageBlock = Array.isArray(messages) ? messages.pop() : { role: TLLMMessageRole.User, content: '' };
-        let prompt = userMessage?.content || '';
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
+        let prompt = this.extractMessageContent(userMessage);
         //#endregion Separate system message and add JSON response instruction if needed
 
         // Adjust input structure handling for multiple image files to accommodate variations.
@@ -1116,29 +1196,11 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<TGoogleAIToolPrompt> {
-        let formattedMessages: TLLMMessageBlock[];
-        let systemInstruction = '';
-
-        let messages = params?.messages || [];
-
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-
-        if (hasSystemMessage) {
-            const separateMessages = LLMHelper.separateSystemMessages(messages);
-            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
-            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
-            formattedMessages = separateMessages.otherMessages;
-        } else {
-            formattedMessages = messages;
-        }
+        const messages = params?.messages || [];
 
         const toolsPrompt: TGoogleAIToolPrompt = {
-            contents: formattedMessages as any,
+            contents: messages as any,
         };
-
-        if (systemInstruction) {
-            toolsPrompt.systemInstruction = systemInstruction;
-        }
 
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
@@ -1172,37 +1234,13 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async prepareMessagesWithTextQuery(params: TLLMPreparedParams): Promise<string> {
-        const model = params.model;
-        let systemInstruction = '';
+        const messages = (params?.messages as TLLMMessageBlock[]) || [];
         let prompt = '';
 
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(params?.messages as TLLMMessageBlock[]);
-
-        if ('content' in systemMessage) {
-            systemInstruction = systemMessage.content as string;
+        if (messages?.length > 0) {
+            // Concatenate messages using the helper method
+            prompt = messages.map((message) => this.extractMessageContent(message)).join('\n');
         }
-
-        const responseFormat = params?.responseFormat || '';
-        let responseMimeType = '';
-
-        if (responseFormat === 'json') {
-            systemInstruction += JSON_RESPONSE_INSTRUCTION;
-
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
-        }
-
-        if (otherMessages?.length > 0) {
-            // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt += otherMessages.map((message) => message?.parts?.[0]?.text || '').join('\n');
-        }
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
 
         return prompt;
     }

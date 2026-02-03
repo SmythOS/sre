@@ -137,7 +137,9 @@ export class LLMAssistant extends Component {
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 
-            messages.push({ role: TLLMMessageRole.User, content: userInput });
+            const prompt = llmInference.connector.enhancePrompt(userInput, config);
+
+            messages.push({ role: TLLMMessageRole.User, content: prompt });
 
             if (messages[0]?.role != TLLMMessageRole.System) {
                 messages.unshift({ role: TLLMMessageRole.System, content: behavior });

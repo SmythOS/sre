@@ -16,6 +16,7 @@ import {
     TLLMMessageRole,
     TLLMChatResponse,
     TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -69,7 +70,7 @@ export class VertexAIConnector extends LLMConnector {
             const response = await result.response;
 
             const content = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            const finishReason = response.candidates?.[0]?.finishReason || 'stop';
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || 'stop');
             const usage = response.usageMetadata;
 
             let toolsData: ToolData[] = [];
@@ -175,9 +176,9 @@ export class VertexAIConnector extends LLMConnector {
                     usageData.push(reportedUsage);
                 }
 
-                const finishReason = (aggregatedResponse.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+                const finishReason = LLMHelper.normalizeFinishReason(aggregatedResponse.candidates?.[0]?.finishReason || 'stop');
 
-                if (finishReason !== 'stop') {
+                if (finishReason !== TLLMFinishReason.Stop) {
                     emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
@@ -186,7 +187,10 @@ export class VertexAIConnector extends LLMConnector {
                 }, 100);
             } catch (error) {
                 logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                emitter.emit(TLLMEvent.Error, error);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Error, error);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                });
             }
         }, 100);
 
