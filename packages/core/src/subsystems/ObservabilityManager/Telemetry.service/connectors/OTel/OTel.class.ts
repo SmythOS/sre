@@ -200,7 +200,7 @@ export class OTel extends TelemetryConnector {
         for (let key in data) {
             result[prefix ? `${prefix}.${key}` : key] = (typeof data[key] === 'object' ? JSON.stringify(data[key]) : data[key].toString()).substring(
                 0,
-                maxEntryLength,
+                maxEntryLength
             );
         }
 
@@ -245,6 +245,7 @@ export class OTel extends TelemetryConnector {
                             'conv.id': hookContext.processId,
                             'llm.model': modelId || '',
                             'context.preview': JSON.stringify(lastContext).substring(0, 5000),
+                            'context.full': JSON.stringify(lastContext),
                         },
                     });
                 });
@@ -293,7 +294,7 @@ export class OTel extends TelemetryConnector {
                             'llm.model': modelId || '',
                         },
                     },
-                    trace.setSpan(context.active(), hookContext.convSpan),
+                    trace.setSpan(context.active(), hookContext.convSpan)
                 );
                 llmGenSpan.addEvent('llm.gen.started', {
                     'request.id': reqInfo.requestId,
@@ -381,7 +382,7 @@ export class OTel extends TelemetryConnector {
                             'metric.type': 'ttfb',
                         },
                     },
-                    trace.setSpan(context.active(), hookContext.convSpan),
+                    trace.setSpan(context.active(), hookContext.convSpan)
                 );
                 llmGenLatencySpan.addEvent('llm.requested', {
                     'request.id': reqInfo.requestId,
@@ -506,6 +507,7 @@ export class OTel extends TelemetryConnector {
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
                             'input.preview': message.substring(0, 2000),
+                            'input.full': message,
                             'agent.debug': isDebugSession,
                             'agent.isTest': isTestDomain,
                             'session.id': sessionId,
@@ -515,7 +517,7 @@ export class OTel extends TelemetryConnector {
                     });
                 });
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
 
         HookService.registerAfter(
@@ -631,6 +633,7 @@ export class OTel extends TelemetryConnector {
                                 'output.size': JSON.stringify(result || {}).length,
                                 'output.preview':
                                     typeof result === 'string' ? result.substring(0, 2000) : JSON.stringify(result || {}).substring(0, 2000),
+                                'output.full': typeof result === 'string' ? result : JSON.stringify(result || {}),
                                 'team.id': teamId,
                                 'org.tier': orgTier,
                                 'org.slot': orgSlot,
@@ -648,7 +651,7 @@ export class OTel extends TelemetryConnector {
 
                 OTelContextRegistry.endProcess(agentId, processId);
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
 
         HookService.register(
@@ -732,7 +735,7 @@ export class OTel extends TelemetryConnector {
                             'agent.domain': domain,
                         },
                     },
-                    parentContext,
+                    parentContext
                 );
 
                 // Add start event
@@ -780,7 +783,7 @@ export class OTel extends TelemetryConnector {
                     } as any);
                 });
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
 
         HookService.registerAfter(
@@ -898,7 +901,7 @@ export class OTel extends TelemetryConnector {
 
                 OTelContextRegistry.endProcess(agentId, agentProcessId);
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
 
         // In setupHooks() - Enhanced Component.process hook
@@ -965,7 +968,7 @@ export class OTel extends TelemetryConnector {
                             ...compSettingsData,
                         },
                     },
-                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
+                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined
                 );
 
                 // Add event: Component started - includes input.action and input.status for workflow tracking
@@ -1027,7 +1030,7 @@ export class OTel extends TelemetryConnector {
                 // Store span in hook context (isolated per component execution, concurrency-safe)
                 this.context.otelSpan = span;
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
 
         HookService.registerAfter(
@@ -1244,7 +1247,7 @@ export class OTel extends TelemetryConnector {
 
                 span.end();
             },
-            THook.NonBlocking,
+            THook.NonBlocking
         );
         return Promise.resolve();
     }
