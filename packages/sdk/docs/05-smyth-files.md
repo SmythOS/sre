@@ -8,7 +8,7 @@ This approach offers several advantages:
 -   **Collaboration:** It facilitates collaboration between developers and non-developers. Product managers or designers can use the visual builder to create or modify agent logic, which developers can then import and extend in code.
 -   **Separation of Concerns:** It promotes a clean separation where the agent's high-level structure is defined in the `.smyth` file, and the application code handles the runtime logic and interaction.
 
-The [`examples/02-agent-smyth-file`](../../examples/02-agent-smyth-file) directory contains a working example of this concept.
+The [`examples/02-agent-smyth-file`](https://github.com/SmythOS/sre/blob/main/examples/02-agent-smyth-file) directory contains a working example of this concept.
 
 ## The `.smyth` File Format
 

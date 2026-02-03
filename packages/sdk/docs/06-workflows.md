@@ -4,7 +4,7 @@ While `addSkill` with a `process` function is great for many use cases, the Smyt
 
 Workflows allow you to construct an agent's skills by wiring together pre-built `Components` in a data-flow paradigm. This is the same system used by the visual SmythOS Builder, meaning you can programmatically create workflows that are visually representable and vice-versa.
 
-The script in [`examples/03-agent-workflow-components`](../../examples/03-agent-workflow-components/10-agent-workflow.ts) demonstrates this programmatic approach.
+The script in [`examples/03-agent-workflow-components`](https://github.com/SmythOS/sre/blob/main/examples/03-agent-workflow-components/) demonstrates this programmatic approach.
 
 ## The Core Idea: Wiring Components
 
