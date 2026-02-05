@@ -211,6 +211,7 @@ export * from './subsystems/Security/Vault.service/connectors/SecretsManager.cla
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/OpenAIConnector.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/types';
 export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTel.class';
+export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTel.redaction.helper';
 export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTelContextRegistry';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/constants';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/utils';
