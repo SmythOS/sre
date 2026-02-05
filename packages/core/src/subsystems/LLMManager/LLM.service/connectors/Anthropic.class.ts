@@ -452,15 +452,15 @@ export class AnthropicConnector extends LLMConnector {
 
     // TODO [Forhad]: This method is quite lengthy and complex. Consider breaking it down into smaller, more manageable functions for better readability and maintainability.
     public getConsistentMessages(messages) {
-        let _messages = JSON.parse(JSON.stringify(messages));
+        // Sanitize the message flow to remove malformed sequences
+        // (consecutive user messages, errored tool calls, etc.)
+        let _messages = LLMHelper.sanitizeMessageFlow(messages);
 
         // Extract the system message from the start, as our logic expects 'user' to be the first message for checks and fixes. We will add it back later.
         let systemMessage = null;
         if (_messages[0]?.role === TLLMMessageRole.System) {
             systemMessage = _messages.shift();
         }
-
-        _messages = LLMHelper.removeDuplicateUserMessages(_messages);
 
         _messages = _messages.map((message) => {
             let content;

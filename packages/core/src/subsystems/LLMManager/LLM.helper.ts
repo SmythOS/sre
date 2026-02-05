@@ -212,41 +212,385 @@ export class LLMHelper {
     }
 
     /**
-     * Removes duplicate user messages from the beginning and end of the messages array.
+     * Sanitizes the message flow to fix malformed message sequences.
      *
-     * This method checks if there are two consecutive user messages at the start or end of the array
+     * This method handles issues that occur when debug mode causes delays and the LLM
+     * attempts to call tools multiple times, resulting in:
+     * - Consecutive user messages anywhere in the array
+     * - Consecutive assistant tool_call messages (especially those with errors)
+     * - Tool call messages with error results that should be removed
      *
-     * @param {Array<{ role: string; content: string }>} messages - The array of message objects to process.
+     * The function processes messages that may have either:
+     * - Standard format: { role, content, tool_calls? }
+     * - SmythOS format: { messageBlock: { role, content, tool_calls }, toolsData: [...] }
+     *
+     * @param {any[]} messages - The array of message objects to sanitize.
+     * @returns {any[]} The sanitized array of message objects with proper alternation.
      *
      * @example
+     * // Removes consecutive user messages
      * const messages = [
      *   { role: 'user', content: 'Hello' },
-     *   { role: 'user', content: 'Hello' },
-     *   { role: 'assistant', content: 'Hi there!' }
+     *   { role: 'assistant', content: 'Hi!' },
+     *   { role: 'user', content: 'Topic 1' },
+     *   { role: 'user', content: 'Topic 2' }, // duplicate - will be removed
+     *   { messageBlock: { role: 'assistant', tool_calls: [...] }, toolsData: [...] }
      * ];
-     * LLMHelper.removeDuplicateUserMessages(messages);
-     * console.log(messages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
-     *
-     * @returns {TLLMMessageBlock[]} The modified array of message objects.
+     * const sanitized = LLMHelper.sanitizeMessageFlow(messages);
      */
-    public static removeDuplicateUserMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+    public static sanitizeMessageFlow(messages: any[]): any[] {
+        if (!Array.isArray(messages) || messages.length === 0) {
+            return messages;
+        }
+
         const _messages = JSON.parse(JSON.stringify(messages));
+        let sanitized: any[] = [];
 
-        // Check for two user messages at the beginning
-        if (_messages.length > 1 && _messages[0].role === TLLMMessageRole.User && _messages[1].role === TLLMMessageRole.User) {
-            _messages.shift(); // Remove the first user message
+        // First pass: Remove errored tool calls and handle consecutive duplicates
+        for (let i = 0; i < _messages.length; i++) {
+            const current = _messages[i];
+            const currentRole = this.getMessageRole(current);
+
+            // Skip messages with no identifiable role
+            if (!currentRole) {
+                continue;
+            }
+
+            // Check if this is a tool call message with an error result
+            if (this.isToolCallMessageWithError(current)) {
+                // Skip tool call messages that have error results (debug session interrupted, etc.)
+                continue;
+            }
+
+            // Check for consecutive messages with the same role
+            if (sanitized.length > 0) {
+                const lastMessage = sanitized[sanitized.length - 1];
+                const lastRole = this.getMessageRole(lastMessage);
+
+                // Handle consecutive user messages
+                if (currentRole === TLLMMessageRole.User && lastRole === TLLMMessageRole.User) {
+                    // Keep the latest user message (replace the previous one)
+                    sanitized[sanitized.length - 1] = current;
+                    continue;
+                }
+
+                // Handle consecutive assistant messages
+                if (
+                    (currentRole === TLLMMessageRole.Assistant || currentRole === TLLMMessageRole.Model) &&
+                    (lastRole === TLLMMessageRole.Assistant || lastRole === TLLMMessageRole.Model)
+                ) {
+                    // If the last message was a tool call with error and current is valid, replace it
+                    if (this.isToolCallMessage(lastMessage) && !this.hasToolCallContent(lastMessage)) {
+                        sanitized[sanitized.length - 1] = current;
+                        continue;
+                    }
+
+                    // If current is a tool call with successful result, keep it
+                    // Otherwise, prefer the one with actual content
+                    if (this.hasToolCallContent(current) || this.hasMessageContent(current)) {
+                        // If last message has no useful content, replace it
+                        if (!this.hasToolCallContent(lastMessage) && !this.hasMessageContent(lastMessage)) {
+                            sanitized[sanitized.length - 1] = current;
+                            continue;
+                        }
+                    }
+
+                    // If both have content, keep both (could be multi-turn tool calls)
+                    // But if the previous was an errored tool call, skip the current duplicate attempt
+                    if (this.isToolCallMessage(current) && this.isToolCallMessage(lastMessage)) {
+                        // Check if they're calling the same tool - might be a retry
+                        if (this.isSameToolCall(lastMessage, current)) {
+                            // Keep the one with successful result
+                            if (this.hasSuccessfulToolResult(current) && !this.hasSuccessfulToolResult(lastMessage)) {
+                                sanitized[sanitized.length - 1] = current;
+                            }
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            sanitized.push(current);
         }
 
-        // Check for two user messages at the end
-        if (
-            _messages.length > 1 &&
-            _messages[_messages.length - 1].role === TLLMMessageRole.User &&
-            _messages[_messages.length - 2].role === TLLMMessageRole.User
-        ) {
-            _messages.pop(); // Remove the last user message
+        // Second pass: Remove orphaned tool_use blocks (Anthropic format)
+        // Anthropic requires every tool_use to have a corresponding tool_result immediately after
+        sanitized = this.removeOrphanedToolUseBlocks(sanitized);
+
+        return sanitized;
+    }
+
+    /**
+     * Removes messages with orphaned tool_use blocks that don't have matching tool_result blocks.
+     * This is required for Anthropic API which mandates every tool_use has a corresponding tool_result.
+     */
+    private static removeOrphanedToolUseBlocks(messages: any[]): any[] {
+        if (messages.length === 0) return messages;
+
+        // Collect all tool_result IDs from the messages
+        const toolResultIds = new Set<string>();
+        for (const message of messages) {
+            const ids = this.getToolResultIds(message);
+            ids.forEach((id) => toolResultIds.add(id));
         }
 
-        return _messages;
+        // Filter out messages that have tool_use without matching tool_result
+        const result: any[] = [];
+        for (let i = 0; i < messages.length; i++) {
+            const message = messages[i];
+            const toolUseIds = this.getToolUseIds(message);
+
+            if (toolUseIds.length > 0) {
+                // Check if all tool_use IDs have matching tool_results
+                const hasAllResults = toolUseIds.every((id) => toolResultIds.has(id));
+
+                if (!hasAllResults) {
+                    // This message has orphaned tool_use blocks - remove it
+                    // Also need to check if the next message is a tool_result for these IDs and remove it too
+                    continue;
+                }
+            }
+
+            result.push(message);
+        }
+
+        return result;
+    }
+
+    /**
+     * Extracts tool_use IDs from a message (supports both Anthropic content format and SmythOS format).
+     */
+    private static getToolUseIds(message: any): string[] {
+        const ids: string[] = [];
+
+        if (!message) return ids;
+
+        // Anthropic format: content array with tool_use blocks
+        if (Array.isArray(message.content)) {
+            for (const block of message.content) {
+                if (block?.type === 'tool_use' && block?.id) {
+                    ids.push(block.id);
+                }
+            }
+        }
+
+        // SmythOS format: messageBlock with tool_calls
+        if (message.messageBlock?.tool_calls) {
+            for (const toolCall of message.messageBlock.tool_calls) {
+                if (toolCall?.id) {
+                    ids.push(toolCall.id);
+                }
+            }
+        }
+
+        // Standard OpenAI format: tool_calls array
+        if (message.tool_calls) {
+            for (const toolCall of message.tool_calls) {
+                if (toolCall?.id) {
+                    ids.push(toolCall.id);
+                }
+            }
+        }
+
+        return ids;
+    }
+
+    /**
+     * Extracts tool_result IDs from a message (supports both Anthropic content format and SmythOS format).
+     */
+    private static getToolResultIds(message: any): string[] {
+        const ids: string[] = [];
+
+        if (!message) return ids;
+
+        // Anthropic format: content array with tool_result blocks
+        if (Array.isArray(message.content)) {
+            for (const block of message.content) {
+                if (block?.type === 'tool_result' && block?.tool_use_id) {
+                    ids.push(block.tool_use_id);
+                }
+            }
+        }
+
+        // SmythOS format: toolsData array
+        if (message.toolsData && Array.isArray(message.toolsData)) {
+            for (const tool of message.toolsData) {
+                if (tool?.id || tool?.callId) {
+                    ids.push(tool.id || tool.callId);
+                }
+            }
+        }
+
+        // OpenAI tool result format
+        if (message.tool_call_id) {
+            ids.push(message.tool_call_id);
+        }
+
+        return ids;
+    }
+
+    /**
+     * Gets the role from a message, handling both standard and SmythOS message formats.
+     */
+    private static getMessageRole(message: any): TLLMMessageRole | null {
+        if (!message) return null;
+
+        // SmythOS format with messageBlock
+        if (message.messageBlock?.role) {
+            return message.messageBlock.role as TLLMMessageRole;
+        }
+
+        // Standard format
+        if (message.role) {
+            return message.role as TLLMMessageRole;
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks if a message is a tool call message (has tool_calls array).
+     */
+    private static isToolCallMessage(message: any): boolean {
+        if (!message) return false;
+
+        // SmythOS format
+        if (message.messageBlock?.tool_calls?.length > 0) {
+            return true;
+        }
+
+        // Standard format
+        if (message.tool_calls?.length > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a tool call message has error results in its toolsData.
+     */
+    private static isToolCallMessageWithError(message: any): boolean {
+        if (!message) return false;
+
+        // SmythOS format with toolsData
+        if (message.toolsData && Array.isArray(message.toolsData)) {
+            return message.toolsData.some((tool: any) => {
+                if (!tool.result) return false;
+
+                // Check if result is an error object or error string
+                try {
+                    const result = typeof tool.result === 'string' ? JSON.parse(tool.result) : tool.result;
+                    return result?.error !== undefined || result?.status >= 400;
+                } catch {
+                    // If result contains "error" string, consider it an error
+                    return typeof tool.result === 'string' && tool.result.toLowerCase().includes('"error"');
+                }
+            });
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a tool call message has successful (non-error) results.
+     */
+    private static hasSuccessfulToolResult(message: any): boolean {
+        if (!message) return false;
+
+        // SmythOS format with toolsData
+        if (message.toolsData && Array.isArray(message.toolsData)) {
+            return message.toolsData.some((tool: any) => {
+                if (!tool.result) return false;
+
+                try {
+                    const result = typeof tool.result === 'string' ? JSON.parse(tool.result) : tool.result;
+                    // Consider successful if no error field
+                    return result?.error === undefined;
+                } catch {
+                    // If we can't parse, check it doesn't contain error
+                    return typeof tool.result === 'string' && !tool.result.toLowerCase().includes('"error"');
+                }
+            });
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a tool call message has any tool result content.
+     */
+    private static hasToolCallContent(message: any): boolean {
+        if (!message) return false;
+
+        // SmythOS format with toolsData
+        if (message.toolsData && Array.isArray(message.toolsData)) {
+            return message.toolsData.some((tool: any) => tool.result && !this.isErrorResult(tool.result));
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a result is an error result.
+     */
+    private static isErrorResult(result: any): boolean {
+        if (!result) return false;
+
+        try {
+            const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+            return parsed?.error !== undefined;
+        } catch {
+            return typeof result === 'string' && result.toLowerCase().includes('"error"');
+        }
+    }
+
+    /**
+     * Checks if a message has actual content (non-empty, non-tool content).
+     */
+    private static hasMessageContent(message: any): boolean {
+        if (!message) return false;
+
+        // SmythOS format
+        if (message.messageBlock) {
+            const content = message.messageBlock.content;
+            return content && typeof content === 'string' && content.trim().length > 0;
+        }
+
+        // Standard format
+        const content = message.content;
+        if (typeof content === 'string') {
+            return content.trim().length > 0;
+        }
+        if (Array.isArray(content)) {
+            return content.some((c: any) => c?.text?.trim().length > 0);
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if two tool call messages are calling the same tool (potential retry).
+     */
+    private static isSameToolCall(message1: any, message2: any): boolean {
+        const getToolNames = (message: any): string[] => {
+            // SmythOS format
+            if (message.messageBlock?.tool_calls) {
+                return message.messageBlock.tool_calls.map((tc: any) => tc.function?.name || tc.name).filter(Boolean);
+            }
+            // Standard format
+            if (message.tool_calls) {
+                return message.tool_calls.map((tc: any) => tc.function?.name || tc.name).filter(Boolean);
+            }
+            return [];
+        };
+
+        const names1 = getToolNames(message1);
+        const names2 = getToolNames(message2);
+
+        if (names1.length !== names2.length) return false;
+
+        return names1.every((name, idx) => name === names2[idx]);
     }
 
     /**

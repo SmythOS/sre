@@ -312,7 +312,9 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages) {
-        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+        // Sanitize the message flow to remove malformed sequences
+        // (consecutive user messages, errored tool calls, etc.)
+        const _messages = LLMHelper.sanitizeMessageFlow(messages);
 
         return _messages.map((message) => {
             const _message = { ...message };
