@@ -222,6 +222,9 @@ export class Chat extends SDKObject {
         if ((this.source as Agent)?.modes) {
             this._curAgentModes = (this.source as Agent).modes.join('|');
         }
+
+        this._convOptions.conversationId = this._id;
+        
         this._conversation = createConversation(this._data, this._convOptions);
     }
 

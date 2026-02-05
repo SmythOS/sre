@@ -36,11 +36,20 @@ export class LLMContext {
         return this.llmInference.model;
     }
     /**
-     *
-     * @param source a messages[] object, or smyth file system uri (smythfs://...)
+     * Creates a new LLM Context instance for managing conversation state.
+     * 
+     * @param llmInference - The LLM inference instance to use for this context
+     * @param _systemPrompt - Initial system prompt for the conversation
+     * @param llmContextStore - Optional persistent storage for conversation messages
+     * @param conversationId - Optional conversation ID for cache key generation.
+     *  Used to track cached context across runtime instances 
+     *  (e.g., debug steps with the Chatbot embodiment has two separate runtimes: one for chat conversation
+     *  and another for workflow components inside the builder).
+     *  Required for "Use Context Window" feature in GenAILLM component to maintain conversation history.
      */
-    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore) {
-        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
+    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore, conversationId?: string) {
+        const cacheId = conversationId ? LLMCache.generateLLMCacheId(conversationId) : undefined;
+        this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId), cacheId);
 
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;

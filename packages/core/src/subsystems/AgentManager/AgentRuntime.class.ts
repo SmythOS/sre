@@ -1,6 +1,7 @@
 import { Component } from '@sre/Components/Component.class';
 import { Agent } from './Agent.class';
 
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { LLMCache } from '@sre/MemoryManager/LLMCache';
 import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
@@ -182,13 +183,91 @@ export class AgentRuntime {
         //if xDebugId is equal to agent session, it means that the debugging features are not active
         this._debugActive = this.xDebugId != agent.sessionId;
 
-        const xCacheId = agent.agentRequest.header('X-CACHE-ID') || '';
-        this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), xCacheId);
-        //this.xCacheId =
+        this.initLLMCache();
+    }
+
+    private async initLLMCache() {
+        const xCacheId = this.agent.agentRequest.header('X-CACHE-ID') || '';
+        let conversationId = this.agent.conversationId;
+
+        /**
+         * Retrieve conversationId for workflow runtime using debug session mapping.
+         * 
+         * Goal: Track conversation context across different runtime instances (chatbot conversation vs workflow components).
+         * 
+         * When debugging chatbot:
+         * - Chatbot conversation runtime HAS conversationId (from chat request)
+         * - Workflow/debugger runtime DOES NOT have conversationId (workflow execution)
+         * 
+         * Solution: Retrieve conversationId using xDebugId from the mapping stored by chatbot runtime.
+         */
+        if (!conversationId && this._debugActive && this.xDebugId) {
+            const cacheConnector = ConnectorService.getCacheConnector();
+            const storedConversationId = await cacheConnector
+                .requester(AccessCandidate.agent(this.agent.id))
+                .get(`debug:${this.xDebugId}:conversationId`)
+                .catch(() => null);
+
+            if (storedConversationId) {
+                conversationId = storedConversationId;
+                this.agent.conversationId = storedConversationId;
+            }
+        }
+
+        /**
+         * Generate cache ID to track conversation context across different runtime instances.
+         * 
+         * Priority: xCacheId (explicit override) > conversationId (for context tracking) > undefined
+         * 
+         * Why conversationId is needed:
+         * - Enables GenAILLM's "Use Context Window" to maintain conversation history
+         * - When debugging chatbot: conversationId available from chatbot runtime, OR retrieved via
+         *   debug mapping (above) for workflow runtime - both use same cache ID to share context.
+         */
+        const cacheId = xCacheId || (conversationId ? LLMCache.generateLLMCacheId(conversationId) : undefined);
+        this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), cacheId);
+
+        /**
+         * Store conversationId with debug session for workflow runtime to retrieve.
+         * 
+         * When debugging chatbot:
+         * - Chatbot runtime HAS conversationId → stores mapping: debug:{xDebugId}:conversationId
+         * - Workflow runtime retrieves conversationId using xDebugId → both share same LLM context cache
+         * 
+         * TTL: 1 hour (sufficient for typical debug workflows)
+         */
+        if (this._debugActive && this.xDebugId && this.agent.conversationId) {
+            const cacheConnector = ConnectorService.getCacheConnector();
+            const DEBUG_SESSION_TTL = 60 * 60; // 1 hour in seconds
+            
+            cacheConnector
+                .requester(AccessCandidate.agent(this.agent.id))
+                .set(`debug:${this.xDebugId}:conversationId`, this.agent.conversationId, null, null, DEBUG_SESSION_TTL)
+                .catch((err) => {
+                    logger.warn('Failed to store debug-conversation mapping', err);
+                });
+        }
     }
 
     public async ready() {
         return this.agentContext.ready();
+    }
+
+    /**
+     * Retrieves the conversation ID associated with the current debug session
+     * @returns The conversation ID if found, undefined otherwise
+     */
+    public async getConversationId(): Promise<string | undefined> {
+        if (this.agent.conversationId) {
+            return this.agent.conversationId;
+        }
+
+        if (this._debugActive && this.xDebugId) {
+            const conversationId = await this.llmCache.get(`debug:${this.xDebugId}:conversationId`, 'text');
+            return conversationId || undefined;
+        }
+
+        return undefined;
     }
 
     public destroy() {
