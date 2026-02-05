@@ -16,18 +16,18 @@ const MOCK_KEY_SHORT = 'bW9ja190ZXN0X2tleV9mb3I=';
 const MOCK_KEY_TRUNCATED = 'bW9ja190ZXN0X2tleV9mb3JfdW5pdF90ZXN0aW5n';
 const MOCK_KEY_WITH_COLON = 'bW9ja190ZXN0X2tleTphbm90aGVyX3BhcnRfaGVyZQ==';
 const MOCK_KEY_PREFIX = 'bW9ja190ZXN0';
+const MOCK_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik1vY2sgVXNlciJ9.mock_signature_for_testing_only';
 
 describe('OTel Redaction - redactSensitiveString', () => {
     describe('JWT Token Redaction', () => {
         it('should redact full JWT tokens', () => {
-            const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
-            const input = `Bearer ${jwt}`;
+            const input = `Bearer ${MOCK_JWT}`;
             const result = redactSensitiveString(input);
             expect(result).toBe('Bearer [REDACTED]');
         });
 
         it('should redact JWT in JSON context', () => {
-            const input = '{"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"}';
+            const input = `{"token": "${MOCK_JWT}"}`;
             const result = redactSensitiveString(input);
             expect(result).toContain('[REDACTED]');
             expect(result).not.toContain('eyJ');
@@ -217,7 +217,7 @@ describe('OTel Redaction - redactData', () => {
     describe('String Value Content Redaction', () => {
         it('should redact sensitive patterns in string values', () => {
             const input = {
-                message: 'Using token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U',
+                message: `Using token: ${MOCK_JWT}`,
             };
             const result = redactData(input);
             expect(result.message).toContain('[REDACTED]');
