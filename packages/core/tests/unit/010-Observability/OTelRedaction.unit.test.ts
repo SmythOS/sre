@@ -246,9 +246,9 @@ describe('OTel Redaction - redactData', () => {
 
 describe('OTel Redaction - Real-world Scenarios', () => {
     it('should redact cmp.input with vault key', () => {
-        const input = { trigger: 'test run 2', key: MOCK_KEY_WITH_COLON };
+        const input = { trigger: 'test run', key: MOCK_KEY_WITH_COLON };
         const result = redactData(input);
-        expect(result).toEqual({ trigger: 'test run 2', key: '[REDACTED]' });
+        expect(result).toEqual({ trigger: 'test run', key: '[REDACTED]' });
     });
 
     it('should redact agent.output with nested state', () => {
