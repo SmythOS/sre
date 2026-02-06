@@ -244,33 +244,67 @@ export class LLMHelper {
         }
 
         const _messages = JSON.parse(JSON.stringify(messages));
-        let sanitized: any[] = [];
 
-        // First pass: Remove errored tool calls and handle consecutive duplicates
-        for (let i = 0; i < _messages.length; i++) {
-            const current = _messages[i];
-            const currentRole = this.getMessageRole(current);
+        // Pass 1: Remove errored tool calls and messages with no identifiable role
+        const cleaned = this.removeErroredMessages(_messages);
+
+        // Pass 2: Remove orphaned tool_use blocks (tool_use without matching tool_result)
+        // Must run before consecutive handling because it may create new consecutive same-role messages
+        const withoutOrphans = this.removeOrphanedToolUseBlocks(cleaned);
+
+        // Pass 3: Handle consecutive same-role messages (user→user, assistant→assistant)
+        const sanitized = this.mergeConsecutiveMessages(withoutOrphans);
+
+        return sanitized;
+    }
+
+    /**
+     * Pass 1: Remove errored tool call messages and messages with no role.
+     */
+    private static removeErroredMessages(messages: any[]): any[] {
+        const result: any[] = [];
+
+        for (const message of messages) {
+            const role = this.getMessageRole(message);
 
             // Skip messages with no identifiable role
-            if (!currentRole) {
-                continue;
-            }
+            if (!role) continue;
 
-            // Check if this is a tool call message with an error result
-            if (this.isToolCallMessageWithError(current)) {
-                // Skip tool call messages that have error results (debug session interrupted, etc.)
-                continue;
-            }
+            // Skip tool call messages that have error results (debug session interrupted, etc.)
+            if (this.isToolCallMessageWithError(message)) continue;
 
-            // Check for consecutive messages with the same role
-            if (sanitized.length > 0) {
-                const lastMessage = sanitized[sanitized.length - 1];
+            result.push(message);
+        }
+
+        return result;
+    }
+
+    /**
+     * Pass 3: Handle consecutive same-role messages.
+     * - Consecutive user messages: keep the latest (unless one carries tool_result content)
+     * - Consecutive assistant messages: keep the one with better content, handle retries
+     */
+    private static mergeConsecutiveMessages(messages: any[]): any[] {
+        const result: any[] = [];
+
+        for (const current of messages) {
+            const currentRole = this.getMessageRole(current);
+
+            if (result.length > 0) {
+                const lastMessage = result[result.length - 1];
                 const lastRole = this.getMessageRole(lastMessage);
 
                 // Handle consecutive user messages
                 if (currentRole === TLLMMessageRole.User && lastRole === TLLMMessageRole.User) {
+                    // Don't merge if either message contains tool_result blocks (Anthropic format)
+                    // Losing tool_results would orphan the corresponding tool_use blocks
+                    if (this.hasToolResultContent(lastMessage) || this.hasToolResultContent(current)) {
+                        result.push(current);
+                        continue;
+                    }
+
                     // Keep the latest user message (replace the previous one)
-                    sanitized[sanitized.length - 1] = current;
+                    result[result.length - 1] = current;
                     continue;
                 }
 
@@ -279,30 +313,25 @@ export class LLMHelper {
                     (currentRole === TLLMMessageRole.Assistant || currentRole === TLLMMessageRole.Model) &&
                     (lastRole === TLLMMessageRole.Assistant || lastRole === TLLMMessageRole.Model)
                 ) {
-                    // If the last message was a tool call with error and current is valid, replace it
+                    // If the last message was a tool call with no useful content, replace it
                     if (this.isToolCallMessage(lastMessage) && !this.hasToolCallContent(lastMessage)) {
-                        sanitized[sanitized.length - 1] = current;
+                        result[result.length - 1] = current;
                         continue;
                     }
 
-                    // If current is a tool call with successful result, keep it
-                    // Otherwise, prefer the one with actual content
+                    // If current has content but last doesn't, replace
                     if (this.hasToolCallContent(current) || this.hasMessageContent(current)) {
-                        // If last message has no useful content, replace it
                         if (!this.hasToolCallContent(lastMessage) && !this.hasMessageContent(lastMessage)) {
-                            sanitized[sanitized.length - 1] = current;
+                            result[result.length - 1] = current;
                             continue;
                         }
                     }
 
-                    // If both have content, keep both (could be multi-turn tool calls)
-                    // But if the previous was an errored tool call, skip the current duplicate attempt
+                    // If both are tool calls to the same tool (retry), keep the successful one
                     if (this.isToolCallMessage(current) && this.isToolCallMessage(lastMessage)) {
-                        // Check if they're calling the same tool - might be a retry
                         if (this.isSameToolCall(lastMessage, current)) {
-                            // Keep the one with successful result
                             if (this.hasSuccessfulToolResult(current) && !this.hasSuccessfulToolResult(lastMessage)) {
-                                sanitized[sanitized.length - 1] = current;
+                                result[result.length - 1] = current;
                             }
                             continue;
                         }
@@ -310,14 +339,10 @@ export class LLMHelper {
                 }
             }
 
-            sanitized.push(current);
+            result.push(current);
         }
 
-        // Second pass: Remove orphaned tool_use blocks (Anthropic format)
-        // Anthropic requires every tool_use to have a corresponding tool_result immediately after
-        sanitized = this.removeOrphanedToolUseBlocks(sanitized);
-
-        return sanitized;
+        return result;
     }
 
     /**
@@ -449,7 +474,7 @@ export class LLMHelper {
     }
 
     /**
-     * Checks if a message is a tool call message (has tool_calls array).
+     * Checks if a message is a tool call message (has tool_calls array or Anthropic tool_use content).
      */
     private static isToolCallMessage(message: any): boolean {
         if (!message) return false;
@@ -459,9 +484,14 @@ export class LLMHelper {
             return true;
         }
 
-        // Standard format
+        // Standard OpenAI format
         if (message.tool_calls?.length > 0) {
             return true;
+        }
+
+        // Anthropic format: content array with tool_use blocks
+        if (Array.isArray(message.content)) {
+            return message.content.some((block: any) => block?.type === 'tool_use');
         }
 
         return false;
@@ -554,7 +584,17 @@ export class LLMHelper {
         // SmythOS format
         if (message.messageBlock) {
             const content = message.messageBlock.content;
-            return content && typeof content === 'string' && content.trim().length > 0;
+            if (typeof content === 'string') {
+                return content.trim().length > 0;
+            }
+            // SmythOS messageBlock.content could be an array (Anthropic format)
+            if (Array.isArray(content)) {
+                return content.some((c: any) => {
+                    if (c?.type === 'text') return c.text?.trim().length > 0;
+                    return c?.text?.trim().length > 0;
+                });
+            }
+            return false;
         }
 
         // Standard format
@@ -563,7 +603,30 @@ export class LLMHelper {
             return content.trim().length > 0;
         }
         if (Array.isArray(content)) {
-            return content.some((c: any) => c?.text?.trim().length > 0);
+            return content.some((c: any) => {
+                if (c?.type === 'text') return c.text?.trim().length > 0;
+                return c?.text?.trim().length > 0;
+            });
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a message contains tool_result content blocks (Anthropic format).
+     * Used to prevent merging user messages that carry tool results.
+     */
+    private static hasToolResultContent(message: any): boolean {
+        if (!message) return false;
+
+        // Anthropic format: content array with tool_result blocks
+        if (Array.isArray(message.content)) {
+            return message.content.some((block: any) => block?.type === 'tool_result');
+        }
+
+        // SmythOS format: toolsData array
+        if (message.toolsData && Array.isArray(message.toolsData)) {
+            return message.toolsData.length > 0;
         }
 
         return false;
