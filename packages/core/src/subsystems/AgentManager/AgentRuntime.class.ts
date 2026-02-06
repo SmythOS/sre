@@ -224,7 +224,7 @@ export class AgentRuntime {
          * - When debugging chatbot: conversationId available from chatbot runtime, OR retrieved via
          *   debug mapping (above) for workflow runtime - both use same cache ID to share context.
          */
-        const cacheId = xCacheId || (conversationId ? LLMCache.generateLLMCacheId(conversationId) : undefined);
+        const cacheId = xCacheId || (conversationId ? LLMCache.generateCacheId(conversationId) : undefined);
         this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), cacheId);
 
         /**

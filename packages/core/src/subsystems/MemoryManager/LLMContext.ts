@@ -48,7 +48,7 @@ export class LLMContext {
      *  Required for "Use Context Window" feature in GenAILLM component to maintain conversation history.
      */
     constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore, conversationId?: string) {
-        const cacheId = conversationId ? LLMCache.generateLLMCacheId(conversationId) : undefined;
+        const cacheId = conversationId ? LLMCache.generateCacheId(conversationId) : undefined;
         this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId), cacheId);
 
         //this._systemPrompt = _systemPrompt;
