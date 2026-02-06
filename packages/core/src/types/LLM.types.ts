@@ -204,6 +204,7 @@ export type TLLMPreparedParams = TLLMParams & {
         imageEditing?: boolean;
     };
     toolsInfo?: TToolsInfo;
+    outputs?: any[];
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
