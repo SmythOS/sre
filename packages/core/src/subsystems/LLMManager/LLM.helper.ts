@@ -225,7 +225,7 @@ export class LLMHelper {
      * - SmythOS format: { messageBlock: { role, content, tool_calls }, toolsData: [...] }
      *
      * @param {any[]} messages - The array of message objects to sanitize.
-     * @returns {any[]} The sanitized array of message objects with proper alternation.
+     * @returns {any[]} The normalized array of message objects with proper alternation.
      *
      * @example
      * // Removes consecutive user messages
@@ -236,9 +236,9 @@ export class LLMHelper {
      *   { role: 'user', content: 'Topic 2' }, // duplicate - will be removed
      *   { messageBlock: { role: 'assistant', tool_calls: [...] }, toolsData: [...] }
      * ];
-     * const sanitized = LLMHelper.sanitizeMessageFlow(messages);
+     * const normalized = LLMHelper.normalizeMessages(messages);
      */
-    public static sanitizeMessageFlow(messages: any[]): any[] {
+    public static normalizeMessages(messages: any[]): any[] {
         if (!Array.isArray(messages) || messages.length === 0) {
             return messages;
         }
@@ -253,9 +253,9 @@ export class LLMHelper {
         const withoutOrphans = this.removeOrphanedToolUseBlocks(cleaned);
 
         // Pass 3: Handle consecutive same-role messages (user→user, assistant→assistant)
-        const sanitized = this.mergeConsecutiveMessages(withoutOrphans);
+        const normalized = this.mergeConsecutiveMessages(withoutOrphans);
 
-        return sanitized;
+        return normalized;
     }
 
     /**

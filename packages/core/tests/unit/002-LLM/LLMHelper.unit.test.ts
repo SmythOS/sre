@@ -231,10 +231,10 @@ describe('LLMHelper - getFinishReasonErrorMessage', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// sanitizeMessageFlow tests
+// normalizeMessages tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('LLMHelper - sanitizeMessageFlow', () => {
+describe('LLMHelper - normalizeMessages', () => {
     // ── Helpers to build test fixtures ──
 
     const userMsg = (content: string) => ({ role: 'user', content });
@@ -297,23 +297,23 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
 
     describe('Edge cases', () => {
         it('should return empty array for empty input', () => {
-            expect(LLMHelper.sanitizeMessageFlow([])).toEqual([]);
+            expect(LLMHelper.normalizeMessages([])).toEqual([]);
         });
 
         it('should return null/undefined as-is', () => {
-            expect(LLMHelper.sanitizeMessageFlow(null as any)).toBeNull();
-            expect(LLMHelper.sanitizeMessageFlow(undefined as any)).toBeUndefined();
+            expect(LLMHelper.normalizeMessages(null as any)).toBeNull();
+            expect(LLMHelper.normalizeMessages(undefined as any)).toBeUndefined();
         });
 
         it('should return single message unchanged', () => {
             const messages = [userMsg('Hello')];
-            expect(LLMHelper.sanitizeMessageFlow(messages)).toEqual(messages);
+            expect(LLMHelper.normalizeMessages(messages)).toEqual(messages);
         });
 
         it('should not mutate the original messages array', () => {
             const original = [userMsg('Hello'), userMsg('World')];
             const copy = JSON.parse(JSON.stringify(original));
-            LLMHelper.sanitizeMessageFlow(original);
+            LLMHelper.normalizeMessages(original);
             expect(original).toEqual(copy);
         });
     });
@@ -328,7 +328,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('How are you?'),
                 assistantMsg('I am fine.'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toEqual(messages);
         });
 
@@ -338,7 +338,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('Hello'),
                 assistantMsg('Hi!'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toEqual(messages);
         });
 
@@ -348,7 +348,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythToolMsg('generate_poem', 'call_1', JSON.stringify({ poem: 'Silver moon...' })),
                 assistantMsg('Here is your poem: Silver moon...'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toEqual(messages);
         });
 
@@ -359,7 +359,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolResultMsg('call_1', 'Silver moon...'),
                 assistantMsg('Here is your poem'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toEqual(messages);
         });
 
@@ -374,7 +374,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 toolResultMsg('call_1', '{"temp": 72}'),
                 assistantMsg('The temperature is 72°F.'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toEqual(messages);
         });
 
@@ -385,7 +385,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythToolMsg('generate_image', 'call_2', JSON.stringify({ url: 'image.png' })),
                 assistantMsg('Here are your results'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // Both tool calls should be kept (different tools)
             expect(result).toHaveLength(4);
         });
@@ -401,7 +401,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 { role: 'tool', tool_call_id: 'call_1', content: 'result' },
                 assistantMsg('Done'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(4);
         });
     });
@@ -415,7 +415,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('Second'),
                 assistantMsg('Response'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
             expect(result[0].content).toBe('Second');
             expect(result[1].content).toBe('Response');
@@ -428,7 +428,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('First question'),
                 userMsg('Revised question'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(3);
             expect(result[2].content).toBe('Revised question');
         });
@@ -441,7 +441,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('Topic B'),
                 assistantMsg('Response to B'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(4);
             expect(result[2].content).toBe('Topic B');
         });
@@ -453,7 +453,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 userMsg('Third'),
                 assistantMsg('Response'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
             expect(result[0].content).toBe('Third');
         });
@@ -469,7 +469,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolUseMsg('call_1', 'func'),
                 ...messages,
             ];
-            const result = LLMHelper.sanitizeMessageFlow(fullFlow);
+            const result = LLMHelper.normalizeMessages(fullFlow);
             // Both the tool_result user message and the regular user message should be kept
             expect(result).toHaveLength(4);
         });
@@ -481,7 +481,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolResultMsg('call_1', 'data'),
                 userMsg('Follow up'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // tool_result user and regular user should not be merged
             expect(result).toHaveLength(4);
         });
@@ -496,7 +496,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythErrorToolMsg('generate_poem', 'call_1'),
                 assistantMsg('Sorry, there was an error'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
             expect(result[0].content).toBe('Generate a poem about moon');
             expect(result[1].content).toBe('Sorry, there was an error');
@@ -509,7 +509,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythErrorToolMsg('generate_poem', 'call_2'),
                 userMsg('Try river instead'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // Both errored calls removed, consecutive users merged
             expect(result).toHaveLength(1);
             expect(result[0].content).toBe('Try river instead');
@@ -522,7 +522,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythToolMsg('generate_poem', 'call_ok', JSON.stringify({ poem: 'Silver moon...' })),
                 assistantMsg('Here is the poem'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // Error removed, success kept
             expect(result).toHaveLength(3);
             expect(result[0].content).toBe('Generate a poem about moon');
@@ -538,7 +538,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                     toolsData: [{ id: 'call_1', result: JSON.stringify({ status: 500, message: 'Internal server error' }) }],
                 },
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(1);
             expect(result[0].content).toBe('Test');
         });
@@ -549,7 +549,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 smythToolMsg('check_errors', 'call_1', JSON.stringify({ findings: 'No errors found in the system' })),
                 assistantMsg('All clear'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // The tool result is valid (error is in the value, not as a key)
             expect(result).toHaveLength(3);
         });
@@ -564,7 +564,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 assistantMsg('Hi there!'),
                 assistantMsg('How can I help?'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(3);
         });
 
@@ -574,7 +574,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 assistantMsg(''),
                 assistantMsg('Real response'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
             expect(result[1].content).toBe('Real response');
         });
@@ -588,7 +588,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 successMsg,
                 retryMsg,
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // Same tool called twice - keep first successful one
             expect(result).toHaveLength(2);
         });
@@ -603,7 +603,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolUseMsg('call_orphan', 'generate_poem'),
                 userMsg('Different topic'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // The tool_use has no matching tool_result → removed
             expect(result).toHaveLength(1);
             expect(result[0].content).toBe('Different topic');
@@ -616,7 +616,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolResultMsg('call_1', 'Silver moon...'),
                 assistantMsg('Here is your poem'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(4);
         });
 
@@ -629,7 +629,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 // No tool_result for call_orphan
                 assistantMsg('Done'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // call_ok pair stays, call_orphan removed
             const toolUseMessages = result.filter((m) => Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_use'));
             expect(toolUseMessages).toHaveLength(1);
@@ -650,7 +650,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
                 userMsg('Next'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // The SmythOS message has tool_use (call_orphan) but no matching tool_result → removed
             expect(result).toHaveLength(1);
             expect(result[0].content).toBe('Next');
@@ -667,7 +667,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 // No tool result message
                 assistantMsg('Fallback response'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // call_orphan has no tool result → assistant message removed
             const hasOrphan = result.some((m) => m.tool_calls?.some((tc) => tc.id === 'call_orphan'));
             expect(hasOrphan).toBe(false);
@@ -684,7 +684,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 toolResultMsg('call_1', '{"temp": 72}'),
                 assistantMsg('72°F'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(4);
         });
     });
@@ -748,7 +748,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
             ];
 
-            const result = LLMHelper.sanitizeMessageFlow(validMessages);
+            const result = LLMHelper.normalizeMessages(validMessages);
 
             // Valid flow should pass through unchanged (same length)
             expect(result).toHaveLength(validMessages.length);
@@ -840,7 +840,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
             ];
 
-            const result = LLMHelper.sanitizeMessageFlow(malformedMessages);
+            const result = LLMHelper.normalizeMessages(malformedMessages);
 
             // 1. All errored tool call messages should be removed
             const erroredMessages = result.filter((m: any) =>
@@ -922,7 +922,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
             ];
 
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
 
             // Error removed, success and response kept
             expect(result).toHaveLength(3);
@@ -997,7 +997,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
             ];
 
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
 
             // Both errored tool calls removed
             const erroredMessages = result.filter((m: any) =>
@@ -1030,7 +1030,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 anthropicToolResultMsg('call_1', 'poem result'),
                 assistantMsg('Here is the poem'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(4);
         });
 
@@ -1041,7 +1041,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 // No tool_result for call_orphan
                 assistantMsg('Fallback'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // The mixed message has orphaned tool_use → must be removed
             const orphanedMsg = result.find(
                 (m) => Array.isArray(m.content) && m.content.some((b) => b.id === 'call_orphan'),
@@ -1068,7 +1068,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
                 assistantMsg('Both done'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // Both tool_use have matching tool_results → keep all
             expect(result).toHaveLength(4);
         });
@@ -1092,7 +1092,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 },
                 assistantMsg('Partial'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             // The assistant message has call_b without result → removed
             const hasToolUse = result.some(
                 (m) => Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_use'),
@@ -1110,7 +1110,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 { content: 'No role here' } as any,
                 assistantMsg('Hi'),
             ];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
             expect(result[0].content).toBe('Hello');
             expect(result[1].content).toBe('Hi');
@@ -1123,7 +1123,7 @@ describe('LLMHelper - sanitizeMessageFlow', () => {
                 undefined,
                 assistantMsg('Hi'),
             ] as any[];
-            const result = LLMHelper.sanitizeMessageFlow(messages);
+            const result = LLMHelper.normalizeMessages(messages);
             expect(result).toHaveLength(2);
         });
     });
