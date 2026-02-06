@@ -320,7 +320,7 @@ export class Conversation extends EventEmitter {
         // });
         /* ==================== STEP ENTRY ==================== */
 
-        if (message) this._context.addUserMessage(message, message_id);
+        if (message) await this._context.addUserMessage(message, message_id);
 
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
@@ -448,7 +448,7 @@ export class Conversation extends EventEmitter {
                     // Already at limit, don't execute any tools from this batch - all will be pending
                     const pendingToolNames = toolsData.map((t: ToolData) => t.name).join(', ');
                     const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}). The following tools were requested but marked as "pending": ${pendingToolNames}. Please provide a helpful response based on the information you've gathered so far. You may acknowledge these pending tools and suggest the user can continue in a follow-up request.`;
-                    this._context.addUserMessage(systemInstruction, message_id, { internal: true });
+                    await this._context.addUserMessage(systemInstruction, message_id, { internal: true });
                     this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
                     this._disableToolsForNextCall = true;
 
@@ -609,13 +609,13 @@ export class Conversation extends EventEmitter {
                 //if (!passThroughContent) {
 
                 if (!passThroughContent) {
-                    this._context.addToolMessage(llmMessage, allToolsData, message_id);
+                    await this._context.addToolMessage(llmMessage, allToolsData, message_id);
                     //delete toolHeaders['x-passthrough'];
                 } else {
                     //this._context.addAssistantMessage(passThroughContent, message_id);
 
                     //llmMessage.content += '\n' + passThroughContent;
-                    this._context.addToolMessage(llmMessage, allToolsData, message_id, { passThrough: true });
+                    await this._context.addToolMessage(llmMessage, allToolsData, message_id, { passThrough: true });
 
                     //this._context.addAssistantMessage(passThroughContent, message_id, { passthrough: true });
                     //this should not be stored in the persistent conversation store
@@ -637,7 +637,7 @@ export class Conversation extends EventEmitter {
                         // If no pending tools, LLM completed naturally - don't confuse it with limit messages
                         const systemInstruction = `You have reached the maximum number of tool calls (${this._maxToolCallsPerSession}) for this request. Some tools are marked as "pending" and were not executed. Please provide a helpful response based on the information you've gathered so far. You may acknowledge these pending tools and suggest the user can continue in a follow-up request.`;
 
-                        this._context.addUserMessage(systemInstruction, message_id, { internal: true });
+                        await this._context.addUserMessage(systemInstruction, message_id, { internal: true });
                         this.emit(TLLMEvent.Interrupted, 'max_tool_calls', { requestId: llmReqUid });
                     }
                 }
@@ -670,7 +670,7 @@ export class Conversation extends EventEmitter {
                     if (lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal) {
                         metadata = { internal: true };
                     }
-                    this._context.addAssistantMessage(_content, message_id, metadata);
+                    await this._context.addAssistantMessage(_content, message_id, metadata);
                     resolve(''); //the content were already emitted through 'content' event
                 }
             });
@@ -1032,7 +1032,10 @@ export class Conversation extends EventEmitter {
                 });
 
                 let messages = [];
-                if (this._context) messages = this._context.messages; // preserve messages
+                if (this._context) {
+                    await this._context.ready();
+                    messages = this._context.messages; // preserve messages
+                }
 
                 this._context = new LLMContext(this.llmInference, this.systemPrompt, this._llmContextStore);
             } else {
