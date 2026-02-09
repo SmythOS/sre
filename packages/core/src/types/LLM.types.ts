@@ -204,6 +204,7 @@ export type TLLMPreparedParams = TLLMParams & {
         imageEditing?: boolean;
     };
     toolsInfo?: TToolsInfo;
+    outputs?: any[];
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
@@ -567,6 +568,8 @@ export enum TLLMFinishReason {
     Stop = 'stop',
     /** Response was truncated due to maximum token limit or context window */
     Length = 'length',
+    /** Response was truncated due to context window limit */
+    ContextWindowLength = 'context_window_length',
     /** Response was filtered by content moderation policies */
     ContentFilter = 'content_filter',
     /** Response ended because the model called a tool/function */

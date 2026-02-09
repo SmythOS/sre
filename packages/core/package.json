@@ -59,7 +59,7 @@
         "typescript": "^5.4.5"
     },
     "dependencies": {
-        "@anthropic-ai/sdk": "^0.56.0",
+        "@anthropic-ai/sdk": "^0.73.0",
         "@aws-sdk/client-bedrock-runtime": "^3.826.0",
         "@aws-sdk/client-iam": "^3.835.0",
         "@aws-sdk/client-lambda": "^3.835.0",
@@ -116,7 +116,8 @@
         "winston-transport": "^4.7.0",
         "ws": "^8.18.3",
         "xxhashjs": "^0.2.2",
-        "zip-lib": "^1.1.2"
+        "zip-lib": "^1.1.2",
+        "zod": "^4.3.6"
     },
     "repository": {
         "type": "git",
