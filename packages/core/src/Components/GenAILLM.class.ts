@@ -450,8 +450,13 @@ export class GenAILLM extends Component {
             }
 
             // default to json response format
+            // Having 'responseFormat' will be deprecated after structured output is implemented for all LLMs
             const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
             resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
+
+            // Send outputs with config to build schema for structured output
+            const customOutputs = config?.outputs?.filter((output) => !output.default);
+            resolvedConfigData.outputs = customOutputs;
 
             // request to LLM
             let response: any;
