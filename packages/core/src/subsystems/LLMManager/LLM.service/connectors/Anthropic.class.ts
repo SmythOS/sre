@@ -35,11 +35,9 @@ import { hookAsync } from '@sre/Core/HookService';
 const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
-const OLD_MODELS = ['claude-3-opus', 'claude-3-haiku', 'claude-3-5-haiku', 'claude-3-5-haiku-latest', 'claude-3-7-sonnet', 'claude-4-sonnet', 'claude-4-opus', 'claude-opus-4-1'];
+const LEGACY_MODELS = ['claude-4-sonnet', 'claude-4-opus', 'claude-opus-4-1', 'smythos/claude-4-sonnet', 'smythos/claude-4-opus', 'smythos/claude-opus-4-1'];
 
 // Type aliases
-type AnthropicMessageParams = Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
 type AnthropicStreamEventType = keyof MessageStreamEvents;
 
 // Event names automatically validated against MessageStreamEvents type
@@ -543,7 +541,7 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         // For backward compatibility, we keep the prefill text with JSON response instruction for legacy models
-        if((OLD_MODELS.includes(params?.modelEntryName)) || OLD_MODELS.includes(params?.model as string)) {
+        if(LEGACY_MODELS.includes(params?.modelEntryName)) {
             const responseFormat = params?.responseFormat || '';
             if (responseFormat === 'json') {
                 body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
@@ -619,7 +617,7 @@ export class AnthropicConnector extends LLMConnector {
         maxThinkingTokens,
         toolChoice = null,
     }: {
-        body: AnthropicMessageParams;
+        body: Anthropic.MessageCreateParamsNonStreaming;
         maxThinkingTokens: number;
         toolChoice?: Anthropic.ToolChoice;
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
@@ -735,9 +733,10 @@ export class AnthropicConnector extends LLMConnector {
      */
     private async shouldUseThinkingMode(params: TLLMPreparedParams): Promise<boolean> {
         // Legacy thinking models always use thinking mode
-        if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
-            return true;
-        }
+        // Legacy thinking models retired and replaced with new models
+        // if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
+        //     return true;
+        // }
 
         // Check if reasoning is explicitly requested and model supports it
         const useReasoning = params?.useReasoning && params.capabilities?.reasoning === true;
