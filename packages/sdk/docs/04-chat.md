@@ -4,7 +4,7 @@ While `agent.prompt()` is great for single, one-off questions, most interesting 
 
 The `agent.chat()` method creates a `Chat` instance, which automatically manages the history of messages between the user and the agent, providing the necessary context for follow-up questions.
 
-The [`03-chat.ts`](../../examples/01-agent-code-skill/03-chat.ts) script demonstrates a simple in-memory conversation.
+The [`03-chat.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/03-chat.ts) script demonstrates a simple in-memory conversation.
 
 ## In-Memory Chat
 
@@ -41,7 +41,7 @@ console.log('\nAgent (new chat):', forgottenResponse); // "I'm sorry, I don't kn
 
 For many applications, like a web server or a command-line tool, you need conversations to persist across different sessions. You can achieve this by providing an `id` and setting `persist: true` in the chat options. This tells the SDK to save the conversation history using the configured Storage provider.
 
-The [`04-chat-interactive-persistent.ts`](../../examples/01-agent-code-skill/04-chat-interactive-persistent.ts) script shows this in action with an interactive loop.
+The [`04-chat-interactive-persistent.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04-chat-interactive-persistent.ts) script shows this in action with an interactive loop.
 
 Here's a simplified example of how it works:
 
