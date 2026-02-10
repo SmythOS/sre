@@ -252,7 +252,6 @@ export class OTel extends TelemetryConnector {
 
                 const modelId = toolInfo.model;
                 const contextWindow = toolInfo.contextWindow;
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
 
                 const toolNames = toolInfo.map((tool) => tool.name + '(' + tool.arguments + ')');
                 hookContext.curLLMGenSpan.addEvent('llm.gen.tool.calls', {
@@ -298,7 +297,6 @@ export class OTel extends TelemetryConnector {
                 const modelId = reqInfo.model;
                 const contextWindow = reqInfo.contextWindow;
 
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
                 // End TTFB span when first data arrives
                 if (hookContext?.latencySpans?.[reqInfo.requestId]) {
                     const ttfbSpan = hookContext.latencySpans[reqInfo.requestId];
