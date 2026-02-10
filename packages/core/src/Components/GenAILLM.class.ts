@@ -306,7 +306,12 @@ export class GenAILLM extends Component {
         searchMode: Joi.string().valid('auto', 'on', 'off').optional().allow('').label('Search Mode'),
         returnCitations: Joi.boolean().optional().allow('').label('Return Citations'),
         maxSearchResults: Joi.number().min(1).max(100).optional().allow('').label('Max Search Results'),
-        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().allow('').label('Search Data Sources'),
+        searchDataSources: Joi.array()
+            .items(Joi.string().valid('web', 'x', 'news', 'rss'))
+            .max(4)
+            .optional()
+            .allow('')
+            .label('Search Data Sources'),
         searchCountry: Joi.string().max(255).optional().allow('').label('Search Country'),
         excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
         allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
@@ -412,7 +417,7 @@ export class GenAILLM extends Component {
                         }
 
                         return features?.includes(requestFeature) ? file : null;
-                    })
+                    }),
                 );
 
                 files = validFiles.filter(Boolean);
@@ -455,7 +460,7 @@ export class GenAILLM extends Component {
             resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
 
             // Send outputs with config to build schema for structured output
-            const customOutputs = config?.outputs?.filter((output) => !output.default);
+            const customOutputs = config?.outputs?.filter((output) => !output.default && !['_debug', '_error'].includes(output.name));
             resolvedConfigData.outputs = customOutputs;
 
             // request to LLM
