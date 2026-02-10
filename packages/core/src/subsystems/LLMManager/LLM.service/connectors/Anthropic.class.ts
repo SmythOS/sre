@@ -1,6 +1,8 @@
 import EventEmitter from 'events';
+import z from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageStreamEvents } from '@anthropic-ai/sdk/lib/MessageStream';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -33,10 +35,9 @@ import { hookAsync } from '@sre/Core/HookService';
 const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
+const LEGACY_MODELS = ['claude-4-sonnet', 'claude-4-opus', 'claude-opus-4-1', 'smythos/claude-4-sonnet', 'smythos/claude-4-opus', 'smythos/claude-opus-4-1'];
 
 // Type aliases
-type AnthropicMessageParams = Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
 type AnthropicStreamEventType = keyof MessageStreamEvents;
 
 // Event names automatically validated against MessageStreamEvents type
@@ -539,12 +540,32 @@ export class AnthropicConnector extends LLMConnector {
         }
         messages = otherMessages;
 
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        // For backward compatibility, we keep the prefill text with JSON response instruction for legacy models
+        if(LEGACY_MODELS.includes(params?.modelEntryName)) {
+            const responseFormat = params?.responseFormat || '';
+            if (responseFormat === 'json') {
+                body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
+    
+                messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+            }
         }
+        // For new models, we use the structured output feature
+        else {
+            const outputs = params?.outputs;
+            if(outputs?.length > 0) {
+                // Note: We only support string type output for our components for now
+                const schemaShape = Object.fromEntries(
+                    outputs.map((output) => [output.name, z.string()])
+                );
+                const ResponseSchema = z.object(schemaShape);
+    
+                body.output_config = {
+                    format: zodOutputFormat(ResponseSchema)
+                }
+            }
+        }
+
+
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -596,7 +617,7 @@ export class AnthropicConnector extends LLMConnector {
         maxThinkingTokens,
         toolChoice = null,
     }: {
-        body: AnthropicMessageParams;
+        body: Anthropic.MessageCreateParamsNonStreaming;
         maxThinkingTokens: number;
         toolChoice?: Anthropic.ToolChoice;
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
@@ -712,9 +733,10 @@ export class AnthropicConnector extends LLMConnector {
      */
     private async shouldUseThinkingMode(params: TLLMPreparedParams): Promise<boolean> {
         // Legacy thinking models always use thinking mode
-        if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
-            return true;
-        }
+        // Legacy thinking models retired and replaced with new models
+        // if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
+        //     return true;
+        // }
 
         // Check if reasoning is explicitly requested and model supports it
         const useReasoning = params?.useReasoning && params.capabilities?.reasoning === true;

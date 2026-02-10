@@ -4,7 +4,7 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TelemetryConnector } from '../../TelemetryConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
-import { redactSensitiveString, redactHeaders, redactData, SENSITIVE_WORDS, SENSITIVE_HEADERS } from './OTel.redaction.helper';
+import { redactSensitiveString, redactData } from './OTel.redaction.helper';
 
 import { trace, context, SpanStatusCode, Tracer, propagation } from '@opentelemetry/api';
 import { Logger as OTelLogger, logs, SeverityNumber } from '@opentelemetry/api-logs';
