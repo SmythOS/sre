@@ -3,6 +3,7 @@ import z from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageStreamEvents } from '@anthropic-ai/sdk/lib/MessageStream';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -44,6 +45,7 @@ const LEGACY_MODELS = [
     'smythos/claude-opus-4-1',
 ];
 const MODELS_SUPPORTING_REASONING_EFFORT = ['claude-opus-4-6', 'claude-opus-4-5', 'smythos/claude-opus-4-6', 'smythos/claude-opus-4-5'];
+const MODELS_SUPPORTING_1M_CONTEXT_WINDOW = ['claude-opus-4-6', 'claude-sonnet-4-5', 'smythos/claude-opus-4-6', 'smythos/claude-sonnet-4-5'];
 
 // Type aliases
 type AnthropicStreamEventType = keyof MessageStreamEvents;
@@ -67,6 +69,9 @@ const AnthropicStreamEvent = {
     end: 'end',
 } satisfies Record<keyof MessageStreamEvents, AnthropicStreamEventType>;
 
+/** Common interface for MessageStream and BetaMessageStream when attaching listeners (avoids incompatible union). */
+type AnthropicStreamLike = { on(event: string, listener: (...args: unknown[]) => void): unknown };
+
 // TODO [Forhad]: implement proper typing
 
 export class AnthropicConnector extends LLMConnector {
@@ -82,15 +87,58 @@ export class AnthropicConnector extends LLMConnector {
         return new Anthropic({ apiKey });
     }
 
+    /**
+     * Creates a message request using the appropriate Anthropic API endpoint.
+     * Routes to beta API when `betas` is present in the request body, otherwise uses standard API with streaming.
+     *
+     * @param client - Anthropic SDK client instance
+     * @param body - Request body with optional beta feature flags
+     * @param signal - Optional AbortSignal for request cancellation
+     * @returns Promise resolving to the completed message from either beta or standard API
+     */
+    private async createRequest(
+        client: Anthropic,
+        body: TAnthropicRequestBody & { betas?: string[] },
+        signal?: AbortSignal,
+    ): Promise<BetaMessage | Anthropic.Messages.Message> {
+        const useBeta = 'betas' in body && (body.betas?.length ?? 0) > 0;
+
+        if (useBeta) {
+            return client.beta.messages.create(body, { signal });
+        }
+
+        return client.messages.stream(body, { signal }).finalMessage();
+    }
+
+    /**
+     * Creates a message stream using the appropriate Anthropic API endpoint.
+     * Routes to beta API when `betas` is present in the request body, otherwise uses standard streaming API.
+     *
+     * @param client - Anthropic SDK client instance
+     * @param body - Request body with optional beta feature flags
+     * @param signal - Optional AbortSignal for stream cancellation
+     * @returns Stream object with common event listener interface (AnthropicStreamLike)
+     */
+    private createStream(client: Anthropic, body: TAnthropicRequestBody & { betas?: string[] }, signal?: AbortSignal): AnthropicStreamLike {
+        const useBeta = 'betas' in body && (body.betas?.length ?? 0) > 0;
+
+        if (useBeta) {
+            return client.beta.messages.stream(body, { signal }) as AnthropicStreamLike;
+        }
+
+        return client.messages.stream(body, { signal }) as AnthropicStreamLike;
+    }
+
     @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const anthropic = await this.getClient(context);
-            const result = await anthropic.messages.create(body, { signal: abortSignal });
+            const result = await this.createRequest(anthropic, body, abortSignal);
+
             const message: Anthropic.MessageParam = {
                 role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
-                content: result?.content || '',
+                content: (result?.content ?? '') as Anthropic.MessageParam['content'],
             };
             const finishReason = LLMHelper.normalizeFinishReason(result?.stop_reason);
 
@@ -188,7 +236,7 @@ export class AnthropicConnector extends LLMConnector {
             const usage_data = [];
 
             const anthropic = await this.getClient(context);
-            let stream = anthropic.messages.stream(body, { signal: abortSignal });
+            const stream = this.createStream(anthropic, body, abortSignal);
 
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks
@@ -254,11 +302,11 @@ export class AnthropicConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                         });
                     },
-                    { once: true }
+                    { once: true },
                 );
             }
 
-            stream.on(AnthropicStreamEvent.finalMessage, (finalMessage) => {
+            stream.on(AnthropicStreamEvent.finalMessage, (finalMessage: BetaMessage | Anthropic.Messages.Message) => {
                 let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
                 // Preserve thinking blocks for subsequent tool interactions
                 thinkingBlocks = finalMessage.content.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
@@ -348,7 +396,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -479,7 +527,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -534,7 +582,7 @@ export class AnthropicConnector extends LLMConnector {
     private async prepareBody(params: TLLMPreparedParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         let messages = await this.prepareMessages(params);
 
-        let body: Anthropic.MessageCreateParamsNonStreaming = {
+        let body: Anthropic.MessageCreateParamsNonStreaming & { betas?: string[] } = {
             model: params.model as string,
             messages: messages as Anthropic.MessageParam[],
             max_tokens: params.maxTokens, // * max token is required
@@ -606,6 +654,12 @@ export class AnthropicConnector extends LLMConnector {
         }
         // #endregion Reasoning effort
 
+        // #region Beta features, only supported by specific models
+        if (MODELS_SUPPORTING_1M_CONTEXT_WINDOW.includes(params.modelEntryName)) {
+            body.betas = ['context-1m-2025-08-07'];
+        }
+        // #endregion Beta features
+
         // #region Tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
             body.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
@@ -636,7 +690,7 @@ export class AnthropicConnector extends LLMConnector {
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE),
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -715,7 +769,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async prepareSystemPrompt(
         systemMessage: TLLMMessageBlock,
-        params: TLLMPreparedParams
+        params: TLLMPreparedParams,
     ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
@@ -775,7 +829,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
