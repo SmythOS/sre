@@ -35,7 +35,15 @@ import { hookAsync } from '@sre/Core/HookService';
 const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const LEGACY_MODELS = ['claude-4-sonnet', 'claude-4-opus', 'claude-opus-4-1', 'smythos/claude-4-sonnet', 'smythos/claude-4-opus', 'smythos/claude-opus-4-1'];
+const LEGACY_MODELS = [
+    'claude-4-sonnet',
+    'claude-4-opus',
+    'claude-opus-4-1',
+    'smythos/claude-4-sonnet',
+    'smythos/claude-4-opus',
+    'smythos/claude-opus-4-1',
+];
+const MODELS_SUPPORTING_REASONING_EFFORT = ['claude-opus-4-6', 'claude-opus-4-5', 'smythos/claude-opus-4-6', 'smythos/claude-opus-4-5'];
 
 // Type aliases
 type AnthropicStreamEventType = keyof MessageStreamEvents;
@@ -140,18 +148,18 @@ export class AnthropicConnector extends LLMConnector {
 
     /**
      * Stream request implementation.
-     * 
+     *
      * **Error Handling Pattern:**
      * - Always returns emitters, never throws errors - ensures consistent error handling
      * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
      * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
-     * 
+     *
      * **Why setImmediate?**
      * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
      * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
      * listeners are attached. This prevents race conditions where synchronous event emission
      * would occur before listeners can be registered.
-     * 
+     *
      * @param acRequest - Access request for authorization
      * @param body - Request body parameters
      * @param context - LLM request context
@@ -318,7 +326,7 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Error, error);
                 emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            
+
             return emitter;
         }
     }
@@ -541,31 +549,27 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         // For backward compatibility, we keep the prefill text with JSON response instruction for legacy models
-        if(LEGACY_MODELS.includes(params?.modelEntryName)) {
+        if (LEGACY_MODELS.includes(params?.modelEntryName)) {
             const responseFormat = params?.responseFormat || '';
             if (responseFormat === 'json') {
                 body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-    
+
                 messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
             }
         }
         // For new models, we use the structured output feature
         else {
             const outputs = params?.outputs;
-            if(outputs?.length > 0) {
+            if (outputs?.length > 0) {
                 // Note: We only support string type output for our components for now
-                const schemaShape = Object.fromEntries(
-                    outputs.map((output) => [output.name, z.string()])
-                );
+                const schemaShape = Object.fromEntries(outputs.map((output) => [output.name, z.string()]));
                 const ResponseSchema = z.object(schemaShape);
-    
+
                 body.output_config = {
-                    format: zodOutputFormat(ResponseSchema)
-                }
+                    format: zodOutputFormat(ResponseSchema),
+                };
             }
         }
-
-
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -592,6 +596,15 @@ export class AnthropicConnector extends LLMConnector {
 
         if (params?.topK !== undefined) body.top_k = params.topK;
         if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
+
+        // #region Reasoning effort, only supported by specific models
+        if (params?.reasoningEffort && MODELS_SUPPORTING_REASONING_EFFORT.includes(params.modelEntryName)) {
+            body.output_config = {
+                ...(body.output_config || {}),
+                effort: params.reasoningEffort as Anthropic.OutputConfig['effort'],
+            };
+        }
+        // #endregion Reasoning effort
 
         // #region Tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {

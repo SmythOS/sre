@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh', 'max'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -331,7 +331,7 @@ export class GenAILLM extends Component {
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
         reasoningEffort: Joi.string()
-            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max')
             .optional()
             .allow('')
             .label('Reasoning Effort'),
@@ -420,7 +420,6 @@ export class GenAILLM extends Component {
                 if (files.length === 0) {
                     // No valid files after filtering - determine the cause
                     const hasDetectedMimeTypes = fileTypes.size > 0;
-
                     if (!hasDetectedMimeTypes) {
                         // Case 1: No mime types detected - files are corrupted/invalid
                         return {
