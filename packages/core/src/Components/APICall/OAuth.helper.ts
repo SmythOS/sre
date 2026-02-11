@@ -247,10 +247,15 @@ export const retrieveOAuthTokens = async (agent, config) => {
                     responseData.tokenURL = tokensData.auth_settings?.tokenURL;
                     responseData.clientID = tokensData.auth_settings?.clientID;
                     responseData.clientSecret = tokensData.auth_settings?.clientSecret;
+                    responseData.scope = tokensData.auth_settings?.scope;
+                    responseData.audience = tokensData.auth_settings?.audience;
                 } else {
                     responseData.tokenURL = tokensData.tokenURL || tokensData.oauth_info?.tokenURL;
                     responseData.clientID = tokensData.clientID || tokensData.oauth_info?.clientID;
                     responseData.clientSecret = tokensData.clientSecret || tokensData.oauth_info?.clientSecret;
+                    // Extract scope and audience from oauth_info (old structure)
+                    responseData.scope = tokensData.scope || tokensData.oauth_info?.scope;
+                    responseData.audience = tokensData.audience || tokensData.oauth_info?.audience;
                 }
                 responseData.expiresIn = expiresIn ?? 0; // Optional property, default to 0 if not present
                 responseData.team = tokensData.team || agent.teamId;
@@ -355,7 +360,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
     };
 
     try {
-        const { clientID, clientSecret, tokenURL } = oauthTokens;
+        const { clientID, clientSecret, tokenURL, scope, audience } = oauthTokens;
         const currentTime = new Date().getTime();
         // Check for token expiration
         if (!oauthTokens.expiresIn || currentTime >= Number(oauthTokens.expiresIn)) {
@@ -369,6 +374,16 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                 client_id: clientID,
                 client_secret: clientSecret,
             });
+
+            // Add audience if provided (required by some providers like Auth0)
+            if (audience && typeof audience === 'string' && audience.trim()) {
+                params.append('audience', audience.trim());
+            }
+
+            // Add scope if provided (OAuth2 Client Credentials supports scopes)
+            if (scope && typeof scope === 'string' && scope.trim()) {
+                params.append('scope', scope.trim());
+            }
 
             const response = await axios.post(tokenURL, params.toString(), {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
