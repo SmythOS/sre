@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh', 'max'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -306,7 +306,12 @@ export class GenAILLM extends Component {
         searchMode: Joi.string().valid('auto', 'on', 'off').optional().allow('').label('Search Mode'),
         returnCitations: Joi.boolean().optional().allow('').label('Return Citations'),
         maxSearchResults: Joi.number().min(1).max(100).optional().allow('').label('Max Search Results'),
-        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().allow('').label('Search Data Sources'),
+        searchDataSources: Joi.array()
+            .items(Joi.string().valid('web', 'x', 'news', 'rss'))
+            .max(4)
+            .optional()
+            .allow('')
+            .label('Search Data Sources'),
         searchCountry: Joi.string().max(255).optional().allow('').label('Search Country'),
         excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
         allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
@@ -331,7 +336,7 @@ export class GenAILLM extends Component {
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
         reasoningEffort: Joi.string()
-            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max')
             .optional()
             .allow('')
             .label('Reasoning Effort'),
@@ -355,6 +360,7 @@ export class GenAILLM extends Component {
             // Resolve template variables in config.data without mutating original config
             const resolvedConfigData = {
                 ...config.data,
+                outputs: config.outputs,
                 prompt: config.data.prompt && TemplateString(config.data.prompt).parse(input).result,
                 webSearchCity: config.data.webSearchCity && TemplateString(config.data.webSearchCity).parse(input).result,
                 webSearchCountry: config.data.webSearchCountry && TemplateString(config.data.webSearchCountry).parse(input).result,
@@ -412,7 +418,7 @@ export class GenAILLM extends Component {
                         }
 
                         return features?.includes(requestFeature) ? file : null;
-                    })
+                    }),
                 );
 
                 files = validFiles.filter(Boolean);
@@ -420,7 +426,6 @@ export class GenAILLM extends Component {
                 if (files.length === 0) {
                     // No valid files after filtering - determine the cause
                     const hasDetectedMimeTypes = fileTypes.size > 0;
-
                     if (!hasDetectedMimeTypes) {
                         // Case 1: No mime types detected - files are corrupted/invalid
                         return {
@@ -453,10 +458,6 @@ export class GenAILLM extends Component {
             // Having 'responseFormat' will be deprecated after structured output is implemented for all LLMs
             const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
             resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
-
-            // Send outputs with config to build schema for structured output
-            const customOutputs = config?.outputs?.filter((output) => !output.default);
-            resolvedConfigData.outputs = customOutputs;
 
             // request to LLM
             let response: any;
