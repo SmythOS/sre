@@ -247,7 +247,7 @@ export class GenAILLM extends Component {
             },
             reasoningEffort: {
                 type: 'string',
-                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh'],
+                valid: ['none', 'default', 'low', 'medium', 'high', 'xhigh', 'max'],
                 description: 'Controls the level of effort the model will put into reasoning',
                 label: 'Reasoning Effort',
             },
@@ -278,10 +278,10 @@ export class GenAILLM extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
-        temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
+        temperature: Joi.number().min(-0.01).max(5).label('Temperature'), // min is -0.01 to represent "not set" for Anthropic (only one of Temperature/Top P can be used). Max is 2 for OpenAI/TogetherAI, 5 for Cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
-        topP: Joi.number().min(0).max(1).label('Top P'),
+        topP: Joi.number().min(-0.01).max(1).label('Top P'), // min is -0.01 to represent "not set" for Anthropic (only one of Temperature/Top P can be used)
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
@@ -306,7 +306,12 @@ export class GenAILLM extends Component {
         searchMode: Joi.string().valid('auto', 'on', 'off').optional().allow('').label('Search Mode'),
         returnCitations: Joi.boolean().optional().allow('').label('Return Citations'),
         maxSearchResults: Joi.number().min(1).max(100).optional().allow('').label('Max Search Results'),
-        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().allow('').label('Search Data Sources'),
+        searchDataSources: Joi.array()
+            .items(Joi.string().valid('web', 'x', 'news', 'rss'))
+            .max(4)
+            .optional()
+            .allow('')
+            .label('Search Data Sources'),
         searchCountry: Joi.string().max(255).optional().allow('').label('Search Country'),
         excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
         allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
@@ -331,7 +336,7 @@ export class GenAILLM extends Component {
         // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
         reasoningEffort: Joi.string()
-            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh')
+            .valid('none', 'default', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max')
             .optional()
             .allow('')
             .label('Reasoning Effort'),
@@ -355,6 +360,7 @@ export class GenAILLM extends Component {
             // Resolve template variables in config.data without mutating original config
             const resolvedConfigData = {
                 ...config.data,
+                outputs: config.outputs,
                 prompt: config.data.prompt && TemplateString(config.data.prompt).parse(input).result,
                 webSearchCity: config.data.webSearchCity && TemplateString(config.data.webSearchCity).parse(input).result,
                 webSearchCountry: config.data.webSearchCountry && TemplateString(config.data.webSearchCountry).parse(input).result,
@@ -412,7 +418,7 @@ export class GenAILLM extends Component {
                         }
 
                         return features?.includes(requestFeature) ? file : null;
-                    })
+                    }),
                 );
 
                 files = validFiles.filter(Boolean);
@@ -420,7 +426,6 @@ export class GenAILLM extends Component {
                 if (files.length === 0) {
                     // No valid files after filtering - determine the cause
                     const hasDetectedMimeTypes = fileTypes.size > 0;
-
                     if (!hasDetectedMimeTypes) {
                         // Case 1: No mime types detected - files are corrupted/invalid
                         return {
@@ -450,6 +455,7 @@ export class GenAILLM extends Component {
             }
 
             // default to json response format
+            // Having 'responseFormat' will be deprecated after structured output is implemented for all LLMs
             const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
             resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
 

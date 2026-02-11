@@ -1,6 +1,8 @@
 import EventEmitter from 'events';
+import z from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageStreamEvents } from '@anthropic-ai/sdk/lib/MessageStream';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -33,10 +35,17 @@ import { hookAsync } from '@sre/Core/HookService';
 const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
+const LEGACY_MODELS = [
+    'claude-4-sonnet',
+    'claude-4-opus',
+    'claude-opus-4-1',
+    'smythos/claude-4-sonnet',
+    'smythos/claude-4-opus',
+    'smythos/claude-opus-4-1',
+];
+const MODELS_SUPPORTING_REASONING_EFFORT = ['claude-opus-4-6', 'claude-opus-4-5', 'smythos/claude-opus-4-6', 'smythos/claude-opus-4-5'];
 
 // Type aliases
-type AnthropicMessageParams = Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
 type AnthropicStreamEventType = keyof MessageStreamEvents;
 
 // Event names automatically validated against MessageStreamEvents type
@@ -139,18 +148,18 @@ export class AnthropicConnector extends LLMConnector {
 
     /**
      * Stream request implementation.
-     * 
+     *
      * **Error Handling Pattern:**
      * - Always returns emitters, never throws errors - ensures consistent error handling
      * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
      * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
-     * 
+     *
      * **Why setImmediate?**
      * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
      * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
      * listeners are attached. This prevents race conditions where synchronous event emission
      * would occur before listeners can be registered.
-     * 
+     *
      * @param acRequest - Access request for authorization
      * @param body - Request body parameters
      * @param context - LLM request context
@@ -245,7 +254,7 @@ export class AnthropicConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                         });
                     },
-                    { once: true }
+                    { once: true },
                 );
             }
 
@@ -317,7 +326,7 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Error, error);
                 emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            
+
             return emitter;
         }
     }
@@ -339,7 +348,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -470,7 +479,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -539,11 +548,26 @@ export class AnthropicConnector extends LLMConnector {
         }
         messages = otherMessages;
 
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
+        // For backward compatibility, we keep the prefill text with JSON response instruction for legacy models
+        if (LEGACY_MODELS.includes(params?.modelEntryName)) {
+            const responseFormat = params?.responseFormat || '';
+            if (responseFormat === 'json') {
+                body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
 
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+                messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+            }
+        }
+        // For new models, we use the structured output feature
+        else {
+            if (params?.structuredOutputs?.length > 0) {
+                // Note: We only support string type output for our components for now
+                const schemaShape = Object.fromEntries(params?.structuredOutputs?.map((output) => [output.name, z.string()]));
+                const ResponseSchema = z.object(schemaShape);
+
+                body.output_config = {
+                    format: zodOutputFormat(ResponseSchema),
+                };
+            }
         }
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
@@ -559,12 +583,27 @@ export class AnthropicConnector extends LLMConnector {
         }
         //#endregion Prepare system message and add JSON response instruction if needed
 
-        const isReasoningModel = params?.capabilities?.reasoning;
+        // Temperature and top_p are mutually exclusive for Anthropic API.
+        // Temperature takes precedence. Guard ensures only one is ever set.
+        if (params?.temperature !== undefined && params.temperature >= 0) {
+            body.temperature = params.temperature;
+            delete body.top_p;
+        } else if (params?.topP !== undefined && params.topP >= 0) {
+            body.top_p = params.topP;
+            delete body.temperature;
+        }
 
-        if (params?.temperature !== undefined && !isReasoningModel) body.temperature = params.temperature;
-        if (params?.topP !== undefined && !isReasoningModel) body.top_p = params.topP;
-        if (params?.topK !== undefined && !isReasoningModel) body.top_k = params.topK;
+        if (params?.topK !== undefined) body.top_k = params.topK;
         if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
+
+        // #region Reasoning effort, only supported by specific models
+        if (params?.reasoningEffort && MODELS_SUPPORTING_REASONING_EFFORT.includes(params.modelEntryName)) {
+            body.output_config = {
+                ...(body.output_config || {}),
+                effort: params.reasoningEffort as Anthropic.OutputConfig['effort'],
+            };
+        }
+        // #endregion Reasoning effort
 
         // #region Tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
@@ -590,13 +629,13 @@ export class AnthropicConnector extends LLMConnector {
         maxThinkingTokens,
         toolChoice = null,
     }: {
-        body: AnthropicMessageParams;
+        body: Anthropic.MessageCreateParamsNonStreaming;
         maxThinkingTokens: number;
         toolChoice?: Anthropic.ToolChoice;
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE),
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -675,7 +714,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async prepareSystemPrompt(
         systemMessage: TLLMMessageBlock,
-        params: TLLMPreparedParams
+        params: TLLMPreparedParams,
     ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
@@ -706,9 +745,10 @@ export class AnthropicConnector extends LLMConnector {
      */
     private async shouldUseThinkingMode(params: TLLMPreparedParams): Promise<boolean> {
         // Legacy thinking models always use thinking mode
-        if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
-            return true;
-        }
+        // Legacy thinking models retired and replaced with new models
+        // if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
+        //     return true;
+        // }
 
         // Check if reasoning is explicitly requested and model supports it
         const useReasoning = params?.useReasoning && params.capabilities?.reasoning === true;
@@ -734,7 +774,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;

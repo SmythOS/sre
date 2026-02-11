@@ -167,6 +167,7 @@ export * from './subsystems/Security/Vault.service/VaultConnector';
 export * from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 export * from './subsystems/AgentManager/AgentData.service/connectors/LocalAgentDataConnector.class';
 export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentData.class';
+export * from './subsystems/AgentManager/AgentData.service/connectors/SQLiteAgentDataConnector.class';
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/AgentManager/Scheduler.service/connectors/LocalScheduler.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
@@ -211,6 +212,7 @@ export * from './subsystems/Security/Vault.service/connectors/SecretsManager.cla
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/OpenAIConnector.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/types';
 export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTel.class';
+export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTel.redaction.helper';
 export * from './subsystems/ObservabilityManager/Telemetry.service/connectors/OTel/OTelContextRegistry';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/constants';
 export * from './subsystems/LLMManager/LLM.service/connectors/openai/apiInterfaces/utils';
