@@ -315,6 +315,9 @@ export class LLMHelper {
             case 'incomplete': // OpenAI Responses API - response cut short due to max tokens or content filter
                 return TLLMFinishReason.Length;
 
+            case 'model_context_window_exceeded': // Anthropic - context window exceeded
+                return TLLMFinishReason.ContextWindowLength;
+
             // Content filtering and safety
             case 'content_filter':
             case 'contentfilter':
@@ -362,6 +365,9 @@ export class LLMHelper {
         switch (finishReason) {
             case TLLMFinishReason.Length:
                 return 'Empty response. This is usually due to output token limit reached. Please try again with a higher \'Maximum Output Tokens\'.';
+
+            case TLLMFinishReason.ContextWindowLength:
+                return 'Context window limit exceeded. Please shorten the input prompt or summarize the previous conversation to reduce token usage.';
             
             case TLLMFinishReason.ContentFilter:
                 return 'The response was blocked by content filtering policies. Please modify your prompt and try again.';

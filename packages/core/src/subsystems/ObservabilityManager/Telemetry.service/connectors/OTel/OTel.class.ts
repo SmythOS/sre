@@ -4,6 +4,7 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TelemetryConnector } from '../../TelemetryConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
+import { redactSensitiveString, redactData, redactHeaders } from './OTel.redaction.helper';
 
 import { trace, context, SpanStatusCode, Tracer, propagation } from '@opentelemetry/api';
 import { Logger as OTelLogger, logs, SeverityNumber } from '@opentelemetry/api-logs';
@@ -170,11 +171,17 @@ export class OTel extends TelemetryConnector {
             return undefined;
         }
 
-        // Redact sensitive fields
-        const redacted = this.redactSensitiveData(output, config.redactFields);
+        // Redact sensitive fields (config-based)
+        let redacted = this.redactSensitiveData(output, config.redactFields);
+
+        // Apply SENSITIVE_WORDS-based redaction on the object (automatic key-based redaction)
+        redacted = redactData(redacted);
 
         // Stringify
-        const outputStr = JSON.stringify(redacted);
+        let outputStr = JSON.stringify(redacted);
+
+        // Apply string-based redaction on the stringified output to catch embedded JSON
+        outputStr = redactSensitiveString(outputStr);
 
         // Check size limit
         if (outputStr && outputStr.length > maxSize) {
@@ -206,6 +213,32 @@ export class OTel extends TelemetryConnector {
 
         return result;
     }
+
+    private prepareContext(contextWindow: Array<{ role: string; content: string; [key: string]: unknown }>): string {
+        if (!contextWindow || !Array.isArray(contextWindow)) return '[]';
+
+        const filtered = contextWindow.filter((msg) => {
+            if (typeof msg !== 'object' || msg === null) return false;
+            const keys = Object.keys(msg);
+            return !keys.some((k) => k.includes('___smyth_metadata___'));
+        });
+
+        const lastAssistant = [...filtered].reverse().find((msg) => msg.role === 'assistant' && msg.content);
+        const lastUser = [...filtered].reverse().find((msg) => msg.role === 'user' && msg.content);
+
+        const messages: Array<{ role: string; content: string }> = [];
+        if (lastAssistant) {
+            const raw = typeof lastAssistant.content === 'string' ? lastAssistant.content : JSON.stringify(lastAssistant.content);
+            messages.push({ role: 'assistant', content: raw.substring(0, 2000) });
+        }
+        if (lastUser) {
+            const raw = typeof lastUser.content === 'string' ? lastUser.content : JSON.stringify(lastUser.content);
+            messages.push({ role: 'user', content: raw.substring(0, 2000) });
+        }
+
+        return JSON.stringify(messages);
+    }
+
     protected setupHooks(): Promise<void> {
         const tracer = this.tracer;
         const logger = this.logger;
@@ -219,13 +252,12 @@ export class OTel extends TelemetryConnector {
 
                 const modelId = toolInfo.model;
                 const contextWindow = toolInfo.contextWindow;
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
 
                 const toolNames = toolInfo.map((tool) => tool.name + '(' + tool.arguments + ')');
                 hookContext.curLLMGenSpan.addEvent('llm.gen.tool.calls', {
-                    'tool.calls': toolNames.join(', '),
+                    'tool.calls': redactSensitiveString(toolNames.join(', ')),
                     'llm.model': modelId || '',
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'context.preview': redactSensitiveString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
 
                 const llmSpanCtx = hookContext.curLLMGenSpan.spanContext();
@@ -244,7 +276,7 @@ export class OTel extends TelemetryConnector {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
                             'llm.model': modelId || '',
-                            'context.preview': JSON.stringify(lastContext).substring(0, 5000),
+                            'context.preview': redactSensitiveString(oTelInstance.prepareContext(contextWindow)),
                         },
                     });
                 });
@@ -265,7 +297,6 @@ export class OTel extends TelemetryConnector {
                 const modelId = reqInfo.model;
                 const contextWindow = reqInfo.contextWindow;
 
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
                 // End TTFB span when first data arrives
                 if (hookContext?.latencySpans?.[reqInfo.requestId]) {
                     const ttfbSpan = hookContext.latencySpans[reqInfo.requestId];
@@ -299,8 +330,32 @@ export class OTel extends TelemetryConnector {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
                     'llm.model': modelId || '',
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'context.preview': redactSensitiveString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
+
+                const llmGenSpanCtx = llmGenSpan.spanContext();
+                const llmGenSpanContext = trace.setSpan(context.active(), llmGenSpan);
+                context.with(llmGenSpanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: `LLM generation started: ${hookContext.processId}`,
+                        attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: llmGenSpanCtx.traceId,
+                            span_id: llmGenSpanCtx.spanId,
+                            trace_flags: llmGenSpanCtx.traceFlags,
+
+                            'agent.id': hookContext.agentId,
+                            'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
+                            'llm.model': modelId || '',
+                            'request.id': reqInfo.requestId,
+                            'context.preview': redactSensitiveString(oTelInstance.prepareContext(contextWindow)),
+                        },
+                    });
+                });
+
                 hookContext.curLLMGenSpan = llmGenSpan;
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler completed', reqInfo?.requestId, accessCandidate);
             };
@@ -366,8 +421,6 @@ export class OTel extends TelemetryConnector {
                 if (!hookContext.latencySpans) hookContext.latencySpans = {};
                 const contextWindow = reqInfo.contextWindow;
 
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
-
                 const modelId = reqInfo.model;
                 const llmGenLatencySpan = tracer.startSpan(
                     'Conv.GenAI.TTFB',
@@ -386,7 +439,7 @@ export class OTel extends TelemetryConnector {
                 llmGenLatencySpan.addEvent('llm.requested', {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'context.preview': redactSensitiveString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
                 hookContext.latencySpans[reqInfo.requestId] = llmGenLatencySpan;
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler completed', reqInfo?.requestId, accessCandidate);
@@ -478,7 +531,7 @@ export class OTel extends TelemetryConnector {
 
                 convSpan.addEvent('skill.process.started', {
                     'input.size': JSON.stringify(message || {}).length,
-                    'input.preview': message.substring(0, 200),
+                    'input.preview': redactSensitiveString(message.substring(0, 200)),
                     'llm.model': modelId || '',
                 });
 
@@ -505,7 +558,7 @@ export class OTel extends TelemetryConnector {
                             'agent.name': agentName,
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
-                            'input.preview': message.substring(0, 2000),
+                            'input.preview': redactSensitiveString(message.substring(0, 4000)),
                             'agent.debug': isDebugSession,
                             'agent.isTest': isTestDomain,
                             'session.id': sessionId,
@@ -555,7 +608,9 @@ export class OTel extends TelemetryConnector {
                     }
                     hookContext.curLLMGenSpan.addEvent('llm.gen.content', {
                         'content.size': JSON.stringify(result || {}).length,
-                        'content.preview': typeof result === 'string' ? result.substring(0, 200) : JSON.stringify(result || {}).substring(0, 200),
+                        'content.preview': redactSensitiveString(
+                            typeof result === 'string' ? result.substring(0, 200) : JSON.stringify(result || {}).substring(0, 200),
+                        ),
                     });
                     hookContext.curLLMGenSpan.end();
 
@@ -629,8 +684,9 @@ export class OTel extends TelemetryConnector {
                                 'agent.name': agentName,
                                 'conv.id': processId,
                                 'output.size': JSON.stringify(result || {}).length,
-                                'output.preview':
-                                    typeof result === 'string' ? result.substring(0, 2000) : JSON.stringify(result || {}).substring(0, 2000),
+                                'output.preview': redactSensitiveString(
+                                    (typeof result === 'string' ? result : JSON.stringify(result || {})).substring(0, 4000),
+                                ),
                                 'team.id': teamId,
                                 'org.tier': orgTier,
                                 'org.slot': orgSlot,
@@ -687,6 +743,11 @@ export class OTel extends TelemetryConnector {
 
                 const input = { body, query, headers, processInput: agentInput };
 
+                const logBody = oTelInstance.prepareComponentData(agentRequest.body || {}, undefined, 4000);
+                const logQuery = oTelInstance.prepareComponentData(agentRequest.query || {}, undefined, 4000);
+                const logHeaders = oTelInstance.prepareComponentData(agentRequest.headers || {}, undefined, 4000);
+                const logAgentInput = oTelInstance.prepareComponentData(inputData || {}, undefined, 4000);
+
                 let convSpan;
                 let parentContext = context.active();
 
@@ -736,7 +797,7 @@ export class OTel extends TelemetryConnector {
                 );
 
                 // Add start event
-                const inputPreview = JSON.stringify(input || {}).substring(0, 200);
+                const inputPreview = redactSensitiveString(JSON.stringify(input || {}).substring(0, 200));
                 agentSpan.addEvent('skill.process.started', {
                     endpoint: endpointPath,
                     'input.size': JSON.stringify(input || {}).length,
@@ -762,10 +823,10 @@ export class OTel extends TelemetryConnector {
                             'agent.id': agentId,
                             'agent.name': agentName,
                             'process.id': agentProcessId,
-                            input: agentInput,
-                            body,
-                            query,
-                            headers,
+                            input: redactData(logAgentInput),
+                            body: redactData(logBody),
+                            query: redactData(logQuery),
+                            headers: redactHeaders(logHeaders),
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
@@ -982,7 +1043,7 @@ export class OTel extends TelemetryConnector {
                 span.addEvent('cmp.call', {
                     'event.id': eventId,
                     'cmp.input.size': JSON.stringify(componentInput || {}).length,
-                    'cmp.input': JSON.stringify(compInputData),
+                    'cmp.input': redactSensitiveString(JSON.stringify(compInputData)),
                     'input.action': inputAction,
                     'input.status': inputStatus,
                 });
@@ -1008,7 +1069,7 @@ export class OTel extends TelemetryConnector {
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
-                            'cmp.input': componentInput,
+                            'cmp.input': redactData(componentInput),
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
@@ -1170,7 +1231,7 @@ export class OTel extends TelemetryConnector {
                                     'cmp.type': componentType,
                                     'error.type': 'result_error',
                                     'error.message': errorMessage,
-                                    'cmp.output': result,
+                                    'cmp.output': redactData(result),
                                     'team.id': teamId,
                                     'org.slot': orgSlot,
                                     'org.tier': orgTier,
@@ -1192,7 +1253,7 @@ export class OTel extends TelemetryConnector {
                         // Add success event with output summary
                         span.addEvent('cmp.call.result', {
                             'output.size': resultStr.length,
-                            'output.preview': resultStr.substring(0, 200),
+                            'output.preview': redactSensitiveString(resultStr.substring(0, 200)),
                         });
 
                         // Add output attributes to span
@@ -1216,7 +1277,7 @@ export class OTel extends TelemetryConnector {
                             'cmp.name': componentName,
                             'process.id': processId,
                             'event.id': eventId,
-                            'cmp.output': result,
+                            'cmp.output': redactData(result),
                             'team.id': teamId,
                             'org.slot': orgSlot,
                             'org.tier': orgTier,
