@@ -254,7 +254,7 @@ export class AnthropicConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                         });
                     },
-                    { once: true }
+                    { once: true },
                 );
             }
 
@@ -348,7 +348,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -479,7 +479,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -559,10 +559,9 @@ export class AnthropicConnector extends LLMConnector {
         }
         // For new models, we use the structured output feature
         else {
-            const outputs = params?.outputs;
-            if (outputs?.length > 0) {
+            if (params?.structuredOutputs?.length > 0) {
                 // Note: We only support string type output for our components for now
-                const schemaShape = Object.fromEntries(outputs.map((output) => [output.name, z.string()]));
+                const schemaShape = Object.fromEntries(params?.structuredOutputs?.map((output) => [output.name, z.string()]));
                 const ResponseSchema = z.object(schemaShape);
 
                 body.output_config = {
@@ -636,7 +635,7 @@ export class AnthropicConnector extends LLMConnector {
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE),
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -715,7 +714,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async prepareSystemPrompt(
         systemMessage: TLLMMessageBlock,
-        params: TLLMPreparedParams
+        params: TLLMPreparedParams,
     ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
@@ -775,7 +774,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;

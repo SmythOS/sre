@@ -330,6 +330,9 @@ export abstract class LLMConnector extends Connector {
             xai: await this.prepareXAIToolsInfo(_params),
         };
 
+        // Filter out default and system-specific outputs (e.g., _debug, _error) to isolate custom outputs for structured response
+        _params.structuredOutputs = _params?.outputs?.filter((output) => !output.default && !['_debug', '_error'].includes(output.name)) || [];
+
         // The input adapter transforms the standardized parameters into the specific format required by the target LLM provider
         _params.agentId = candidate.id;
         const body = await this.reqBodyAdapter(_params);

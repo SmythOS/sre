@@ -204,7 +204,8 @@ export type TLLMPreparedParams = TLLMParams & {
         imageEditing?: boolean;
     };
     toolsInfo?: TToolsInfo;
-    outputs?: any[];
+    outputs?: any[]; // all outputs including default and system-specific (_debug, _error etc.)
+    structuredOutputs?: any[]; // custom outputs for structured response
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
@@ -559,7 +560,7 @@ export interface ILLMRequestFuncParams<TBody = any> {
 
 /**
  * Standardized finish reasons for LLM responses across all providers.
- * 
+ *
  * This enum normalizes provider-specific finish reasons (e.g., 'end_turn' from Anthropic,
  * 'max_tokens' from Google AI) into a consistent set of values.
  */
