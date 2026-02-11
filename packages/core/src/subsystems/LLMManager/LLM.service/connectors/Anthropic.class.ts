@@ -43,6 +43,7 @@ const LEGACY_MODELS = [
     'smythos/claude-4-opus',
     'smythos/claude-opus-4-1',
 ];
+const MODELS_SUPPORTING_REASONING_EFFORT = ['claude-opus-4-6', 'claude-opus-4-5', 'smythos/claude-opus-4-6', 'smythos/claude-opus-4-5'];
 
 // Type aliases
 type AnthropicStreamEventType = keyof MessageStreamEvents;
@@ -594,6 +595,15 @@ export class AnthropicConnector extends LLMConnector {
 
         if (params?.topK !== undefined) body.top_k = params.topK;
         if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
+
+        // #region Reasoning effort, only supported by specific models
+        if (params?.reasoningEffort && MODELS_SUPPORTING_REASONING_EFFORT.includes(params.modelEntryName)) {
+            body.output_config = {
+                ...(body.output_config || {}),
+                effort: params.reasoningEffort as Anthropic.OutputConfig['effort'],
+            };
+        }
+        // #endregion Reasoning effort
 
         // #region Tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
