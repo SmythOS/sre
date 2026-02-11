@@ -334,6 +334,9 @@ export abstract class LLMConnector extends Connector {
         _params.agentId = candidate.id;
         const body = await this.reqBodyAdapter(_params);
 
+        // Filter out default and system-specific outputs (e.g., _debug, _error) to isolate custom outputs for structured response
+        _params.structuredOutputs = _params?.outputs?.filter((output) => !output.default && !['_debug', '_error'].includes(output.name)) || [];
+
         return { ..._params, body };
     }
 

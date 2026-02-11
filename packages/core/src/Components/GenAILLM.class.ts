@@ -360,6 +360,7 @@ export class GenAILLM extends Component {
             // Resolve template variables in config.data without mutating original config
             const resolvedConfigData = {
                 ...config.data,
+                outputs: config.outputs,
                 prompt: config.data.prompt && TemplateString(config.data.prompt).parse(input).result,
                 webSearchCity: config.data.webSearchCity && TemplateString(config.data.webSearchCity).parse(input).result,
                 webSearchCountry: config.data.webSearchCountry && TemplateString(config.data.webSearchCountry).parse(input).result,
@@ -458,10 +459,6 @@ export class GenAILLM extends Component {
             // Having 'responseFormat' will be deprecated after structured output is implemented for all LLMs
             const hasCustomOutputs = config?.outputs?.some((output) => !output.default);
             resolvedConfigData.responseFormat = resolvedConfigData?.responseFormat || (hasCustomOutputs ? 'json' : '');
-
-            // Send outputs with config to build schema for structured output
-            const customOutputs = config?.outputs?.filter((output) => !output.default && !['_debug', '_error'].includes(output.name));
-            resolvedConfigData.outputs = customOutputs;
 
             // request to LLM
             let response: any;

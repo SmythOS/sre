@@ -35,7 +35,14 @@ import { hookAsync } from '@sre/Core/HookService';
 const logger = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const LEGACY_MODELS = ['claude-4-sonnet', 'claude-4-opus', 'claude-opus-4-1', 'smythos/claude-4-sonnet', 'smythos/claude-4-opus', 'smythos/claude-opus-4-1'];
+const LEGACY_MODELS = [
+    'claude-4-sonnet',
+    'claude-4-opus',
+    'claude-opus-4-1',
+    'smythos/claude-4-sonnet',
+    'smythos/claude-4-opus',
+    'smythos/claude-opus-4-1',
+];
 
 // Type aliases
 type AnthropicStreamEventType = keyof MessageStreamEvents;
@@ -140,18 +147,18 @@ export class AnthropicConnector extends LLMConnector {
 
     /**
      * Stream request implementation.
-     * 
+     *
      * **Error Handling Pattern:**
      * - Always returns emitters, never throws errors - ensures consistent error handling
      * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
      * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
-     * 
+     *
      * **Why setImmediate?**
      * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
      * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
      * listeners are attached. This prevents race conditions where synchronous event emission
      * would occur before listeners can be registered.
-     * 
+     *
      * @param acRequest - Access request for authorization
      * @param body - Request body parameters
      * @param context - LLM request context
@@ -246,7 +253,7 @@ export class AnthropicConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
                         });
                     },
-                    { once: true }
+                    { once: true },
                 );
             }
 
@@ -318,7 +325,7 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Error, error);
                 emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            
+
             return emitter;
         }
     }
@@ -340,7 +347,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -471,7 +478,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -541,31 +548,26 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         // For backward compatibility, we keep the prefill text with JSON response instruction for legacy models
-        if(LEGACY_MODELS.includes(params?.modelEntryName)) {
+        if (LEGACY_MODELS.includes(params?.modelEntryName)) {
             const responseFormat = params?.responseFormat || '';
             if (responseFormat === 'json') {
                 body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-    
+
                 messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
             }
         }
         // For new models, we use the structured output feature
         else {
-            const outputs = params?.outputs;
-            if(outputs?.length > 0) {
+            if (params?.structuredOutputs?.length > 0) {
                 // Note: We only support string type output for our components for now
-                const schemaShape = Object.fromEntries(
-                    outputs.map((output) => [output.name, z.string()])
-                );
+                const schemaShape = Object.fromEntries(params?.structuredOutputs?.map((output) => [output.name, z.string()]));
                 const ResponseSchema = z.object(schemaShape);
-    
+
                 body.output_config = {
-                    format: zodOutputFormat(ResponseSchema)
-                }
+                    format: zodOutputFormat(ResponseSchema),
+                };
             }
         }
-
-
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -623,7 +625,7 @@ export class AnthropicConnector extends LLMConnector {
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE),
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -702,7 +704,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async prepareSystemPrompt(
         systemMessage: TLLMMessageBlock,
-        params: TLLMPreparedParams
+        params: TLLMPreparedParams,
     ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
@@ -762,7 +764,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
