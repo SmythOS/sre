@@ -277,7 +277,8 @@ export class BedrockConnector extends LLMConnector {
                 return {
                     toolSpec: {
                         name: _serializeToolName(name),
-                        description,
+                        // Bedrock requires description to have at least 1 character
+                        description: description || `Tool: ${name}`,
                         inputSchema: {
                             json: {
                                 type: 'object',
