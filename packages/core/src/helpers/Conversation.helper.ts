@@ -76,6 +76,8 @@ export class Conversation extends EventEmitter {
         return this._id;
     }
 
+    private _conversationId: string = '';
+
     // Tool call limit tracking
     private _toolCallCount: number = 0;
     private _maxToolCallsPerSession: number = Infinity; // Default limit
@@ -167,6 +169,10 @@ export class Conversation extends EventEmitter {
 
         if (_settings?.maxToolCalls !== undefined) {
             this._maxToolCallsPerSession = _settings.maxToolCalls;
+        }
+
+        if(_settings?.conversationId) {
+            this._conversationId = _settings.conversationId;
         }
 
         this._baseUrl = _settings?.baseUrl;
@@ -808,7 +814,7 @@ export class Conversation extends EventEmitter {
 
                 //we force the conversationId header after checking that it was not remotely set
                 if (!reqConfig.headers['x-conversation-id']) {
-                    reqConfig.headers['x-conversation-id'] = this.id;
+                    reqConfig.headers['x-conversation-id'] = this._conversationId || this.id;
                 }
                 if (canRunLocally && !requiresRemoteCall) {
                     console.log('RUNNING AGENT LOCALLY');
@@ -1037,7 +1043,7 @@ export class Conversation extends EventEmitter {
                     messages = this._context.messages; // preserve messages
                 }
 
-                this._context = new LLMContext(this.llmInference, this.systemPrompt, this._llmContextStore);
+                this._context = new LLMContext(this.llmInference, this.systemPrompt, this._llmContextStore, this._conversationId);
             } else {
                 this._toolsConfig = null;
                 this._reqMethods = null;
