@@ -23,8 +23,8 @@ export class LLMCache {
      * @param id - Identifier to use as cache ID (e.g., conversationId, sessionId)
      * @returns LLM cache ID with 'llm_cache_' prefix
      */
-    public static generateCacheId(id: string, prefix: string = 'llm_cache'): string {
-        return `${prefix}:${id}`;
+    public static generateLLMCacheId(id: string): string {
+        return `llm_cache:${id}`;
     }
 
     /**
@@ -39,7 +39,7 @@ export class LLMCache {
      */
     constructor(candidate: AccessCandidate, cacheId?: string, ttl: number = 1 * 60 * 60) {
         this._cacheConnector = ConnectorService.getCacheConnector();
-        this._cacheId = cacheId || LLMCache.generateCacheId(uid());
+        this._cacheId = cacheId || LLMCache.generateLLMCacheId(uid());
         this._ttl = ttl;
         this._candidate = candidate;
     }
