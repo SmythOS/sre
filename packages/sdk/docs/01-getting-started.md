@@ -33,10 +33,12 @@ npm install
 
 Available templates:
 
--   `empty-sdk-template` - Blank SDK project
--   `minimal-sdk-agent` - Basic agent implementation
--   `interactive-book-assistant` - Fully functional agent with interactive chat
--   `interactive-chat-two-agents` - Two different agent implementations
+-   `sdk-empty` - Blank SDK project
+-   `code-agent-minimal` - Basic agent implementation
+-   `code-agent-book-assistant` - Fully functional agent with interactive chat
+-   `interactive-chat-agent-select` - Interactive chat with agent selection
+-   `smythos-electron-starter-project` - Desktop App (Electron)
+-   `android-mobile-agent` - Android Mobile App (React Native)
 
 Alternatively, you can install the SDK directly in an existing project:
 

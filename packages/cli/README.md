@@ -177,6 +177,8 @@ sre create "My AI Project"
     -   Minimal: Just the basics to get started
     -   Interactive: Chat with one agent
     -   Interactive chat with agent selection
+    -   Desktop App (Electron)
+    -   Android Mobile App (React Native)
 -   Automatic vault setup with API key detection
 -   Smart resource folder configuration
 
