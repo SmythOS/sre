@@ -4,14 +4,14 @@ The SDK is a lightweight wrapper around the Smyth Runtime Environment. It lets y
 
 ## Key Features
 
--   **Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
--   **Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
--   **Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
--   **Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
--   **Agent Serialization**: Save and load your agent's state, including skills and memory.
--   **Team Management**: Orchestrate multiple agents to work together in teams.
--   **Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
--   **Full SRE Access**: Access the complete Smyth Runtime Environment API through `@smythos/sdk/core` for advanced use cases.
+- **Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
+- **Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
+- **Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
+- **Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
+- **Agent Serialization**: Save and load your agent's state, including skills and memory.
+- **Team Management**: Orchestrate multiple agents to work together in teams.
+- **Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
+- **Full SRE Access**: Access the complete Smyth Runtime Environment API through `@smythos/sdk/core` for advanced use cases.
 
 ## Import Paths
 
@@ -120,7 +120,7 @@ You should see your agent respond with the author of the book "The Great Gatsby"
 ### Reporting Issues
 
 If you face any issues with the CLI or the code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
-You can request help on our [Discord](https://discord.gg/smythos) or by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
+You can request help by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
 
 ## Core Concepts
 

@@ -2,7 +2,6 @@
     "out": "../../docs/core/",
     "exclude": ["**/node_modules/**", "**/tests/**"],
     "navigationLinks": {
-        "Discord": "https://discord.gg/smythos",
         "Core": "https://smythos.github.io/sre/core/",
         "SDK": "https://smythos.github.io/sre/sdk/",
         "CLI": "https://smythos.github.io/sre/cli/",
