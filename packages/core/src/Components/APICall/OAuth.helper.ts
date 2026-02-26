@@ -189,7 +189,7 @@ export const retrieveOAuthTokens = async (agent, config) => {
                 Object.keys(credentials).map(async (key) => {
                     if (typeof credentials[key] !== 'string') return;
                     credentials[key] = await TemplateString(credentials[key]).parseTeamKeysAsync(agent.teamId).asyncResult;
-                })
+                }),
             );
 
             // TODO: not yet added field
@@ -225,6 +225,8 @@ export const retrieveOAuthTokens = async (agent, config) => {
                 clientID: credentials?.clientID,
                 clientSecret: credentials?.clientSecret,
                 team: agent.teamId || vaultEntry?.teamId,
+                audience: credentials?.audience,
+                scope: credentials?.scope,
             };
 
             return { oauthConfig, settingValue: vaultEntry, keyId: tokenKey };
@@ -273,7 +275,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                         token: oauthConfig.primaryToken,
                         tokenSecret: oauthConfig.secondaryToken,
                     },
-                    additionalParams
+                    additionalParams,
                 );
 
                 headers = { ...reqConfig.headers, ...oauthHeader };
@@ -290,7 +292,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                     settingValue,
                     keyId,
                     logger,
-                    agent
+                    agent,
                 );
 
                 const accessToken = await accessTokenManager.getAccessToken();
