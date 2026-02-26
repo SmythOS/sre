@@ -13,7 +13,10 @@ class LocalChatStore extends SDKObject implements ILLMContextStore {
     public get id() {
         return this._conversationId;
     }
-    constructor(private _conversationId: string, candidate: AccessCandidate) {
+    constructor(
+        private _conversationId: string,
+        candidate: AccessCandidate,
+    ) {
         super();
         this._storage = new StorageInstance(null, null, candidate);
     }
@@ -46,7 +49,11 @@ class LocalChatStore extends SDKObject implements ILLMContextStore {
 class ChatCommand {
     private _conversation: Conversation;
 
-    constructor(private prompt: string, private chat: Chat, private options?: PromptOptions) {
+    constructor(
+        private prompt: string,
+        private chat: Chat,
+        private options?: PromptOptions,
+    ) {
         this._conversation = chat._conversation;
     }
 
@@ -57,7 +64,12 @@ class ChatCommand {
     private async run(): Promise<string> {
         await this.chat.ready;
         await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
-        const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
+        const result = await this._conversation.streamPrompt(
+            this.prompt,
+            this.options?.headers,
+            this.options?.concurrentCalls,
+            this.options?.abortSignal,
+        );
         return result;
     }
 
@@ -151,9 +163,11 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.Data, dataHandler);
 
         // Start the streaming process - don't await as we want to return the eventEmitter immediately
-        this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls).catch((error) => {
-            eventEmitter.emit(TLLMEvent.Error, error);
-        });
+        this._conversation
+            .streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls, this.options?.abortSignal)
+            .catch((error) => {
+                eventEmitter.emit(TLLMEvent.Error, error);
+            });
         return eventEmitter;
     }
 }
@@ -187,7 +201,11 @@ export class Chat extends SDKObject {
     public get agentData() {
         return this._data;
     }
-    constructor(options: ChatOptions & { candidate: AccessCandidate }, private source?: Agent | Record<string, any>, private _convOptions: any = {}) {
+    constructor(
+        options: ChatOptions & { candidate: AccessCandidate },
+        private source?: Agent | Record<string, any>,
+        private _convOptions: any = {},
+    ) {
         super();
 
         const _data = source?.data || source || {};

@@ -63,6 +63,7 @@ export type ChatOptions = {
 export type PromptOptions = {
     headers?: Record<string, string>;
     concurrentCalls?: number;
+    abortSignal?: AbortSignal;
 };
 
 export enum Scope {
