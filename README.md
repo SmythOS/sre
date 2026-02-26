@@ -1,4 +1,5 @@
 # SmythOS - The Linux of AI Agents
+
 Reliable Agent Engineering starts with great, open source infrastructure. This repository contains the **Smyth Runtime Environment** Kernel (SRE), the **Software Development Kit** (SDK) and **Command Line Interface** (CLI) for running agents and creating them with code. If you prefer visual drag & drop agent interfaces instead, check out our open source [SmythOS Visual Agent Studio](https://github.com/SmythOS/smythos-studio)! Great community, support, tutorials. Start in minutes!
 
 ![SRE Banner](./docs/images/sre-banner.png)
@@ -9,7 +10,6 @@ Reliable Agent Engineering starts with great, open source infrastructure. This r
 
 [![Homepage](https://img.shields.io/badge/_www-SmythOS-2ea44f?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJHSURBVHgBfVNNqBJRFL7jT1IYCeUqcRG+AsGVFLhIJIIHLVq93MRsSgpTWgRudaELBRctBDeB2qpdohsVdSOKok+eBC4UAiNSKX9440PtzYydM9yJqV4eOPfOvff8fd85Q8jFosElHo8fJhIJN71TgTJkj+CjWj6sVqu2KIo7VBCuUCg8VNj9E0iLSyQSuQmOx7VaLS4IAjqKsJ/jx3K5PKlUKg88Ho/p74ok58lkkkXDTCbziuO4rz9BMDvP898Ain04HL7fUVksFp+SyeS93+mn02kODKXHer3OYmbQTalUeoLveI8VbTabNQ36o1wuH0nOdrtdiw4iBTsYDALtdjuhwCsR2mw22e12e1YsFo/+gGC1WvW0MilALpd7Tg3UCo4kY4vFooOEV5SEq/r9/gqSD8GXASVQ6mXqJCgCiIjE7/e7Op3OWa/Xe03fNRhZo1arb7darRcMwxCDwXCN/EeAAw53m832FpJ+xyCIj8dKHA7HOygv7XQ6ryogCAoI4nq9FiViGKl7N7xer03uJe47t9t9KxwO97vdrlyiigYSG43GS7PZfJcG3OGi0+lOpVM0GrVB74+RRGB6Kw+Rz+e7HovF7sDVBC+CwSC2GNsogH4mcou0Wq0KymP0ej25BDKfz09SqdSzUCj00Wg03gfjc8xqMplwJ3D+wrLsgewvYySBQOAAhufxaDT6QIcHp0sEB348Hldms1k5m80eUh8NuUAkdqrV6iP8gRAKHbBTl8ulUfC196+UiSPpdPppPp9/sy/jL4yPfDIO4aFTAAAAAElFTkSuQmCC&logoWidth=14)](https://smythos.com)&nbsp;
 [![SmythOS Visual Agent Studio](https://img.shields.io/badge/repo-Smyth_Studio-006b5f?style=flat-square&logo=github&logoColor=white)](https://github.com/SmythOS/smythos-studio)&nbsp;
-[![Community Support](https://img.shields.io/badge/Discord-Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)&nbsp;
 [![](https://img.shields.io/badge/📄_License-MIT-ad0808?style=flat-square)](https://github.com/SmythOS/sre/blob/main/LICENSE)
 
 </div>
@@ -41,11 +41,9 @@ Inspired by the architecture of operating system kernels, SmythOS provides a rob
 
 <div align="center">
 
-
 </div>
     
 <br>
-
 
 ## Why SmythOS exists
 
@@ -70,11 +68,11 @@ This approach makes your AI platform **easy to scale** and incredibly flexible. 
 
 **Key Benefits:**
 
--   **Agent-First Design**: Built specifically for AI agent workloads
--   **Developer-Friendly**: Simple SDK that scales from development to production
--   **Modular Architecture**: Extensible connector system for any infrastructure
--   **Production-Ready**: Scalable, observable, and battle-tested
--   **Enterprise Security**: Built-in access control and secure credential management
+- **Agent-First Design**: Built specifically for AI agent workloads
+- **Developer-Friendly**: Simple SDK that scales from development to production
+- **Modular Architecture**: Extensible connector system for any infrastructure
+- **Production-Ready**: Scalable, observable, and battle-tested
+- **Enterprise Security**: Built-in access control and secure credential management
 
 ## Quick Start
 
@@ -117,19 +115,19 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 
 **Features:**
 
--   **Modular Architecture**: Pluggable connectors for every service (Storage, LLM, VectorDB, Cache, etc.)
--   **Security-First**: Built-in Candidate/ACL system for secure resource access
--   **Resource Management**: Intelligent memory, storage, and compute management
--   **Agent Orchestration**: Complete agent lifecycle management
--   **40+ Components**: Production-ready components for AI, data processing, and integrations
+- **Modular Architecture**: Pluggable connectors for every service (Storage, LLM, VectorDB, Cache, etc.)
+- **Security-First**: Built-in Candidate/ACL system for secure resource access
+- **Resource Management**: Intelligent memory, storage, and compute management
+- **Agent Orchestration**: Complete agent lifecycle management
+- **40+ Components**: Production-ready components for AI, data processing, and integrations
 
 **Supported Connectors:**
 
--   **Storage**: Local, S3, Google Cloud, Azure
--   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
--   **VectorDB**: Pinecone, Milvus, RAMVec
--   **Cache**: RAM, Redis
--   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
+- **Storage**: Local, S3, Google Cloud, Azure
+- **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
+- **VectorDB**: Pinecone, Milvus, RAMVec
+- **Cache**: RAM, Redis
+- **Vault**: JSON File, AWS Secrets Manager, HashiCorp
 
 ### SDK - `packages/sdk`
 
@@ -137,10 +135,10 @@ The **SDK** provides a clean, developer-friendly abstraction layer over the SRE 
 
 **Why Use the SDK:**
 
--   **Simple API**: Clean, intuitive interface that's easy to learn
--   **Type-Safe**: Full TypeScript support with IntelliSense
--   **Production-Ready**: Same code works in development and production
--   **Configuration-Independent**: Business logic stays unchanged as infrastructure scales
+- **Simple API**: Clean, intuitive interface that's easy to learn
+- **Type-Safe**: Full TypeScript support with IntelliSense
+- **Production-Ready**: Same code works in development and production
+- **Configuration-Independent**: Business logic stays unchanged as infrastructure scales
 
 ### CLI - `packages/cli`
 
@@ -316,10 +314,10 @@ main();
 But you can explicitly initialize SRE with other built-in connectors, or make your own
 Use cases :
 
--   You want to use a custom agents store
--   You want to store your API keys and other credentials in a more secure vault
--   You need enterprise grade security and data isolation
--   ...
+- You want to use a custom agents store
+- You want to store your API keys and other credentials in a more secure vault
+- You need enterprise grade security and data isolation
+- ...
 
 <details>
 <summary><strong>Click to expand:</strong> Production SRE Setup - Enterprise-grade configuration with custom connectors</summary>
@@ -350,12 +348,12 @@ main();
 40+ production-ready components for every AI use case.
 These components can be invoked programmatically or through the symbolic representation of the agent workflow (the .smyth file).
 
--   **AI/LLM**: `GenAILLM`, `ImageGen`, `LLMAssistant`
--   **External**: `APICall`, `WebSearch`, `WebScrape`, `HuggingFace`
--   **Data**: `DataSourceIndexer`, `DataSourceLookup` `JSONFilter`
--   **Logic**: `LogicAND`, `LogicOR`, `Classifier`, `ForEach`
--   **Storage**: `LocalStorage`, `S3`
--   **Code**: `ECMAScript`, `ServerlessCode`
+- **AI/LLM**: `GenAILLM`, `ImageGen`, `LLMAssistant`
+- **External**: `APICall`, `WebSearch`, `WebScrape`, `HuggingFace`
+- **Data**: `DataSourceIndexer`, `DataSourceLookup` `JSONFilter`
+- **Logic**: `LogicAND`, `LogicOR`, `Classifier`, `ForEach`
+- **Storage**: `LocalStorage`, `S3`
+- **Code**: `ECMAScript`, `ServerlessCode`
 
 ## Key Features
 
@@ -385,12 +383,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## What's Next?
 
--   We will release an open source visual agent IDE later this year.
--   Support us at [SmythOS](https://smythos.com)
--   Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
+- We will release an open source visual agent IDE later this year.
+- Support us at [SmythOS](https://smythos.com)
 
 ---
-
-/smɪθ oʊ ɛs/
 
 Ride the llama. Skip the drama.

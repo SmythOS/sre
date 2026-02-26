@@ -83,7 +83,7 @@ export interface TGenAILLMSettings {
     /** Verbosity */
     verbosity?: 'low' | 'medium' | 'high';
     /** Controls the level of effort the model will put into reasoning */
-    reasoningEffort?: 'none' | 'default' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+    reasoningEffort?: 'none' | 'default' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
     /** Maximum Thinking Tokens */
     maxThinkingTokens?: number;
     /** RSS Link */
