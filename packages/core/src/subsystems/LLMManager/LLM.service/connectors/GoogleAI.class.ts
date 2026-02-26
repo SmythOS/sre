@@ -158,18 +158,18 @@ export class GoogleAIConnector extends LLMConnector {
 
     /**
      * Stream request implementation.
-     * 
+     *
      * **Error Handling Pattern:**
      * - Always returns emitters, never throws errors - ensures consistent error handling
      * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
      * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
-     * 
+     *
      * **Why setImmediate?**
      * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
      * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
      * listeners are attached. This prevents race conditions where synchronous event emission
      * would occur before listeners can be registered.
-     * 
+     *
      * @param acRequest - Access request for authorization
      * @param body - Request body parameters
      * @param context - LLM request context
@@ -278,27 +278,27 @@ export class GoogleAIConnector extends LLMConnector {
                         // Note: GoogleAI stream doesn't provide explicit finish reasons
                         // If we had a non-stop finish reason, we would emit Interrupted here
 
-                setTimeout(() => {
-                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                }, 100);
-            } catch (error) {
-                const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
-                if (isAbort) {
-                    logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
-                    // Always use DOMException with name 'AbortError' per Web API standards for consistency
-                    const abortError = new DOMException('Request aborted', 'AbortError');
-                    setImmediate(() => {
-                        emitter.emit(TLLMEvent.Abort, abortError);
-                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
-                    });
-                } else {
-                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                    setImmediate(() => {
-                        emitter.emit(TLLMEvent.Error, error);
-                        emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
-                    });
-                }
-            }
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error) {
+                        const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+                        if (isAbort) {
+                            logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                            // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                            const abortError = new DOMException('Request aborted', 'AbortError');
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.Abort, abortError);
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                            });
+                        } else {
+                            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.Error, error);
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                            });
+                        }
+                    }
                 })();
             });
 
@@ -382,7 +382,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             if (imageData.length === 0) {
                 throw new Error(
-                    'Please enter a valid prompt — for example: "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme."'
+                    'Please enter a valid prompt — for example: "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme."',
                 );
             }
 
@@ -619,7 +619,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: UsageMetadataWithThoughtsToken,
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -638,17 +638,13 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         // #region Find matching model and set tier based on threshold
-        const tierThresholds = {
-            'gemini-1.5-pro': 128_000,
-            'gemini-2.5-pro': 200_000,
-            'gemini-3-pro': 200_000,
-        };
+        const isProModel = modelName.includes('pro');
+        const tierThreshold = 200_000;
 
         let tier = '';
 
-        const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
-        if (modelWithTier) {
-            tier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+        if (isProModel) {
+            tier = inputTokens <= tierThreshold ? 'tier1' : 'tier2';
         }
         // #endregion
 
@@ -1408,7 +1404,7 @@ export class GoogleAIConnector extends LLMConnector {
         files: {
             url: string;
             mimetype: string;
-        }[]
+        }[],
     ): {
         fileData: {
             mimeType: string;
