@@ -5,7 +5,9 @@ import { Component } from './Component.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TLLMEvent } from '@sre/types/LLM.types';
 
 export class Classifier extends Component {
     protected schema = {
@@ -97,7 +99,7 @@ ${JSON.stringify(categories, null, 2)}`;
             prompt = TemplateString(prompt).parse(input).result;
         }
 
-        logger.log(` Enhanced prompt \n${prompt}\n`);
+        logger.log(` Enhanced prompt \n${prompt}`);
 
         if (!prompt) {
             logger.error(` Missing information, Cannot run classifier`);
@@ -114,21 +116,82 @@ ${JSON.stringify(categories, null, 2)}`;
         }
 
         try {
-            let response = await llmInference
-                .prompt({
-                    query: prompt,
-                    params: { ...config, agentId: agent.id },
-                    onFallback: (data) => {
-                        logger.debug(`\n ↩️ Using Fallback Model: ${data.model}`);
-                    },
-                })
-                .catch((error) => ({ error: error }));
+            let response;
 
-            if (response?.error) {
-                const error = response?.error + ' ' + (response?.details || '');
-                logger.error(` LLM Error=`, error);
+            // Use streaming for Claude 4 family models
+            if (LLMHelper.isClaude4Family(modelId || model)) {
+                logger.debug(`\n ⚡ Using streaming for Claude 4 family model`);
 
-                return { _error: error, _debug: logger.output };
+                const contentPromise = new Promise(async (resolve, reject) => {
+                    let _content = '';
+                    let eventEmitter;
+
+                    eventEmitter = await llmInference
+                        .promptStream({
+                            contextWindow: [{ role: 'user', content: prompt }],
+                            files: [],
+                            params: {
+                                ...config.data,
+                                agentId: agent.id,
+                                responseFormat: 'json',
+                            },
+                            onFallback: (fallbackInfo) => {
+                                logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);
+                            },
+                        })
+                        .catch((error) => {
+                            console.error('Error on promptStream: ', error);
+                            reject(error);
+                        });
+
+                    eventEmitter.on(TLLMEvent.Content, (content) => {
+                        _content += content;
+                    });
+
+                    eventEmitter.on(TLLMEvent.End, () => {
+                        resolve(_content);
+                    });
+
+                    eventEmitter.on(TLLMEvent.Error, (error) => {
+                        reject(error);
+                    });
+                });
+
+                response = await contentPromise.catch((error) => {
+                    return { error: error.message || error };
+                });
+
+                // Handle streaming errors
+                if (response?.error) {
+                    const error = response?.error + ' ' + (response?.details || '');
+                    logger.error(` LLM Error=`, error);
+                    return { _error: error, _debug: logger.output };
+                }
+
+                // Post-process the streaming response
+                const postProcessed = llmInference.connector.postProcess(response);
+                if (postProcessed.error) {
+                    logger.error(` LLM Post-process Error=`, postProcessed.error);
+                    return { _error: postProcessed.error, _debug: logger.output };
+                }
+                response = postProcessed;
+            } else {
+                // Use regular prompt for non-Claude 4 models
+                response = await llmInference
+                    .prompt({
+                        query: prompt,
+                        params: { ...config, agentId: agent.id },
+                        onFallback: (data) => {
+                            logger.debug(`\n ↩️ Using Fallback Model: ${data.model}`);
+                        },
+                    })
+                    .catch((error) => ({ error: error }));
+
+                if (response?.error) {
+                    const error = response?.error + ' ' + (response?.details || '');
+                    logger.error(` LLM Error=`, error);
+                    return { _error: error, _debug: logger.output };
+                }
             }
 
             // let parsed = parseJson(response);

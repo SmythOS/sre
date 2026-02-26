@@ -1,3 +1,7 @@
+---
+title: 'Initialization'
+---
+
 # SRE Initialization
 
 The Smyth Runtime Environment (SRE) must be initialized before it can be used. The SRE provides multiple initialization approaches to accommodate different use cases and deployment scenarios.

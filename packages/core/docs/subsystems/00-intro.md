@@ -1,3 +1,7 @@
+---
+title: 'subsystems/Overview'
+---
+
 # SRE Subsystems
 
 The functionality of the Smyth Runtime Environment is partitioned into several discrete **Subsystems**. Each subsystem is responsible for a specific domain of the SRE's capabilities, such as memory management, I/O, or security.

@@ -127,13 +127,6 @@ export class ImageGenerator extends Component {
 
 // TODO: Create a separate service for image generation, similar to LLM.service.
 
-// TODO: Hopefully we will have the proper type with new OpenAI SDK, then we can use their type
-type TokenUsage = OpenAI.Completions.CompletionUsage & {
-    prompt_tokens_details?: { cached_tokens?: number };
-    input_tokens_details: { image_tokens?: number; text_tokens?: number };
-    output_tokens: number;
-};
-
 enum MODEL_FAMILY {
     GPT = 'gpt',
     RUNWARE = 'runware',
@@ -313,7 +306,7 @@ const imageGenerator = {
 
             imageGenerator.reportUsage(
                 { cost: firstImage.cost },
-                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId }
+                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId },
             );
 
             return { output };
@@ -380,7 +373,13 @@ const imageGenerator = {
             throw new Error(`Google AI Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         }
     },
-    reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
+    reportTokenUsage(
+        usage: OpenAI.Responses.ResponseUsage & {
+            input_tokens_details: { text_tokens?: number; image_tokens?: number };
+            output_tokens_details: { text_tokens?: number; image_tokens?: number };
+        },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+    ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
@@ -388,10 +387,30 @@ const imageGenerator = {
             sourceId: `api:imagegen.${modelName}`,
             keySource: metadata.keySource,
 
-            input_tokens_txt: usage?.input_tokens_details?.text_tokens || 0,
-            input_tokens_img: usage?.input_tokens_details?.image_tokens || 0,
-            output_tokens: usage?.output_tokens,
-            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            input_tokens_text: usage?.input_tokens_details?.text_tokens || 0,
+            input_tokens_image: usage?.input_tokens_details?.image_tokens || 0,
+            output_tokens_text: usage?.output_tokens_details?.text_tokens || 0,
+            output_tokens_image: usage?.output_tokens_details?.image_tokens || usage?.output_tokens || 0,
+            // TODO: Cached token reporting for GPT Image models needs improvement.
+            //
+            // OpenAI's pricing page lists separate cached-input rates for gpt-image-1 / gpt-image-1.5:
+            // For Example (for gpt-image-1.5):
+            //   Text tokens cached:  $1.25 / 1M  (vs $5.00 standard)
+            //   Image tokens cached: $2.00 / 1M  (vs $8.00 standard)
+            //
+            // However, as of 2025:
+            //   1. OpenAI marks caching as "Not Supported" on the model docs page.
+            //   2. The image-gen usage response does NOT include a `cached_tokens` field in practice —
+            //      it does not appear in `input_tokens_details` even though the type allows it.
+            //   3. There is an open bug report (filed 2025-08-30) with no official response.
+            //
+            // Safest policy until OpenAI clarifies:
+            //   - Read from `input_tokens_details.cached_tokens` (Responses API shape).
+            //   - Attribute ALL cached tokens to text and set image to 0.
+            //     Rationale: the API does not split cached counts by token type, so assigning the
+            //     same value to both fields would double-count cost savings.
+            input_tokens_cache_read_text: usage?.input_tokens_details?.cached_tokens || 0,
+            input_tokens_cache_read_image: 0, // Cannot split cached count by type; see TODO above
 
             agentId: metadata.agentId,
             teamId: metadata.teamId,

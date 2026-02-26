@@ -1,4 +1,8 @@
-# Code Connector
+---
+title: 'connectors/Code Execution'
+---
+
+# Code Connectors
 
 The Code Connector manages the secure execution of code snippets. It abstracts the underlying runtime environment, whether it's a local sandbox or a cloud function.
 

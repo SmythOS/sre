@@ -1,3 +1,7 @@
+---
+title: 'connectors/Connectors Introduction'
+---
+
 # SRE Connectors Documentation
 
 This directory contains comprehensive documentation for all Smyth Runtime Environment (SRE) connectors. Each connector provides a specific implementation for SRE subsystems, enabling different deployment scenarios and integration requirements.
@@ -32,7 +36,7 @@ The SRE uses a connector-based architecture where each subsystem can be implemen
 -   **[Code Connectors](./code.md)** - Code execution environments (AWSLambda)
 -   **[Log Connectors](./log.md)** - Logging and monitoring (ConsoleLog)
 -   **[Router Connectors](./router.md)** - HTTP routing and API management (ExpressRouter, NullRouter)
--   **[AgentData Connectors](./agent-data.md)** - Agent data persistence (Local, CLI, NullAgentData)
+-   **[AgentData Connectors](./agent-data.md)** - Agent data persistence (Local, SQLite, CLI, NullAgentData)
 
 ## Quick Reference
 

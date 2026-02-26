@@ -1,3 +1,7 @@
+---
+title: 'subsystems/Agent Manager'
+---
+
 # Agent Manager Subsystem
 
 The Agent Manager is the heart of agent execution within the SRE. It is responsible for the entire agent lifecycle, from loading and configuration to execution and monitoring. This subsystem brings together all other SRE services to provide the environment where agents live and operate.
@@ -53,3 +57,12 @@ The AgentData Service is responsible for retrieving agent definitions, configura
 -   `getAgentData(agentId)`: Retrieve the full agent definition (components, connections, settings).
 -   `getOpenAPIJSON(agentId)`: Generate an OpenAPI specification for the agent's exposed skills/endpoints.
 -   `setEphemeralAgentData(agentId, data)`: Store temporary agent definitions (used by SDK for non-persisted agents).
+
+#### Available Connectors
+
+-   **Local**: File-based storage for development environments
+-   **SQLite**: Structured database storage for production use
+-   **CLI**: Command-line integration for CLI tools
+-   **NullAgentData**: No-operation connector for testing
+
+See [AgentData Connectors](../connectors/agent-data.md) for detailed configuration.

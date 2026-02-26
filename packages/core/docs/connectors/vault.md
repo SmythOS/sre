@@ -1,3 +1,7 @@
+---
+title: 'connectors/Vault'
+---
+
 # Vault Connectors
 
 The Vault subsystem provides secure storage and management of sensitive information such as API keys, passwords, tokens, and other secrets. It ensures encrypted storage and controlled access to confidential data.

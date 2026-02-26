@@ -1,3 +1,7 @@
+---
+title: 'connectors/Account Management'
+---
+
 # Account Connectors
 
 The Account subsystem in SRE provides team membership checks and settings retrieval for teams, users, and agents. It does not implement authentication flows or user management; instead, connectors expose a consistent API for access control context and key-value settings.

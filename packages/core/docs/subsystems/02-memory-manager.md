@@ -1,3 +1,7 @@
+---
+title: 'subsystems/Memory Manager'
+---
+
 # Memory Manager Subsystem
 
 The Memory Manager Subsystem is responsible for intelligent state and context management for agents. Efficient memory management is critical for creating agents that can maintain conversations, learn over time, and perform efficiently.

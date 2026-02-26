@@ -35,6 +35,7 @@ export interface IVectorDBRequest {
 
 export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest> {
     protected readonly USER_METADATA_KEY = 'user_metadata';
+    protected readonly LEGACY_USER_METADATA_KEY = 'metadata';
 
     public abstract id: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;

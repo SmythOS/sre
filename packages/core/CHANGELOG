@@ -5,129 +5,201 @@ All notable changes to the SmythOS CORE Runtime Engine will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] 2026-02-23
+
+### Observability
+
+- **New: Observability Subsystem** with a full OpenTelemetry (OTel) connector — agent spans, skill propagation, session/workflow tracing, and error tracking now available out of the box
+- Sensitive data redaction for OTel logs — new `enableRedaction` option and `redactHeaders` helper to strip secrets and PII from telemetry
+- Agent name, team ID, org tier, and org slot added to OTel spans for richer multi-tenant tracing
+- Agent.Skill spans propagated via HTTP headers across service boundaries
+- Enhanced context previewing in OTel via `prepareContext` method
+- Full input/output context logged in OTel spans, including tool arguments and LLM responses
+- Improved OTel error tracking with consolidated error reporting and error event listeners
+- OTel span hierarchy for conversation sessions fully implemented
+- Graceful handling when OTel endpoint is not configured
+
+### LLM & Model Support
+
+- **Abort Controller**: all LLM connectors now support an `abortSignal` parameter and emit a `TLLMEvent.Abort` event — cancellation is first-class
+- **Finish reason normalization**: standardized `TLLMFinishReason` enum across all LLM connectors
+- **Event emitter standardization**: LLM connectors never throw — errors are always emitted as events
+- **Fallback/proxy pattern**: custom model connectors now support a fallback proxy architecture for resilience
+- **Structured output**: implemented structured output extraction for Anthropic's latest models; `_debug` and `_error` fields excluded from structured outputs
+- **Anthropic**: handle `model_context_window_exceeded` stop reason gracefully
+- **Anthropic**: prefill and JSON instructions now only applied to legacy models
+- **Anthropic**: support negative values for `temperature` and `top_p`
+- **Opus 4.5 / 4.6**: thinking effort parameter support
+- **GPT-5.2**: `xhigh` reasoning effort support
+- **Gemini 3**: `reasoningEffort` config and `thoughtSignature` attachment for function calling
+- **Google AI**: fixed system instruction propagation, message part extraction, and `functionResponse.response` structure
+- **Google AI**: fixed multiple tool call logging, tier/cache handling, and image token usage reporting
+- **Claude 4**: enabled streaming in Classifier and LLM Assistant components
+- **Perplexity**: provide actual API error messages; allow either `frequency_penalty` or `presence_penalty` (not both)
+- Flash model family detected via a more generic pattern
+- `modelEntryName` exposed for runtime model identification
+- `readyPromise` added to `LLMContext` class for safer initialization sequencing
+
+### Connectors & Storage
+
+- **New: SQLite Agent Data Connector** — lightweight local agent data persistence using SQLite
+- **RAG v2**: embeddings credentials now resolved from either vault or internal config; metadata handling fixed; namespace parsing corrected
+- **DataPools v2**: conditional rollout with updated namespace processing and datasource indexer component
+- **Pinecone**: `delete namespace` and `delete datasource` operations fixed; constructor params made optional
+- **Milvus**: `delete datasource` operation fixed
+- **Secret Manager**: fixed secrets fetching flow and managed vault connector; `smythos` set as default prefix
+- Legacy namespace IDs resolved correctly
+- Vector embedders: legacy OpenAI embedder entries hidden from selection UI
+- OAuth2 credentials manager: `scope` field now supported
+
+### Components & Runtime
+
+- **Chat**: fixed attachments being mixed with text file inputs
+- **APIEndpoint**: debug message cleaned up to prevent bloating the debug context
+- **Sub-Agent**: JSON response mode now supported
+- **WebScrape**: `country` proxy option added
+- **Search components**: template variables now supported for search location fields
+- **ForEach / LogicAnd / Async**: improved debug logging
+- Agent variables now resolved before type inference in all component contexts
+- `APIEndpoint` and `ServerlessCode` variable resolution fixed
+- ConversationHelper: fixed SSE event handler memory leak; errors from `toolsPromise` now propagated correctly
+- Maximum tool call limit per session implemented (defaults to `Infinity`)
+- `TemplateString` parser now correctly handles falsy values (`0`, `false`, `""`)
+- SMYTH_PATH now accepts dot-segments for watching models from the default location
+- Base64 detection no longer relies on data length heuristic
+- Empty LLM response errors now include the field name for easier debugging
+- Agent cache support added to the Smyth SDK
+
+### Code Quality
+
+- OTel class refactored: removed redundant `lastContext` variable, simplified agent data access, cleaned up unused attributes
+- `LLMConnector`: corrected ordering of `structuredOutputs` inside `prepareParams()`
+- Fixed HookAsync; added support for hookable classes
+- Secrets Manager usage example and documentation added
+
 ## [1.7.9] 2025-11-09
 
--   Fixed edge cases issues with SRE core initialization
--   Add support for custom chunkSize and chunkOverlap for VectorDB embeddings
--   normalized the embeddings parameters for VectorDB connectors
--   JSONVaultConnector now detects missing vault and prompts the user to create it
+- Fixed edge cases issues with SRE core initialization
+- Add support for custom chunkSize and chunkOverlap for VectorDB embeddings
+- normalized the embeddings parameters for VectorDB connectors
+- JSONVaultConnector now detects missing vault and prompts the user to create it
 
 ## [1.7.1] 2025-10-30
 
--   Core structures for triggers
--   Added Scheduler Connector
--   Added Advanced SRE hooks (Aspect Oriented Programming pattern to monitor and interact with internal SRE calls from outside)
--   SRE core is now accessible from the sdk package though @smythos/sdk/core
--   Implemented OAuth2 credentials manager for SRE (this will become the standard wrapper to handle all oAuth2 credentials)
--   APIEndpoint now supports custom code process (harmonizing SDK and SRE)
--   Multiple fixes for conversation manager
--   Fix for Gemini LLM infinite loop tool calls
--   Support local LLM credentials
--   add a killReason message when an SRE agent is killed
--   AgentDataConnector handles ephemeral agents data (for SDK agents)
--   Update Milvus data format to match the latest Milvus sdk release
+- Core structures for triggers
+- Added Scheduler Connector
+- Added Advanced SRE hooks (Aspect Oriented Programming pattern to monitor and interact with internal SRE calls from outside)
+- SRE core is now accessible from the sdk package though @smythos/sdk/core
+- Implemented OAuth2 credentials manager for SRE (this will become the standard wrapper to handle all oAuth2 credentials)
+- APIEndpoint now supports custom code process (harmonizing SDK and SRE)
+- Multiple fixes for conversation manager
+- Fix for Gemini LLM infinite loop tool calls
+- Support local LLM credentials
+- add a killReason message when an SRE agent is killed
+- AgentDataConnector handles ephemeral agents data (for SDK agents)
+- Update Milvus data format to match the latest Milvus sdk release
 
 ## [1.6.0]
 
 ### Features
 
--   Add Memory Components
--   Add Milvus VectorDB Connector
--   Add support to Google embeddings
--   Add support to OpenAI responses API
--   Agent Runtime optimizations : better memory management + stability fixes
+- Add Memory Components
+- Add Milvus VectorDB Connector
+- Add support to Google embeddings
+- Add support to OpenAI responses API
+- Agent Runtime optimizations : better memory management + stability fixes
 
 ### Code and tooling
 
--   Added multiple unit tests for a better code coveragge
--   Updated dependencies
--   Updated .cursor/rules/sre-ai-rules.mdc to enhance the qualty of AI based contributions
+- Added multiple unit tests for a better code coveragge
+- Updated dependencies
+- Updated .cursor/rules/sre-ai-rules.mdc to enhance the qualty of AI based contributions
 
 ## [v1.5.60]
 
 ### Features
 
--   Fixed memory leak in Agent context manager
--   Optimized performances and resolved a rare case causing CPU usage spikes
+- Fixed memory leak in Agent context manager
+- Optimized performances and resolved a rare case causing CPU usage spikes
 
 ## [v1.5.50]
 
 ### Features
 
--   Added support for OpenAI Responses API
--   Added support for GPT-5 family models with reasoning capabilities .
--   MCP Client component : support for Streamable HTTP transport
+- Added support for OpenAI Responses API
+- Added support for GPT-5 family models with reasoning capabilities .
+- MCP Client component : support for Streamable HTTP transport
 
 ## [v1.5.31]
 
 ### LLM & Model Support:
 
--   Added support for new models (Claude 4, xAI/Grok 4, and more).
--   Improved model configuration, including support for unlisted/custom models
--   better handling of Anthropic tool calling.
--   Enhanced multimodal and streaming capabilities for LLMs.
+- Added support for new models (Claude 4, xAI/Grok 4, and more).
+- Improved model configuration, including support for unlisted/custom models
+- better handling of Anthropic tool calling.
+- Enhanced multimodal and streaming capabilities for LLMs.
 
 ### Components & Connectors:
 
--   Introduced AWS Lambda code component and connector.
--   Added serverless code component.
--   Enhanced and unified connectors for S3, Redis, LocalStorage, and JSON vault.
--   Added support for local storage cache and improved NKV (key-value) handling.
+- Introduced AWS Lambda code component and connector.
+- Added serverless code component.
+- Enhanced and unified connectors for S3, Redis, LocalStorage, and JSON vault.
+- Added support for local storage cache and improved NKV (key-value) handling.
 
 ### Fixes
 
--   Numerous bug fixes for LLM connectors, model selection, and streaming.
--   Fixed issues with S3 connector initialization, serverless code component, and vault key fetching.
--   Improved error handling for binary input, file uploads, and API calls.
--   Fixed issues with usage reporting, especially for user-managed keys and custom models.
+- Numerous bug fixes for LLM connectors, model selection, and streaming.
+- Fixed issues with S3 connector initialization, serverless code component, and vault key fetching.
+- Improved error handling for binary input, file uploads, and API calls.
+- Fixed issues with usage reporting, especially for user-managed keys and custom models.
 
 ### Improvements
 
--   Optimized build processes.
--   Improved strong typing and code auto-completion.
+- Optimized build processes.
+- Improved strong typing and code auto-completion.
 
 ## [v1.5.0] SmythOS becomes open source!
 
 ### Features
 
--   Moved to a monorepo structure
--   Implemented an SDK that provides an abstracted interface for all SmythOS components
--   Implemented a CLI to help running agents and scaffolding SDK and SRE projects along
+- Moved to a monorepo structure
+- Implemented an SDK that provides an abstracted interface for all SmythOS components
+- Implemented a CLI to help running agents and scaffolding SDK and SRE projects along
 
 ## [v1.4.0]
 
 ### Features
 
--   New connectors : JSON Account connector, RAMVec vectordb, localStorage
--   Conversation manager: better handling of agent chats
--   logger becomes a connector
--   Add support for usage reporting
--   LLM : new models provider connector allows loading custom models including local models
+- New connectors : JSON Account connector, RAMVec vectordb, localStorage
+- Conversation manager: better handling of agent chats
+- logger becomes a connector
+- Add support for usage reporting
+- LLM : new models provider connector allows loading custom models including local models
 
 ## [v1.2.0]
 
 ### Features
 
--   New connectors : AWS Secret Manager Vault, Redis, and RAM Cache
--   Conversation manager: better handling of agent chats
--   All connectors inherit from SecureConnector using a common security layer
--   LLM : support for anthropic, Groq and Gemini
+- New connectors : AWS Secret Manager Vault, Redis, and RAM Cache
+- Conversation manager: better handling of agent chats
+- All connectors inherit from SecureConnector using a common security layer
+- LLM : support for anthropic, Groq and Gemini
 
 ## [v1.1.0]
 
 ### Features
 
--   New connectors : S3, Pinecone, and local vault
--   LLM : implemented common LLM interface to support more providers
+- New connectors : S3, Pinecone, and local vault
+- LLM : implemented common LLM interface to support more providers
 
 ## [v1.0.0]
 
 ### Features
 
--   Initial release
--   LLM : support for openai API
--   Smyth Runtime Core
--   Connectors Serivece
--   Subsystems architecture
--   Security & ACL helpers
--   Implemented services : AgentData, Storage, Account, VectorDB
+- Initial release
+- LLM : support for openai API
+- Smyth Runtime Core
+- Connectors Serivece
+- Subsystems architecture
+- Security & ACL helpers
+- Implemented services : AgentData, Storage, Account, VectorDB

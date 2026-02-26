@@ -1,3 +1,7 @@
+---
+title: "Configuration"
+---
+
 # SRE Configuration
 
 SRE provides several ways to configure its behavior, including environment variables, command-line arguments, and settings files. This document outlines the available configuration methods and settings.

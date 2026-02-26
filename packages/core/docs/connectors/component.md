@@ -1,3 +1,7 @@
+---
+title: 'connectors/Components'
+---
+
 # Component Connectors
 
 The Component subsystem manages loading and execution of SRE components and skills.

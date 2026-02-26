@@ -7,6 +7,8 @@ export { version } from '../package.json';
 
 
 export * from './Agent/Agent.class';
+export * from './Cache/Cache.class';
+export * from './Cache/CacheInstance.class';
 export * from './Components/Components.index';
 export * from './Components/ComponentWrapper.class';
 export * from './Components/Skill';
@@ -56,6 +58,7 @@ export * from './DocParser/parsers/DOCXParser.class';
 export * from './DocParser/parsers/MarkdownParser.class';
 export * from './DocParser/parsers/PDFParser.class';
 export * from './DocParser/parsers/TextParser.class';
+export * from './types/generated/Cache.types';
 export * from './types/generated/Scheduler.types';
 export * from './types/generated/Storage.types';
 export * from './types/generated/VectorDB.types';

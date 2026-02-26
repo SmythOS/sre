@@ -1,3 +1,7 @@
+---
+title: 'connectors/Model Providers'
+---
+
 # ModelsProvider Connectors
 
 The ModelsProvider subsystem manages LLM model configurations and availability.

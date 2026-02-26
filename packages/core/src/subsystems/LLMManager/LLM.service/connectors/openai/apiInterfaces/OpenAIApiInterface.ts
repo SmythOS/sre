@@ -33,14 +33,14 @@ export abstract class OpenAIApiInterface {
      * @param body - The request body prepared for this API
      * @param context - The request context
      */
-    abstract createRequest(body: any, context: ILLMRequestContext): Promise<any>;
+    abstract createRequest(body: any, context: ILLMRequestContext, abortSignal?: AbortSignal): Promise<any>;
 
     /**
      * Create a stream for this API interface
      * @param body - The request body prepared for this API
      * @param context - The request context
      */
-    abstract createStream(body: any, context: ILLMRequestContext): Promise<any>;
+    abstract createStream(body: any, context: ILLMRequestContext, abortSignal?: AbortSignal): Promise<any>;
 
     /**
      * Handle the stream response from this API interface

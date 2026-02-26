@@ -80,7 +80,7 @@ export class APIEndpoint extends Component {
 
         // set default value and agent variables
         const inputsWithDefaultValue = config.inputs.filter(
-            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null
+            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null,
         );
 
         const bodyInputNames: string[] = [];
@@ -152,7 +152,14 @@ export class APIEndpoint extends Component {
         // #region log inputs
         logger.debug('Parsing inputs');
         logger.debug(' Headers', headers);
-        logger.debug(' Body', body);
+        const dbgBody = {};
+        for (let key in body) {
+            const entry = body[key];
+            if (entry instanceof BinaryInput) dbgBody[key] = `BinaryInput<...>`;
+            else dbgBody[key] = entry;
+        }
+
+        logger.debug(' Body', dbgBody);
         logger.debug(' Params', params);
         logger.debug(' Query', query);
         // #endregion log inputs
@@ -172,7 +179,7 @@ export class APIEndpoint extends Component {
                 }
             }
         }
-        logger.debug('Parsed body json input', body);
+        logger.debug('Parsed body json input');
 
         logger.debug('Parsing query json input');
         for (let key in query) {
@@ -219,7 +226,7 @@ export class APIEndpoint extends Component {
                         return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
                     }
                     return null;
-                })
+                }),
             );
 
             // Filter out null values and handle single/multiple results

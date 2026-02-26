@@ -313,7 +313,7 @@ async function getClientCredentialToken(settingValue, logger, keyId, oauthTokens
     };
 
     try {
-        const { clientID, clientSecret, tokenURL } = oauthTokens;
+        const { clientID, clientSecret, tokenURL, scope, audience } = oauthTokens;
         const currentTime = new Date().getTime();
         // Check for token expiration
         if (!oauthTokens.expiresIn || currentTime >= Number(oauthTokens.expiresIn)) {
@@ -327,6 +327,16 @@ async function getClientCredentialToken(settingValue, logger, keyId, oauthTokens
                 client_id: clientID,
                 client_secret: clientSecret,
             });
+
+            // Add audience if provided (required by some providers like Auth0)
+            if (audience && typeof audience === 'string' && audience.trim()) {
+                params.append('audience', audience.trim());
+            }
+
+            // Add scope if provided (OAuth2 Client Credentials supports scopes)
+            if (scope && typeof scope === 'string' && scope.trim()) {
+                params.append('scope', scope.trim());
+            }
 
             const response = await axios.post(tokenURL, params.toString(), {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

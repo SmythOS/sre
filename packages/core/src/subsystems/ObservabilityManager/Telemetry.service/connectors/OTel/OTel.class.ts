@@ -4,8 +4,9 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TelemetryConnector } from '../../TelemetryConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
+import { redactSensitiveString, redactData, redactHeaders } from './OTel.redaction.helper';
 
-import { trace, context, SpanStatusCode, Tracer } from '@opentelemetry/api';
+import { trace, context, SpanStatusCode, Tracer, propagation } from '@opentelemetry/api';
 import { Logger as OTelLogger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTelContextRegistry } from './OTelContextRegistry';
 import { HookService, THook } from '@sre/Core/HookService';
@@ -50,6 +51,14 @@ export type OTelLogConfig = {
      * These will be replaced with '[REDACTED]' in logs
      */
     redactFields?: string[];
+    /**
+     * Enable automatic redaction of sensitive data in logs and traces.
+     * When true (or omitted), sensitive data such as passwords, tokens,
+     * API keys, and JWT tokens are automatically replaced with '[REDACTED]'.
+     * Set to false to disable all automatic redaction.
+     * Default: true
+     */
+    enableRedaction?: boolean;
 };
 const OTEL_DEBUG_LOGS = true;
 export class OTel extends TelemetryConnector {
@@ -62,6 +71,9 @@ export class OTel extends TelemetryConnector {
 
     constructor(protected _settings: OTelLogConfig) {
         super();
+        // Default enableRedaction to true when not explicitly provided
+        _settings.enableRedaction = _settings.enableRedaction ?? true;
+
         if (!_settings.endpoint) {
             outputLogger.warn('OTel initialization skipped, endpoint is not set');
             return;
@@ -141,6 +153,7 @@ export class OTel extends TelemetryConnector {
      * Redact sensitive fields from an object
      */
     private redactSensitiveData(data: any, redactFields?: string[]): any {
+        if (!this._settings.enableRedaction) return data;
         if (!redactFields || redactFields.length === 0) return data;
         if (typeof data !== 'object' || data === null) return data;
 
@@ -158,6 +171,35 @@ export class OTel extends TelemetryConnector {
     }
 
     /**
+     * Redact sensitive patterns from a string value.
+     * Skips redaction when enableRedaction is explicitly set to false.
+     */
+    private redactString(value: string): string {
+        if (!this._settings.enableRedaction) return value;
+        return redactSensitiveString(value);
+    }
+
+    /**
+     * Redact sensitive data from any data type (objects, arrays, strings).
+     * Skips redaction when enableRedaction is explicitly set to false.
+     */
+    private redactObject<T>(data: T): T {
+        if (!this._settings.enableRedaction) return data;
+        return redactData(data);
+    }
+
+    /**
+     * Redact sensitive HTTP headers.
+     * Skips redaction when enableRedaction is explicitly set to false.
+     */
+    private redactRequestHeaders(
+        headers: Record<string, unknown> | string | undefined | null,
+    ): Record<string, unknown> | string | undefined | null {
+        if (!this._settings.enableRedaction) return headers;
+        return redactHeaders(headers);
+    }
+
+    /**
      * Safely format output for logging with size limits and redaction
      */
     private formatOutputForLog(output: any, isError: boolean = false): string | undefined {
@@ -170,11 +212,17 @@ export class OTel extends TelemetryConnector {
             return undefined;
         }
 
-        // Redact sensitive fields
-        const redacted = this.redactSensitiveData(output, config.redactFields);
+        // Redact sensitive fields (config-based)
+        let redacted = this.redactSensitiveData(output, config.redactFields);
+
+        // Apply SENSITIVE_WORDS-based redaction on the object (automatic key-based redaction)
+        redacted = this.redactObject(redacted);
 
         // Stringify
-        const outputStr = JSON.stringify(redacted);
+        let outputStr = JSON.stringify(redacted);
+
+        // Apply string-based redaction on the stringified output to catch embedded JSON
+        outputStr = this.redactString(outputStr);
 
         // Check size limit
         if (outputStr && outputStr.length > maxSize) {
@@ -200,12 +248,38 @@ export class OTel extends TelemetryConnector {
         for (let key in data) {
             result[prefix ? `${prefix}.${key}` : key] = (typeof data[key] === 'object' ? JSON.stringify(data[key]) : data[key].toString()).substring(
                 0,
-                maxEntryLength
+                maxEntryLength,
             );
         }
 
         return result;
     }
+
+    private prepareContext(contextWindow: Array<{ role: string; content: string; [key: string]: unknown }>): string {
+        if (!contextWindow || !Array.isArray(contextWindow)) return '[]';
+
+        const filtered = contextWindow.filter((msg) => {
+            if (typeof msg !== 'object' || msg === null) return false;
+            const keys = Object.keys(msg);
+            return !keys.some((k) => k.includes('___smyth_metadata___'));
+        });
+
+        const lastAssistant = [...filtered].reverse().find((msg) => msg.role === 'assistant' && msg.content);
+        const lastUser = [...filtered].reverse().find((msg) => msg.role === 'user' && msg.content);
+
+        const messages: Array<{ role: string; content: string }> = [];
+        if (lastAssistant) {
+            const raw = typeof lastAssistant.content === 'string' ? lastAssistant.content : JSON.stringify(lastAssistant.content);
+            messages.push({ role: 'assistant', content: raw.substring(0, 2000) });
+        }
+        if (lastUser) {
+            const raw = typeof lastUser.content === 'string' ? lastUser.content : JSON.stringify(lastUser.content);
+            messages.push({ role: 'user', content: raw.substring(0, 2000) });
+        }
+
+        return JSON.stringify(messages);
+    }
+
     protected setupHooks(): Promise<void> {
         const tracer = this.tracer;
         const logger = this.logger;
@@ -219,15 +293,18 @@ export class OTel extends TelemetryConnector {
 
                 const modelId = toolInfo.model;
                 const contextWindow = toolInfo.contextWindow;
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
 
-                const toolNames = toolInfo.map((tool) => tool.name + '(' + tool.arguments + ')');
+                const toolNames = toolInfo.map((tool) => {
+                    const args = typeof tool.arguments === 'string' ? tool.arguments : JSON.stringify(tool.arguments);
+                    return `${tool.name}(${args})`;
+                });
                 hookContext.curLLMGenSpan.addEvent('llm.gen.tool.calls', {
-                    'tool.calls': toolNames.join(', '),
-                    'llm.model': modelId || 'unknown',
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'tool.calls': oTelInstance.redactString(toolNames.join(', ')),
+                    'llm.model': modelId || '',
+                    'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
 
+                const llmSpanCtx = hookContext.curLLMGenSpan.spanContext();
                 const spanContext = trace.setSpan(context.active(), hookContext.curLLMGenSpan);
                 context.with(spanContext, () => {
                     logger.emit({
@@ -235,10 +312,15 @@ export class OTel extends TelemetryConnector {
                         severityText: 'INFO',
                         body: `LLM tool calls: ${toolNames.join(', ')}`,
                         attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: llmSpanCtx.traceId,
+                            span_id: llmSpanCtx.spanId,
+                            trace_flags: llmSpanCtx.traceFlags,
+
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
-                            'llm.model': modelId || 'unknown',
-                            'context.preview': JSON.stringify(lastContext).substring(0, 5000),
+                            'llm.model': modelId || '',
+                            'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow)),
                         },
                     });
                 });
@@ -259,7 +341,6 @@ export class OTel extends TelemetryConnector {
                 const modelId = reqInfo.model;
                 const contextWindow = reqInfo.contextWindow;
 
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
                 // End TTFB span when first data arrives
                 if (hookContext?.latencySpans?.[reqInfo.requestId]) {
                     const ttfbSpan = hookContext.latencySpans[reqInfo.requestId];
@@ -268,7 +349,7 @@ export class OTel extends TelemetryConnector {
                     ttfbSpan.addEvent('llm.first.byte.received', {
                         'request.id': reqInfo.requestId,
                         'data.size': JSON.stringify(data || {}).length,
-                        'llm.model': modelId || 'unknown',
+                        'llm.model': modelId || '',
                     });
 
                     ttfbSpan.setStatus({ code: SpanStatusCode.OK });
@@ -283,19 +364,96 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
-                            'llm.model': modelId || 'unknown',
+                            'team.id': hookContext.teamId,
+                            'llm.model': modelId || '',
                         },
                     },
-                    trace.setSpan(context.active(), hookContext.convSpan)
+                    trace.setSpan(context.active(), hookContext.convSpan),
                 );
                 llmGenSpan.addEvent('llm.gen.started', {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
-                    'llm.model': modelId || 'unknown',
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'llm.model': modelId || '',
+                    'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
+
+                const llmGenSpanCtx = llmGenSpan.spanContext();
+                const llmGenSpanContext = trace.setSpan(context.active(), llmGenSpan);
+                context.with(llmGenSpanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: `LLM generation started: ${hookContext.processId}`,
+                        attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: llmGenSpanCtx.traceId,
+                            span_id: llmGenSpanCtx.spanId,
+                            trace_flags: llmGenSpanCtx.traceFlags,
+
+                            'agent.id': hookContext.agentId,
+                            'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
+                            'llm.model': modelId || '',
+                            'request.id': reqInfo.requestId,
+                            'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow)),
+                        },
+                    });
+                });
+
                 hookContext.curLLMGenSpan = llmGenSpan;
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler completed', reqInfo?.requestId, accessCandidate);
+            };
+        };
+
+        const createErrorHandler = function (hookContext: any) {
+            return function (error: Error, metadata?: { requestId?: string }) {
+                if (!hookContext.convSpan) return;
+                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
+                if (OTEL_DEBUG_LOGS)
+                    outputLogger.debug('Error event received', { error: error?.message, requestId: metadata?.requestId }, accessCandidate);
+
+                // Mark that an error occurred so after hook knows not to log success
+                hookContext.hasError = true;
+                hookContext.errorDetails = error;
+
+                const convSpan = hookContext.convSpan;
+                const spanCtx = convSpan.spanContext();
+                const spanContext = trace.setSpan(context.active(), convSpan);
+
+                // Record exception on span
+                convSpan.recordException(error);
+                convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error?.message || 'Unknown error' });
+                convSpan.addEvent('conv.error', {
+                    'error.message': error?.message || 'Unknown error',
+                    'request.id': metadata?.requestId || 'unknown',
+                });
+
+                context.with(spanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.ERROR,
+                        severityText: 'ERROR',
+                        body: `Conversation error: ${hookContext.processId}`,
+                        attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: spanCtx.traceId,
+                            span_id: spanCtx.spanId,
+                            trace_flags: spanCtx.traceFlags,
+
+                            'agent.id': hookContext.agentId,
+                            'agent.name': hookContext.agentName,
+                            'conv.id': hookContext.processId,
+                            'error.message': error?.message || 'Unknown error',
+                            'error.stack': error?.stack,
+                            'team.id': hookContext.teamId,
+                            'org.slot': hookContext.orgSlot,
+                            'agent.debug': hookContext.isDebugSession,
+                            'agent.isTest': hookContext.isTestDomain,
+                            'request.id': metadata?.requestId || 'unknown',
+                        },
+                    });
+                });
+
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Error event handled', { error: error?.message }, accessCandidate);
             };
         };
 
@@ -307,8 +465,6 @@ export class OTel extends TelemetryConnector {
                 if (!hookContext.latencySpans) hookContext.latencySpans = {};
                 const contextWindow = reqInfo.contextWindow;
 
-                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
-
                 const modelId = reqInfo.model;
                 const llmGenLatencySpan = tracer.startSpan(
                     'Conv.GenAI.TTFB',
@@ -316,17 +472,18 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'team.id': hookContext.teamId,
                             'request.id': reqInfo.requestId,
-                            'llm.model': modelId || 'unknown',
+                            'llm.model': modelId || '',
                             'metric.type': 'ttfb',
                         },
                     },
-                    trace.setSpan(context.active(), hookContext.convSpan)
+                    trace.setSpan(context.active(), hookContext.convSpan),
                 );
                 llmGenLatencySpan.addEvent('llm.requested', {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
-                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                    'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
                 });
                 hookContext.latencySpans[reqInfo.requestId] = llmGenLatencySpan;
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler completed', reqInfo?.requestId, accessCandidate);
@@ -335,11 +492,22 @@ export class OTel extends TelemetryConnector {
         HookService.register(
             'Conversation.streamPrompt',
             async function (additionalContext, args) {
-                const conversation: Conversation = this.instance;
-                const processId = conversation.id;
+                const conversation: Conversation = this.instance; //this.instance.agentData.teamId // this.instance.agentData.parenparentTeamId //this.instance.agentData.planInfo.properties this.instance.agentData.planInfo.flags
+                const processId = conversation.storeId || conversation.id;
                 const agentId = conversation.agentId;
                 const message = typeof args === 'object' ? args?.message : args || null;
                 const hookContext: any = this.context;
+                const teamId = conversation.agentData.teamId;
+                const orgTier = 'standard';
+                const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
+                const agentData = conversation.agentData || {};
+                const isDebugSession = agentData.debugSessionEnabled || false;
+                const isTestDomain = agentData.usingTestDomain || false;
+                const sessionId = processId;
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const agentName = agentData?.name || undefined;
+
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
 
@@ -354,18 +522,42 @@ export class OTel extends TelemetryConnector {
                     attributes: {
                         // OTel standard attributes
                         'gen_ai.operation.name': 'chat',
-                        'gen_ai.provider.name': conversation?.llmInference?.llmProviderName || 'unknown',
+                        'gen_ai.provider.name': conversation?.llmInference?.llmProviderName || '',
                         'gen_ai.conversation.id': processId,
-                        'gen_ai.request.model': modelId || 'unknown',
+                        'gen_ai.request.model': modelId || '',
                         ////////////////////////////////
+                        'team.id': teamId,
+                        'org.tier': orgTier,
+                        'org.slot': orgSlot,
                         'agent.id': agentId,
+                        'agent.name': agentName,
                         'conv.id': processId,
-                        'llm.model': modelId || 'unknown',
+                        'llm.model': modelId || '',
+                        'agent.debug': isDebugSession,
+                        'agent.isTest': isTestDomain,
+                        'session.id': sessionId,
+                        'workflow.id': workflowId,
                     },
                 });
                 hookContext.convSpan = convSpan;
                 hookContext.agentId = agentId;
+                hookContext.agentName = agentData?.name || undefined;
                 hookContext.processId = processId;
+                hookContext.teamId = teamId;
+                hookContext.orgSlot = orgSlot;
+                hookContext.isDebugSession = isDebugSession;
+                hookContext.isTestDomain = isTestDomain;
+
+                // Inject trace context into conversation headers for distributed tracing
+                let headers = {};
+                const traceContext = trace.setSpan(context.active(), convSpan);
+                propagation.inject(traceContext, headers);
+                for (let [key, value] of Object.entries(headers)) {
+                    conversation.headers[key] = value as string;
+                }
+                if (OTEL_DEBUG_LOGS) {
+                    outputLogger.debug('Injected trace headers into conversation', { processId, headers });
+                }
 
                 hookContext.dataHandler = createDataHandler(hookContext);
                 conversation.on(TLLMEvent.Data, hookContext.dataHandler);
@@ -376,12 +568,15 @@ export class OTel extends TelemetryConnector {
                 hookContext.toolInfoHandler = createToolInfoHandler(hookContext);
                 conversation.on(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
 
+                hookContext.errorHandler = createErrorHandler(hookContext);
+                conversation.on(TLLMEvent.Error, hookContext.errorHandler);
+
                 // Add start event
 
                 convSpan.addEvent('skill.process.started', {
                     'input.size': JSON.stringify(message || {}).length,
-                    'input.preview': message.substring(0, 200),
-                    'llm.model': modelId || 'unknown',
+                    'input.preview': oTelInstance.redactString(message.substring(0, 200)),
+                    'llm.model': modelId || '',
                 });
 
                 OTelContextRegistry.startProcess(agentId, processId, convSpan);
@@ -399,25 +594,47 @@ export class OTel extends TelemetryConnector {
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
 
+                            /////
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'conv.id': processId,
                             'input.size': JSON.stringify(message || {}).length,
-                            'input.preview': message.substring(0, 2000),
+                            'input.preview': oTelInstance.redactString(message.substring(0, 4000)),
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'log.tags': logTags,
                         },
                     });
                 });
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
 
         HookService.registerAfter(
             'Conversation.streamPrompt',
             async function ({ result, args, error }) {
                 const conversation: Conversation = this.instance;
-                const processId = conversation.id;
+                const processId = conversation.storeId || conversation.id;
                 const agentId = conversation.agentId;
                 const message = typeof args?.[0] === 'object' ? args?.[0]?.message : args?.[0] || null;
                 const hookContext: any = this.context;
+                const teamId = conversation.agentData.teamId;
+                const orgTier = 'standard';
+                const orgSlot = this.instance.agentData?.planInfo?.flags ? `standard/${teamId}` : undefined;
+
+                const isDebugSession = hookContext.isDebugSession || conversation.agentData?.debugSessionEnabled || false;
+                const isTestDomain = hookContext.isTestDomain || conversation.agentData?.usingTestDomain || false;
+                const agentData = conversation.agentData || {};
+                const sessionId = processId;
+                const workflowId = agentData?.workflowReqId || agentData?.workflowID || agentData?.workflowId || undefined;
+                const logTags = agentData?.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const agentName = agentData?.name || undefined;
+
                 if (message == null) {
                     return;
                 }
@@ -428,10 +645,16 @@ export class OTel extends TelemetryConnector {
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Conversation.streamPrompt completed', { processId }, accessCandidate);
 
+                // Handle curLLMGenSpan with error awareness
                 if (hookContext.curLLMGenSpan) {
+                    if (error) {
+                        hookContext.curLLMGenSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+                    }
                     hookContext.curLLMGenSpan.addEvent('llm.gen.content', {
                         'content.size': JSON.stringify(result || {}).length,
-                        'content.preview': result.substring(0, 200),
+                        'content.preview': oTelInstance.redactString(
+                            typeof result === 'string' ? result.substring(0, 200) : JSON.stringify(result || {}).substring(0, 200),
+                        ),
                     });
                     hookContext.curLLMGenSpan.end();
 
@@ -440,29 +663,92 @@ export class OTel extends TelemetryConnector {
                     if (hookContext.requestedHandler) conversation.off(TLLMEvent.Requested, hookContext.requestedHandler);
                 }
 
+                if (hookContext.errorHandler) conversation.off(TLLMEvent.Error, hookContext.errorHandler);
+
                 const { rootSpan: convSpan } = ctx;
 
                 const spanCtx = convSpan.spanContext();
                 const spanContext = trace.setSpan(context.active(), convSpan);
-                context.with(spanContext, () => {
-                    logger.emit({
-                        severityNumber: SeverityNumber.INFO,
-                        severityText: 'INFO',
-                        body: `Conversation.streamPrompt completed: ${processId}`,
-                        attributes: {
-                            'agent.id': agentId,
-                            'conv.id': processId,
-                            'output.size': JSON.stringify(result || {}).length,
-                            'output.preview': result.substring(0, 2000),
-                        },
+
+                // Check for errors - either thrown (error param) or emitted via event (hookContext.hasError)
+                const hasError = error || hookContext.hasError;
+
+                if (hasError) {
+                    if (error && !hookContext.hasError) {
+                        convSpan.recordException(error);
+                        convSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message || 'Unknown error' });
+                        convSpan.addEvent('conv.error', {
+                            'error.message': error.message || 'Unknown error',
+                        });
+
+                        context.with(spanContext, () => {
+                            logger.emit({
+                                severityNumber: SeverityNumber.ERROR,
+                                severityText: 'ERROR',
+                                body: `Conversation.streamPrompt failed: ${processId}`,
+                                attributes: {
+                                    // Explicit trace correlation (some backends need these)
+                                    trace_id: spanCtx.traceId,
+                                    span_id: spanCtx.spanId,
+                                    trace_flags: spanCtx.traceFlags,
+
+                                    'agent.id': agentId,
+                                    'agent.name': agentName,
+                                    'conv.id': processId,
+                                    'error.message': error.message || 'Unknown error',
+                                    'error.stack': error.stack,
+                                    'team.id': teamId,
+                                    'org.tier': orgTier,
+                                    'org.slot': orgSlot,
+                                    'agent.debug': isDebugSession,
+                                    'agent.isTest': isTestDomain,
+                                    'session.id': sessionId,
+                                    'workflow.id': workflowId,
+                                    'log.tags': logTags,
+                                },
+                            });
+                        });
+                    }
+                } else {
+                    // Success handling
+                    convSpan.setStatus({ code: SpanStatusCode.OK });
+
+                    context.with(spanContext, () => {
+                        logger.emit({
+                            severityNumber: SeverityNumber.INFO,
+                            severityText: 'INFO',
+                            body: `Conversation.streamPrompt completed: ${processId}`,
+                            attributes: {
+                                // Explicit trace correlation (some backends need these)
+                                trace_id: spanCtx.traceId,
+                                span_id: spanCtx.spanId,
+                                trace_flags: spanCtx.traceFlags,
+
+                                'agent.id': agentId,
+                                'agent.name': agentName,
+                                'conv.id': processId,
+                                'output.size': JSON.stringify(result || {}).length,
+                                'output.preview': oTelInstance.redactString(
+                                    (typeof result === 'string' ? result : JSON.stringify(result || {})).substring(0, 4000),
+                                ),
+                                'team.id': teamId,
+                                'org.tier': orgTier,
+                                'org.slot': orgSlot,
+                                'agent.debug': isDebugSession,
+                                'agent.isTest': isTestDomain,
+                                'session.id': sessionId,
+                                'workflow.id': workflowId,
+                                'log.tags': logTags,
+                            },
+                        });
                     });
-                });
+                }
 
                 convSpan.end();
 
                 OTelContextRegistry.endProcess(agentId, processId);
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
 
         HookService.register(
@@ -475,10 +761,21 @@ export class OTel extends TelemetryConnector {
                 const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
                 const processId = agentProcessId.split(':').shift();
 
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
                 const agentId = agent.id;
                 const agentRequest = agent.agentRequest;
                 const teamId = agent.teamId;
                 const _hookContext: any = this.context;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
+                const agentName = agent.name || undefined;
 
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process started', { processId, agentProcessId, endpointPath }, accessCandidate);
@@ -490,27 +787,61 @@ export class OTel extends TelemetryConnector {
 
                 const input = { body, query, headers, processInput: agentInput };
 
+                const logBody = oTelInstance.prepareComponentData(agentRequest.body || {}, undefined, 4000);
+                const logQuery = oTelInstance.prepareComponentData(agentRequest.query || {}, undefined, 4000);
+                const logHeaders = oTelInstance.prepareComponentData(agentRequest.headers || {}, undefined, 4000);
+                const logAgentInput = oTelInstance.prepareComponentData(inputData || {}, undefined, 4000);
+
                 let convSpan;
-                const ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
+                let parentContext = context.active();
+
+                //try reading ctx from local registry (local execution)
+                let ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
 
                 if (ctx) {
                     convSpan = ctx.rootSpan;
                     _hookContext.otelSpan = convSpan;
+                    parentContext = trace.setSpan(context.active(), convSpan);
+                } else {
+                    // No local context found - try extracting from headers (remote execution)
+                    const extractedContext = propagation.extract(context.active(), agentRequest.headers);
+                    const extractedSpan = trace.getSpan(extractedContext);
+
+                    if (extractedSpan) {
+                        // Successfully extracted parent span from headers
+                        parentContext = extractedContext;
+                        if (OTEL_DEBUG_LOGS) {
+                            outputLogger.debug('SREAgent.process extracted remote parent context from headers', {
+                                processId,
+                                traceId: extractedSpan.spanContext().traceId,
+                            });
+                        }
+                    }
                 }
+
                 const agentSpan = tracer.startSpan(
                     'Agent.Skill',
                     {
                         attributes: {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'team.id': teamId,
+                            'conv.id': conversationId,
                             'process.id': agentProcessId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'agent.domain': domain,
                         },
                     },
-                    convSpan ? trace.setSpan(context.active(), convSpan) : undefined
+                    parentContext,
                 );
 
                 // Add start event
-                const inputPreview = JSON.stringify(input || {}).substring(0, 200);
+                const inputPreview = oTelInstance.redactString(JSON.stringify(input || {}).substring(0, 200));
                 agentSpan.addEvent('skill.process.started', {
                     endpoint: endpointPath,
                     'input.size': JSON.stringify(input || {}).length,
@@ -532,17 +863,29 @@ export class OTel extends TelemetryConnector {
                             trace_id: spanCtx.traceId,
                             span_id: spanCtx.spanId,
                             trace_flags: spanCtx.traceFlags,
-                            agentId,
-                            processId: agentProcessId,
-                            input: agentInput,
-                            body,
-                            query,
-                            headers,
+
+                            'agent.id': agentId,
+                            'agent.name': agentName,
+                            'process.id': agentProcessId,
+                            input: oTelInstance.redactObject(logAgentInput),
+                            body: oTelInstance.redactObject(logBody),
+                            query: oTelInstance.redactObject(logQuery),
+                            headers: oTelInstance.redactRequestHeaders(logHeaders),
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
+                            'conv.id': conversationId,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'log.tags': logTags,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                            'agent.domain': domain,
                         },
                     } as any);
                 });
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
 
         HookService.registerAfter(
@@ -550,8 +893,21 @@ export class OTel extends TelemetryConnector {
             async function ({ result, error }) {
                 const agent = this.instance;
                 const agentProcessId = agent.agentRuntime.processID; // nested process has a subID that needs to be removed
+                const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
                 const agentId = agent.id;
                 const _hookContext: any = this.context;
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const domain = agent.domain || undefined;
+                const agentName = agent.name || undefined;
 
                 const ctx = OTelContextRegistry.get(agentId, agentProcessId);
                 if (!ctx) return;
@@ -562,11 +918,31 @@ export class OTel extends TelemetryConnector {
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process completed', { agentProcessId }, accessCandidate);
 
+                // Check for error indicators in result (process returned error without throwing)
+                const hasResultError = !error && (!!result?._error || !!result?.error);
+                const resultError = hasResultError ? result._error || result.error : null;
+                const resultErrorMessage = resultError?.message || (typeof resultError === 'string' ? resultError : null);
+
+                // Determine if this is an error case (either thrown error or result error)
+                const isError = !!error || hasResultError;
+                const errorMessage = error?.message || resultErrorMessage || 'Process returned error';
+
                 if (error) {
                     agentSpan.recordException(error);
                     agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
                     agentSpan.addEvent('skill.process.error', {
                         'error.message': error.message,
+                    });
+                } else if (hasResultError) {
+                    // Handle error in result (no exception thrown)
+                    agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
+                    agentSpan.addEvent('skill.process.error', {
+                        'error.message': errorMessage,
+                        'error.type': 'result_error',
+                    });
+                    agentSpan.setAttributes({
+                        'output.size': JSON.stringify(result || {}).length,
+                        'output.has_error': true,
                     });
                 } else {
                     agentSpan.setStatus({ code: SpanStatusCode.OK });
@@ -579,18 +955,31 @@ export class OTel extends TelemetryConnector {
                 }
 
                 // Emit log BEFORE ending span to ensure context is active
-                const outputForLog = oTelInstance.formatOutputForLog(result, !!error);
+                const outputForLog = oTelInstance.formatOutputForLog(result, isError);
                 const spanCtx = agentSpan.spanContext();
                 const logAttributes: Record<string, any> = {
                     // Explicit trace correlation (some backends need these)
                     trace_id: spanCtx.traceId,
                     span_id: spanCtx.spanId,
                     trace_flags: spanCtx.traceFlags,
-                    agentId,
-                    processId: agentProcessId,
-                    hasError: !!error,
-                    'error.message': error?.message,
+
+                    'agent.id': agentId,
+                    'agent.name': agentName,
+                    'process.id': agentProcessId,
+                    hasError: isError,
+                    'error.message': isError ? errorMessage : undefined,
                     'error.stack': error?.stack,
+                    'error.type': hasResultError ? 'result_error' : undefined,
+                    'team.id': teamId,
+                    'org.slot': orgSlot,
+                    'org.tier': orgTier,
+                    'conv.id': conversationId,
+                    'session.id': sessionId,
+                    'workflow.id': workflowId,
+                    'log.tags': logTags,
+                    'agent.debug': isDebugSession,
+                    'agent.isTest': isTestDomain,
+                    'agent.domain': domain,
                 };
 
                 // Only include output if formatOutputForLog returns a value
@@ -602,9 +991,9 @@ export class OTel extends TelemetryConnector {
                 const spanContext = trace.setSpan(context.active(), agentSpan);
                 context.with(spanContext, () => {
                     logger.emit({
-                        severityNumber: error ? SeverityNumber.ERROR : SeverityNumber.INFO,
-                        severityText: error ? 'ERROR' : 'INFO',
-                        body: `Agent process ${error ? 'failed' : 'completed'}: ${agentProcessId}`,
+                        severityNumber: isError ? SeverityNumber.ERROR : SeverityNumber.INFO,
+                        severityText: isError ? 'ERROR' : 'INFO',
+                        body: `Agent process ${isError ? 'failed' : 'completed'}: ${agentProcessId}`,
                         attributes: logAttributes,
                     } as any);
                 });
@@ -614,7 +1003,7 @@ export class OTel extends TelemetryConnector {
 
                 OTelContextRegistry.endProcess(agentId, agentProcessId);
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
 
         // In setupHooks() - Enhanced Component.process hook
@@ -629,7 +1018,28 @@ export class OTel extends TelemetryConnector {
                 const componentName = settings.displayName || settings.name;
                 const eventId = settings.eventId; // specific event id attached to this component execution
                 const accessCandidate = AccessCandidate.agent(agentId);
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId }, accessCandidate);
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+
+                const componentData = agent.agentRuntime?.getComponentData?.(componentId);
+                const sourceId = componentData?.sourceId || 'AGENT';
+                const sourceComponentData = sourceId !== 'AGENT' ? agent.components?.[sourceId] : null;
+                const sourceName = sourceComponentData?.displayName || sourceComponentData?.name || sourceId;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+                const workflowStep = agent.agentRuntime?.curStep || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const agentName = agent.name || undefined;
+
+                const inputAction = input?.__action || undefined;
+                const inputStatus = input?.__status || undefined;
+
+                if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process started', { componentId, sourceId }, accessCandidate);
 
                 const ctx = OTelContextRegistry.get(agentId, processId);
                 const parentSpan = ctx?.rootSpan;
@@ -641,28 +1051,49 @@ export class OTel extends TelemetryConnector {
                     {
                         attributes: {
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'process.id': processId,
                             'event.id': eventId,
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
+                            'team.id': teamId,
+                            'org.tier': orgTier,
+                            'org.slot': orgSlot,
+                            'source.id': sourceId,
+                            'source.name': sourceName,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'workflow.step': workflowStep,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
                             ...compSettingsData,
                         },
                     },
-                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined
+                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
                 );
 
-                // Add event: Component started
-                const inputStr = JSON.stringify(input || {});
+                // Add event: Component started - includes input.action and input.status for workflow tracking
+                // Use component-specific input (from predecessor nodes), not the merged object with agent variables
+                // For APIEndpoint, use HTTP request body/query as the actual user input
+                const componentInput =
+                    componentType === 'APIEndpoint'
+                        ? agent.agentRequest?.method === 'GET'
+                            ? agent.agentRequest?.query
+                            : agent.agentRequest?.body
+                        : componentData?.runtimeData?.input || {};
 
-                const compInputData = oTelInstance.prepareComponentData(input || {});
+                const compInputData = oTelInstance.prepareComponentData(componentInput || {});
                 span.addEvent('cmp.call', {
                     'event.id': eventId,
-                    'cmp.input.size': JSON.stringify(input || {}).length,
-                    'cmp.input': JSON.stringify(compInputData),
+                    'cmp.input.size': JSON.stringify(componentInput || {}).length,
+                    'cmp.input': oTelInstance.redactString(JSON.stringify(compInputData)),
+                    'input.action': inputAction,
+                    'input.status': inputStatus,
                 });
 
                 // Emit structured log with full details
+                const cmpSpanCtx = span.spanContext();
                 const spanContext = trace.setSpan(context.active(), span);
                 context.with(spanContext, () => {
                     logger.emit({
@@ -670,13 +1101,30 @@ export class OTel extends TelemetryConnector {
                         severityText: 'INFO',
                         body: `Component ${componentType} started`,
                         attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: cmpSpanCtx.traceId,
+                            span_id: cmpSpanCtx.spanId,
+                            trace_flags: cmpSpanCtx.traceFlags,
+
                             'agent.id': agentId,
+                            'agent.name': agentName,
                             'process.id': processId,
                             'event.id': eventId,
                             'cmp.id': componentId,
                             'cmp.type': componentType,
                             'cmp.name': componentName,
-                            'cmp.input': input,
+                            'cmp.input': oTelInstance.redactObject(componentInput),
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
+                            'source.id': sourceId,
+                            'source.name': sourceName,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'workflow.step': workflowStep,
+                            'log.tags': logTags,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
                         },
                     });
                 });
@@ -684,7 +1132,7 @@ export class OTel extends TelemetryConnector {
                 // Store span in hook context (isolated per component execution, concurrency-safe)
                 this.context.otelSpan = span;
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
 
         HookService.registerAfter(
@@ -703,6 +1151,23 @@ export class OTel extends TelemetryConnector {
                 const componentId = settings.id || 'unknown';
                 const componentType = settings.name;
                 const componentName = settings.displayName || settings.name;
+                const teamId = agent.teamId;
+                const orgTier = 'standard';
+                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+
+                const componentData = agent.agentRuntime?.getComponentData?.(componentId);
+                const sourceId = componentData?.sourceId || 'AGENT';
+                const sourceComponentData = sourceId !== 'AGENT' ? agent.components?.[sourceId] : null;
+                const sourceName = sourceComponentData?.displayName || sourceComponentData?.name || sourceId;
+
+                const sessionId = agent.callerSessionId || undefined;
+                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+                const workflowStep = agent.agentRuntime?.curStep || undefined;
+
+                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                const isTestDomain = agent.usingTestDomain || false;
+                const agentName = agent.name || undefined;
 
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Component.process completed', { componentId }, accessCandidate);
@@ -724,6 +1189,7 @@ export class OTel extends TelemetryConnector {
                     });
 
                     // Emit error log
+                    const cmpErrorSpanCtx = span.spanContext();
                     const spanContext = trace.setSpan(context.active(), span);
                     context.with(spanContext, () => {
                         logger.emit({
@@ -731,7 +1197,13 @@ export class OTel extends TelemetryConnector {
                             severityText: 'ERROR',
                             body: `Component ${componentType} (${componentId}) failed: ${error.message}`,
                             attributes: {
+                                // Explicit trace correlation (some backends need these)
+                                trace_id: cmpErrorSpanCtx.traceId,
+                                span_id: cmpErrorSpanCtx.spanId,
+                                trace_flags: cmpErrorSpanCtx.traceFlags,
+
                                 'agent.id': agentId,
+                                'agent.name': agentName,
                                 'process.id': processId,
                                 'event.id': eventId,
                                 'cmp.id': componentId,
@@ -740,56 +1212,144 @@ export class OTel extends TelemetryConnector {
                                 'error.type': error.name,
                                 'error.message': error.message,
                                 'error.stack': error.stack, // ← Full stack in logs
+                                'team.id': teamId,
+                                'org.slot': orgSlot,
+                                'org.tier': orgTier,
+                                'source.id': sourceId,
+                                'source.name': sourceName,
+                                'session.id': sessionId,
+                                'workflow.id': workflowId,
+                                'workflow.step': workflowStep,
+                                'log.tags': logTags,
+                                'agent.debug': isDebugSession,
+                                'agent.isTest': isTestDomain,
                             },
                         });
                     });
                 } else {
-                    span.setStatus({ code: SpanStatusCode.OK });
-
-                    // Add success event with output summary
+                    // Check if result contains an error indicator (component returned error without throwing)
+                    const hasResultError = !!result?._error || !!result?.error;
                     const resultStr = JSON.stringify(result || {});
-                    span.addEvent('cmp.call.result', {
-                        'output.size': resultStr.length,
-                        'output.preview': resultStr.substring(0, 200),
-                    });
 
-                    // Add output attributes to span
-                    span.setAttributes({
-                        'output.size': JSON.stringify(result || {}).length,
-                        'output.has_error': !!result?._error,
-                    });
+                    if (hasResultError) {
+                        // Treat as error even though no exception was thrown
+                        const resultError = result._error || result.error;
+                        const errorMessage = resultError?.message || (typeof resultError === 'string' ? resultError : 'Component returned error');
 
-                    // Emit success log with output (formatted safely)
-                    const outputForLog = oTelInstance.formatOutputForLog(result, false);
-                    const logAttributes: Record<string, any> = {
-                        'agent.id': agentId,
-                        'cmp.id': componentId,
-                        'cmp.type': componentType,
-                        'cmp.name': componentName,
-                        'process.id': processId,
-                        'event.id': eventId,
-                        'cmp.output': result,
-                    };
-
-                    // Only include output if formatOutputForLog returns a value
-                    // if (outputForLog !== undefined) {
-                    //     logAttributes['cmp.output'] = outputForLog;
-                    // }
-
-                    const spanContext = trace.setSpan(context.active(), span);
-                    context.with(spanContext, () => {
-                        logger.emit({
-                            severityNumber: SeverityNumber.INFO,
-                            severityText: 'INFO',
-                            body: `Component ${componentType} (${componentId}) completed successfully`,
-                            attributes: logAttributes,
+                        span.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
+                        span.addEvent('cmp.call.error', {
+                            'event.id': eventId,
+                            'cmp.id': componentId,
+                            'cmp.type': componentType,
+                            'cmp.name': componentName,
+                            'error.type': 'result_error',
+                            'error.message': errorMessage,
                         });
-                    });
+
+                        // Add output attributes to span
+                        span.setAttributes({
+                            'output.size': resultStr.length,
+                            'output.has_error': true,
+                        });
+
+                        // Emit ERROR log for result error
+                        const cmpResultErrorSpanCtx = span.spanContext();
+                        const spanContext = trace.setSpan(context.active(), span);
+                        context.with(spanContext, () => {
+                            logger.emit({
+                                severityNumber: SeverityNumber.ERROR,
+                                severityText: 'ERROR',
+                                body: `Component ${componentType} (${componentId}) failed: ${errorMessage}`,
+                                attributes: {
+                                    // Explicit trace correlation (some backends need these)
+                                    trace_id: cmpResultErrorSpanCtx.traceId,
+                                    span_id: cmpResultErrorSpanCtx.spanId,
+                                    trace_flags: cmpResultErrorSpanCtx.traceFlags,
+
+                                    'agent.id': agentId,
+                                    'agent.name': agentName,
+                                    'process.id': processId,
+                                    'event.id': eventId,
+                                    'cmp.id': componentId,
+                                    'cmp.name': componentName,
+                                    'cmp.type': componentType,
+                                    'error.type': 'result_error',
+                                    'error.message': errorMessage,
+                                    'cmp.output': oTelInstance.redactObject(result),
+                                    'team.id': teamId,
+                                    'org.slot': orgSlot,
+                                    'org.tier': orgTier,
+                                    'source.id': sourceId,
+                                    'source.name': sourceName,
+                                    'session.id': sessionId,
+                                    'workflow.id': workflowId,
+                                    'workflow.step': workflowStep,
+                                    'log.tags': logTags,
+                                    'agent.debug': isDebugSession,
+                                    'agent.isTest': isTestDomain,
+                                },
+                            });
+                        });
+                    } else {
+                        // True success case
+                        span.setStatus({ code: SpanStatusCode.OK });
+
+                        // Add success event with output summary
+                        span.addEvent('cmp.call.result', {
+                            'output.size': resultStr.length,
+                            'output.preview': oTelInstance.redactString(resultStr.substring(0, 200)),
+                        });
+
+                        // Add output attributes to span
+                        span.setAttributes({
+                            'output.size': resultStr.length,
+                            'output.has_error': false,
+                        });
+
+                        // Emit success log with output (formatted safely)
+                        const cmpSuccessSpanCtx = span.spanContext();
+                        const logAttributes: Record<string, any> = {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: cmpSuccessSpanCtx.traceId,
+                            span_id: cmpSuccessSpanCtx.spanId,
+                            trace_flags: cmpSuccessSpanCtx.traceFlags,
+
+                            'agent.id': agentId,
+                            'agent.name': agentName,
+                            'cmp.id': componentId,
+                            'cmp.type': componentType,
+                            'cmp.name': componentName,
+                            'process.id': processId,
+                            'event.id': eventId,
+                            'cmp.output': oTelInstance.redactObject(result),
+                            'team.id': teamId,
+                            'org.slot': orgSlot,
+                            'org.tier': orgTier,
+                            'source.id': sourceId,
+                            'source.name': sourceName,
+                            'session.id': sessionId,
+                            'workflow.id': workflowId,
+                            'workflow.step': workflowStep,
+                            'log.tags': logTags,
+                            'agent.debug': isDebugSession,
+                            'agent.isTest': isTestDomain,
+                        };
+
+                        const spanContext = trace.setSpan(context.active(), span);
+                        context.with(spanContext, () => {
+                            logger.emit({
+                                severityNumber: SeverityNumber.INFO,
+                                severityText: 'INFO',
+                                body: `Component ${componentType} (${componentId}) completed successfully`,
+                                attributes: logAttributes,
+                            });
+                        });
+                    }
                 }
 
                 span.end();
             },
-            THook.NonBlocking
+            THook.NonBlocking,
         );
         return Promise.resolve();
     }

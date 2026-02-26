@@ -10,6 +10,7 @@ const STORAGE_CONNECTORS_DIR = path.join(__dirname, '../../core/src/subsystems/I
 const VECTORDB_CONNECTORS_DIR = path.join(__dirname, '../../core/src/subsystems/IO/VectorDB.service/connectors');
 const LLM_CONNECTORS_DIR = path.join(__dirname, '../../core/src/subsystems/LLMManager/LLM.service/connectors');
 const SCHEDULER_CONNECTORS_DIR = path.join(__dirname, '../../core/src/subsystems/AgentManager/Scheduler.service/connectors');
+const CACHE_CONNECTORS_DIR = path.join(__dirname, '../../core/src/subsystems/MemoryManager/Cache.service/connectors');
 
 //SDK paths
 const TYPES_OUTPUT_DIR = path.join(__dirname, '../src/types/generated');
@@ -17,6 +18,7 @@ const STORAGE_TEMPLATE_PATH = path.join(__dirname, './templates/Storage.type.ts.
 const VECTORDB_TEMPLATE_PATH = path.join(__dirname, './templates/VectorDB.type.ts.tpl');
 const LLM_TEMPLATE_PATH = path.join(__dirname, './templates/LLM.type.ts.tpl');
 const SCHEDULER_TEMPLATE_PATH = path.join(__dirname, './templates/Scheduler.type.ts.tpl');
+const CACHE_TEMPLATE_PATH = path.join(__dirname, './templates/Cache.type.ts.tpl');
 
 /**
  * Simple template engine that replaces {{variable}} with values
@@ -57,6 +59,7 @@ function extractProviderRegistrations(serviceName, serviceType) {
         VectorDB: 'src/subsystems/IO/VectorDB.service',
         LLM: 'src/subsystems/LLMManager/LLM.service',
         Scheduler: 'src/subsystems/AgentManager/Scheduler.service',
+        Cache: 'src/subsystems/MemoryManager/Cache.service',
     };
 
     const servicePath = servicePathMap[serviceName];
@@ -133,6 +136,16 @@ function extractConnectorInfo(filePath, classToProviderMap, serviceName, connect
 
         // Clean up complex types by removing extra spaces and newlines
         configType = configType.replace(/\s+/g, ' ').trim();
+
+        if (configType === 'any') {
+            return {
+                className,
+                providerName,
+                configType,
+                importPath: null,
+                fileName,
+            };
+        }
 
         // Handle complex types - for now, let's create a simplified type name
         if (configType.includes('&') || configType.includes('{')) {
@@ -372,6 +385,14 @@ async function generateTypes() {
             templatePath: SCHEDULER_TEMPLATE_PATH,
             connectorBaseClass: 'SchedulerConnector',
             outputFileName: 'Scheduler.types.ts',
+        },
+        {
+            name: 'Cache',
+            type: 'Cache',
+            connectorsDir: CACHE_CONNECTORS_DIR,
+            templatePath: CACHE_TEMPLATE_PATH,
+            connectorBaseClass: 'CacheConnector',
+            outputFileName: 'Cache.types.ts',
         },
         // {
         //     name: 'LLM',

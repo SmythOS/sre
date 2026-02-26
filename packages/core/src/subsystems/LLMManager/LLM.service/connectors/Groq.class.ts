@@ -14,6 +14,7 @@ import {
     ILLMRequestContext,
     TLLMPreparedParams,
     TLLMToolResultMessageBlock,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -52,13 +53,13 @@ export class GroqConnector extends LLMConnector {
     }
 
     @hookAsync('LLMConnector.request')
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const groq = await this.getClient(context);
-            const result = await groq.chat.completions.create(body);
+            const result = await groq.chat.completions.create(body, { signal: abortSignal });
             const message = result?.choices?.[0]?.message;
-            const finishReason = result?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason);
             const toolCalls = message?.tool_calls;
             const usage = result.usage;
             this.reportUsage(usage, {
@@ -97,85 +98,147 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
     @hookAsync('LLMConnector.streamRequest')
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            const emitter = new EventEmitter();
             const usage_data = [];
 
             const groq = await this.getClient(context);
-            const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
+            const stream = await groq.chat.completions.create(
+                { ...body, stream: true, stream_options: { include_usage: true } },
+                { signal: abortSignal }
+            );
 
             let toolsData: ToolData[] = [];
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
 
-            (async () => {
-                for await (const chunk of stream as any) {
-                    const delta = chunk.choices[0]?.delta;
-                    const usage = chunk['x_groq']?.usage || chunk['usage'];
+            setImmediate(() => {
+                (async () => {
+                    try {
+                        for await (const chunk of stream as any) {
+                            const delta = chunk.choices[0]?.delta;
+                            const usage = chunk['x_groq']?.usage || chunk['usage'];
 
-                    if (usage) {
-                        usage_data.push(usage);
-                    }
-                    emitter.emit(TLLMEvent.Data, delta);
-
-                    if (delta?.content) {
-                        emitter.emit(TLLMEvent.Content, delta.content);
-                    }
-
-                    if (delta?.tool_calls) {
-                        delta.tool_calls.forEach((toolCall, index) => {
-                            if (!toolsData[index]) {
-                                toolsData[index] = {
-                                    index,
-                                    id: toolCall.id,
-                                    type: toolCall.type,
-                                    name: toolCall.function?.name,
-                                    arguments: toolCall.function?.arguments,
-                                    role: 'assistant',
-                                };
-                            } else {
-                                toolsData[index].arguments += toolCall.function?.arguments || '';
+                            if (usage) {
+                                usage_data.push(usage);
                             }
+                            emitter.emit(TLLMEvent.Data, delta);
+
+                            if (delta?.content) {
+                                emitter.emit(TLLMEvent.Content, delta.content);
+                            }
+
+                            if (delta?.tool_calls) {
+                                delta.tool_calls.forEach((toolCall, index) => {
+                                    if (!toolsData[index]) {
+                                        toolsData[index] = {
+                                            index,
+                                            id: toolCall.id,
+                                            type: toolCall.type,
+                                            name: toolCall.function?.name,
+                                            arguments: toolCall.function?.arguments,
+                                            role: 'assistant',
+                                        };
+                                    } else {
+                                        toolsData[index].arguments += toolCall.function?.arguments || '';
+                                    }
+                                });
+                            }
+
+                            // Capture finish reason
+                            if (chunk.choices[0]?.finish_reason) {
+                                finishReason = LLMHelper.normalizeFinishReason(chunk.choices[0].finish_reason);
+                            }
+                        }
+
+                        if (toolsData.length > 0) {
+                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
+                        }
+
+                        const reportedUsage: any[] = [];
+                        usage_data.forEach((usage) => {
+                            const reported = this.reportUsage(usage, {
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
+                            });
+                            reportedUsage.push(reported);
                         });
+
+                        // Emit interrupted event if finishReason is not 'stop'
+                        if (finishReason !== TLLMFinishReason.Stop) {
+                            emitter.emit(TLLMEvent.Interrupted, finishReason);
+                        }
+
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error: any) {
+                        const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+                        if (isAbort) {
+                            logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                            // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                            const abortError = new DOMException('Request aborted', 'AbortError');
+                            emitter.emit(TLLMEvent.Abort, abortError);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                            });
+                        } else {
+                            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                            emitter.emit(TLLMEvent.Error, error);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                            });
+                        }
                     }
-
-                    // Capture finish reason
-                    if (chunk.choices[0]?.finish_reason) {
-                        finishReason = chunk.choices[0].finish_reason;
-                    }
-                }
-
-                if (toolsData.length > 0) {
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                const reportedUsage: any[] = [];
-                usage_data.forEach((usage) => {
-                    const reported = this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    });
-                    reportedUsage.push(reported);
-                });
-
-                // Emit interrupted event if finishReason is not 'stop'
-                if (finishReason !== 'stop') {
-                    emitter.emit(TLLMEvent.Interrupted, finishReason);
-                }
-
-                setTimeout(() => {
-                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
-                }, 100);
-            })();
+                })();
+            });
 
             return emitter;
         } catch (error: any) {
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
 

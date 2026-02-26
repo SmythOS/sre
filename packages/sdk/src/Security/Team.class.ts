@@ -6,6 +6,8 @@ import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generate
 import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
 import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/generated/Scheduler.types';
 import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
+import { TCacheProvider, TCacheProviderInstances } from '../types/generated/Cache.types';
+import { CacheInstance } from '../Cache/CacheInstance.class';
 
 export class Team {
     constructor(public id: string) {}
@@ -43,6 +45,18 @@ export class Team {
             }
         }
         return this._storageProviders;
+    }
+
+    private _cacheProviders: TCacheProviderInstances;
+    public get cache() {
+        if (!this._cacheProviders) {
+            this._cacheProviders = {} as TCacheProviderInstances;
+            for (const provider of Object.values(TCacheProvider)) {
+                this._cacheProviders[provider] = (cacheSettings?: any) =>
+                    new CacheInstance(provider as TCacheProvider, cacheSettings, AccessCandidate.team(this.id));
+            }
+        }
+        return this._cacheProviders;
     }
 
     private _vectorDBProviders: TVectorDBProviderInstances;

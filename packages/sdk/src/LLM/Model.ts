@@ -56,13 +56,14 @@ for (const provider of Object.keys(TLLMProvider)) {
 
 export function findClosestModelInfo(models, modelId: string) {
     if (models[modelId]) {
-        return models[modelId];
+        return { ...models[modelId], modelEntryName: modelId };
     }
     const closestModelId = nGramSearch(modelId, Object.keys(models));
     if (closestModelId) {
         const modelInfo = JSON.parse(JSON.stringify(models[closestModelId]));
         modelInfo.enabled = true;
         modelInfo.modelId = modelId;
+        modelInfo.modelEntryName = modelId;
         modelInfo.credentials = ['internal', 'vault'];
         models[modelId] = modelInfo;
         return modelInfo;

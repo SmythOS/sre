@@ -66,7 +66,7 @@ export const SUPPORTED_MIME_TYPES_MAP = {
     OpenAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
         imageGen: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-        document: ['application/pdf'],
+        document: ['application/pdf', 'text/plain'],
     },
     TogetherAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'], // Same as OpenAI
