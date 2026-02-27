@@ -16,6 +16,7 @@ This example demonstrates how to integrate **Zoom's Real-Time Media Streaming (R
 This example provides three implementation approaches:
 
 ### 1. JavaScript Version (`index.js`) - **Recommended**
+
 - **No TypeScript Issues**: Pure JavaScript implementation that runs immediately
 - **SRE Integration Ready**: Placeholder structure for easy SRE SDK integration
 - **Complete RTMS Integration**: Full Zoom WebSocket and webhook handling
@@ -23,6 +24,7 @@ This example provides three implementation approaches:
 - **Production Ready**: Can be easily extended with real SRE functionality
 
 ### 2. TypeScript Version (`index.ts`)
+
 - **Complete AI Agent Integration**: Uses SmythOS SRE agents for advanced transcript analysis
 - **VectorDB Support**: Semantic search and indexing with Pinecone
 - **Cloud Storage**: AWS S3 integration for persistent data storage
@@ -30,6 +32,7 @@ This example provides three implementation approaches:
 - **Requires**: SmythOS SRE SDK and additional API keys (may have dependency issues)
 
 ### 3. Simple Example (`simple-example.ts`)
+
 - **Basic Transcript Processing**: Simple keyword-based analysis without external AI dependencies
 - **Lightweight**: Only requires Node.js, Express, and WebSocket libraries
 - **Easy to Understand**: Clear demonstration of Zoom RTMS integration patterns
@@ -63,32 +66,36 @@ graph TB
 ### Installation
 
 1. **Clone and navigate to the example**:
-   ```bash
-   cd sre/examples/11-zoom-rtms-integration
-   ```
+
+    ```bash
+    cd sre/examples/11-zoom-rtms-integration
+    ```
 
 2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. **Configure environment**:
-   ```bash
-   cp env.example .env
-   # Edit .env with your credentials
-   ```
+
+    ```bash
+    cp env.example .env
+    # Edit .env with your credentials
+    ```
 
 4. **Start the server**:
-   ```bash
-   # JavaScript version (recommended - no TypeScript issues)
-   npm start
-   
-   # TypeScript version with full SRE integration
-   npm run ts
-   
-   # Simple example without SRE dependencies
-   npm run simple
-   ```
+
+    ```bash
+    # JavaScript version (recommended - no TypeScript issues)
+    npm start
+
+    # TypeScript version with full SRE integration
+    npm run ts
+
+    # Simple example without SRE dependencies
+    npm run simple
+    ```
 
 ### Environment Configuration
 
@@ -126,12 +133,14 @@ AWS_S3_BUCKET=zoom-meeting-data
 ### 2. Configure RTMS Permissions
 
 **Scopes Required**:
+
 - `meeting:read`
 - `meeting:write`
 - `rtms:read`
 - `rtms:write`
 
 **Event Subscriptions**:
+
 - `meeting.rtms_started`
 - `meeting.rtms_stopped`
 - `endpoint.url_validation`
@@ -139,11 +148,13 @@ AWS_S3_BUCKET=zoom-meeting-data
 ### 3. Webhook Configuration
 
 Set your webhook endpoint URL to:
+
 ```bash
 https://your-domain.com/webhook
 ```
 
 For local development, use [ngrok](https://ngrok.com/):
+
 ```bash
 ngrok http 3000
 # Use the HTTPS URL: https://abc123.ngrok.io/webhook
@@ -154,23 +165,27 @@ ngrok http 3000
 The integration creates intelligent agents with these skills:
 
 ### 1. Real-time Transcript Analysis
+
 - Extracts key topics and themes
 - Identifies action items and decisions
 - Analyzes participant sentiment
 - Tracks important questions
 
 ### 2. Meeting Summarization
+
 - Generates comprehensive meeting summaries
 - Identifies next steps and follow-ups
 - Highlights key decisions and outcomes
 - Provides participant insights
 
 ### 3. Vector Search Integration
+
 - Indexes transcript segments for semantic search
 - Enables finding specific topics across meetings
 - Supports historical meeting analysis
 
 ### 4. Intelligent Storage
+
 - Saves meeting data to cloud storage
 - Organizes by meeting ID and timestamp
 - Preserves analysis results and summaries
@@ -191,16 +206,16 @@ When a Zoom meeting starts with RTMS enabled:
 
 ```json
 {
-  "speaker": "John Doe",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "transcript": "Let's schedule a follow-up meeting for next Tuesday to review the project proposal",
-  "analysis": {
-    "topics": ["meeting scheduling", "project review"],
-    "actionItems": ["Schedule follow-up meeting for Tuesday"],
-    "decisions": [],
-    "questions": [],
-    "sentiment": "positive"
-  }
+    "speaker": "John Doe",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "transcript": "Let's schedule a follow-up meeting for next Tuesday to review the project proposal",
+    "analysis": {
+        "topics": ["meeting scheduling", "project review"],
+        "actionItems": ["Schedule follow-up meeting for Tuesday"],
+        "decisions": [],
+        "questions": [],
+        "sentiment": "positive"
+    }
 }
 ```
 
@@ -210,18 +225,22 @@ When a Zoom meeting starts with RTMS enabled:
 # Meeting Summary - Project Review Call
 
 ## Overview
+
 Team discussion about Q1 project proposal and next steps.
 
 ## Key Decisions
+
 - Approved budget increase for additional resources
 - Selected vendor for cloud infrastructure
 
 ## Action Items
+
 - [ ] John: Schedule follow-up meeting for Tuesday
 - [ ] Sarah: Prepare vendor contract by Friday
 - [ ] Team: Review technical specifications
 
 ## Next Steps
+
 - Technical review session scheduled for next week
 - Final approval expected by month-end
 ```
@@ -229,15 +248,19 @@ Team discussion about Q1 project proposal and next steps.
 ## API Endpoints
 
 ### Health Check
+
 ```http
 GET /health
 ```
+
 Returns server status and active meeting count.
 
 ### Webhook Endpoint
+
 ```http
 POST /webhook
 ```
+
 Receives Zoom RTMS events and processes meeting data.
 
 ## Advanced Configuration
@@ -251,18 +274,18 @@ import { SRE } from '@smythos/sre';
 
 // Custom SRE setup for enterprise
 SRE.init({
-    Storage: { 
-        Connector: 'S3', 
-        Settings: { bucket: 'enterprise-meetings' } 
+    Storage: {
+        Connector: 'S3',
+        Settings: { bucket: 'enterprise-meetings' },
     },
-    VectorDB: { 
-        Connector: 'Pinecone', 
-        Settings: { indexName: 'company-meetings' } 
+    VectorDB: {
+        Connector: 'Pinecone',
+        Settings: { indexName: 'company-meetings' },
     },
-    Cache: { 
-        Connector: 'Redis', 
-        Settings: { url: 'redis://prod-cluster' } 
-    }
+    Cache: {
+        Connector: 'Redis',
+        Settings: { url: 'redis://prod-cluster' },
+    },
 });
 ```
 
@@ -278,7 +301,7 @@ const agent = new Agent({
     - Deal progression indicators  
     - Customer objections and responses
     - Follow-up opportunities`,
-    model: 'gpt-4o'
+    model: 'gpt-4o',
 });
 ```
 
@@ -301,12 +324,13 @@ curl http://localhost:3000/health
 ```
 
 Response:
+
 ```json
 {
-  "status": "healthy",
-  "activeMeetings": 2,
-  "activeAgents": 2,
-  "timestamp": "2024-01-15T10:30:00Z"
+    "status": "healthy",
+    "activeMeetings": 2,
+    "activeAgents": 2,
+    "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
@@ -315,24 +339,24 @@ Response:
 ### Common Issues
 
 1. **No Transcript Data**:
-   - Verify RTMS is enabled in Zoom settings
-   - Check webhook URL is accessible
-   - Ensure proper scopes are configured
+    - Verify RTMS is enabled in Zoom settings
+    - Check webhook URL is accessible
+    - Ensure proper scopes are configured
 
 2. **Agent Creation Fails**:
-   - Verify AI API keys (OpenAI/Anthropic)
-   - Check SRE initialization
-   - Review log output for errors
+    - Verify AI API keys (OpenAI/Anthropic)
+    - Check SRE initialization
+    - Review log output for errors
 
 3. **Storage Issues**:
-   - Verify AWS credentials and permissions
-   - Check S3 bucket exists and is accessible
-   - Ensure proper IAM policies
+    - Verify AWS credentials and permissions
+    - Check S3 bucket exists and is accessible
+    - Ensure proper IAM policies
 
 4. **VectorDB Problems**:
-   - Verify Pinecone API key and index name
-   - Check index dimensions match embedding model
-   - Ensure sufficient Pinecone quota
+    - Verify Pinecone API key and index name
+    - Check index dimensions match embedding model
+    - Ensure sufficient Pinecone quota
 
 ### Debug Commands
 
@@ -386,7 +410,6 @@ MIT License - see the main SRE repository for details.
 ## Support
 
 - [SmythOS Documentation](https://smythos.github.io/sre/)
-- [Discord Community](https://discord.gg/smythos)
 - [GitHub Issues](https://github.com/SmythOS/sre/issues)
 
 ---

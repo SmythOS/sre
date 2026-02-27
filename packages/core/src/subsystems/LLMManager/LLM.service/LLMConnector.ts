@@ -286,6 +286,15 @@ export abstract class LLMConnector extends Connector {
         const modelProviderCandidate = modelsProvider.requester(candidate);
         const modelInfo: TLLMModel | TCustomLLMModel = await modelProviderCandidate.getModelInfo(model);
 
+        // If the model entry has an alias, it means this entry forwards to another model.
+        // Usage must be reported against the alias (the actual model being billed),
+        // not the forwarding entry (which may have stale/different pricing).
+        // Guard: skip for custom/enterprise LLMs — they are not billed and should
+        // retain their own entry name (enterprise models use alias only for config inheritance).
+        if (modelInfo?.alias && !(modelInfo as TCustomLLMModel)?.isCustomLLM) {
+            _params.modelEntryName = modelInfo.alias;
+        }
+
         //if the model has default params make sure to set them if they are not present
         if (modelInfo.params) {
             for (let key in modelInfo.params) {

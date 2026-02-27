@@ -5,29 +5,67 @@ All notable changes to the SmythOS SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] 2026-02-23
+
+### New Features
+
+- **Cache API**: first-class cache support for SDK agents and teams
+    - New `Cache` class and `CacheInstance` class for managing cached data
+    - Agents can now read and write to a scoped cache directly
+    - Teams support shared cache with explicit scope sharing across agents
+    - New generated `Cache.types.ts` for full TypeScript autocompletion
+    - New examples added: standalone cache usage and agent-scoped cache with scope sharing
+
+- **Observability / OpenTelemetry**: the OTel connector is now accessible from the SDK via `@smythos/sdk/core`
+    - Agent spans, session/workflow tracing, and error tracking available for SDK agents
+    - OTel attributes now include org tier and org slot for multi-tenant environments
+    - Model provider error messages surfaced correctly in OTel spans
+
+### LLM & Model Support
+
+- **GPT-5.2**: `xhigh` reasoning effort now supported
+- **GenAI (Google)**: updated `GenAILLM` SDK component to reflect latest model capabilities
+- `modelEntryName` exposed for runtime model identification
+
+### Components
+
+- **WebScrape**: `country` proxy option added for geo-targeted scraping
+
+### Bug Fixes
+
+- VectorDB embeddings: fixed credential passing to embedding models
+- VectorDB: fixed optional params check to prevent initialization errors
+- VectorDB (RAG v2): improved Milvus and Pinecone connectors — better metadata handling, namespace parsing, and datasource operations
+- JSONVault: enhanced detection and handling of missing vault files
+- OTel connector: fixed unused method in `LogConnector`; model provider error messages now reported correctly
+
+### Code Quality
+
+- Secrets Manager usage example and documentation added
+
 ## [1.3.9] 2025-11-10
 
--   Added support for custom chunkSize and chunkOverlap for VectorDB embeddings
--   Added new Scheduler Connector
--   APIEndpoint now supports custom code process (harmonizing SDK and SRE)
+- Added support for custom chunkSize and chunkOverlap for VectorDB embeddings
+- Added new Scheduler Connector
+- APIEndpoint now supports custom code process (harmonizing SDK and SRE)
 
 ## [1.1.0] - 2025-04-09
 
 ### Added
 
--   **Planner Mode**: SDK Agents can use the Planner Mode, allowing them to plan their actions and tasks.
-    This features allows turning any agent into a planner agent.
+- **Planner Mode**: SDK Agents can use the Planner Mode, allowing them to plan their actions and tasks.
+  This features allows turning any agent into a planner agent.
 
 ## [1.0.4] - 2025-19-06
 
 ### Added
 
--   **LLM**: Doc parsers : PDF, DOCX, Markdown, Text
--   **LLM**: automatic doc parser based on the mime type or file extension
+- **LLM**: Doc parsers : PDF, DOCX, Markdown, Text
+- **LLM**: automatic doc parser based on the mime type or file extension
 
 ### Documentation
 
--   **LLM**: Updated the documentation with detailed examples for LLMs
+- **LLM**: Updated the documentation with detailed examples for LLMs
 
 ## [1.0.0] - 2025-17-06
 
@@ -37,122 +75,114 @@ This is the first release of the SmythOS SDK - a powerful toolkit for building, 
 
 ### Core Agent System
 
--   **Agent Class**: Complete agent creation and management system
+- **Agent Class**: Complete agent creation and management system
+    - Fluent API for creating agents with customizable models and behaviors
+    - Support for multiple LLM providers (see LLM Providers section below)
+    - Agent identification system for data isolation and persistence
+    - Built-in prompt processing with intelligent skill selection
 
-    -   Fluent API for creating agents with customizable models and behaviors
-    -   Support for multiple LLM providers (see LLM Providers section below)
-    -   Agent identification system for data isolation and persistence
-    -   Built-in prompt processing with intelligent skill selection
-
--   **Skills Framework**: Extensible skill system for agent capabilities
-    -   Supports creating skill with TypeScript functions, from .smyth file or by composing a workflow programmatically (Components / Connections syntax)
-    -   AI-assisted skill selection based on natural language prompts
-    -   Direct skill calling for programmatic access
+- **Skills Framework**: Extensible skill system for agent capabilities
+    - Supports creating skill with TypeScript functions, from .smyth file or by composing a workflow programmatically (Components / Connections syntax)
+    - AI-assisted skill selection based on natural language prompts
+    - Direct skill calling for programmatic access
 
 ### Conversation & Interaction
 
--   **Prompting System**: Multiple interaction patterns
+- **Prompting System**: Multiple interaction patterns
+    - Simple promise-based prompting (`agent.prompt()`)
+    - Real-time streaming responses with event emitters
+    - Support for both one-shot and conversational interactions
 
-    -   Simple promise-based prompting (`agent.prompt()`)
-    -   Real-time streaming responses with event emitters
-    -   Support for both one-shot and conversational interactions
+- **Chat Management**: Persistent conversation handling
+    - Interactive chat sessions with memory
+    - Conversation persistence across sessions
+    - Readline integration for CLI applications
+    - Event-driven streaming with granular control
 
--   **Chat Management**: Persistent conversation handling
-
-    -   Interactive chat sessions with memory
-    -   Conversation persistence across sessions
-    -   Readline integration for CLI applications
-    -   Event-driven streaming with granular control
-
--   **Event System**: Comprehensive event handling
-    -   `TLLMEvent.Content` - Text content streaming
-    -   `TLLMEvent.ToolCall` - Skill/tool invocation events
-    -   `TLLMEvent.Usage` - Usage reporting
-    -   `TLLMEvent.ToolResult` - Skill execution results
-    -   `TLLMEvent.End` - Response completion
-    -   `TLLMEvent.Error` - Error handling
+- **Event System**: Comprehensive event handling
+    - `TLLMEvent.Content` - Text content streaming
+    - `TLLMEvent.ToolCall` - Skill/tool invocation events
+    - `TLLMEvent.Usage` - Usage reporting
+    - `TLLMEvent.ToolResult` - Skill execution results
+    - `TLLMEvent.End` - Response completion
+    - `TLLMEvent.Error` - Error handling
 
 ### Vector Database Integration
 
--   **Multi-Provider Support**: Seamless vector database integration
+- **Multi-Provider Support**: Seamless vector database integration
+    - Pinecone connector with full API support
+    - RAM-based vector storage for development
+    - Milvus connector support
+    - Agent-scoped and team-scoped data isolation
 
-    -   Pinecone connector with full API support
-    -   RAM-based vector storage for development
-    -   Milvus connector support
-    -   Agent-scoped and team-scoped data isolation
-
--   **Document Processing & Indexing**:
-    -   Automatic document chunking and embedding
-    -   Metadata preservation and search
-    -   Semantic search capabilities with configurable results
+- **Document Processing & Indexing**:
+    - Automatic document chunking and embedding
+    - Metadata preservation and search
+    - Semantic search capabilities with configurable results
 
 ### Document Parser System
 
--   **Multiple Format Support**: Comprehensive document processing
+- **Multiple Format Support**: Comprehensive document processing
+    - **PDF Parser**: Extract text and metadata from PDF files
+    - **DOCX Parser**: Microsoft Word document processing
+    - **Markdown Parser**: Structured markdown document parsing
+    - **Text Parser**: Plain text file processing
 
-    -   **PDF Parser**: Extract text and metadata from PDF files
-    -   **DOCX Parser**: Microsoft Word document processing
-    -   **Markdown Parser**: Structured markdown document parsing
-    -   **Text Parser**: Plain text file processing
-
--   **Advanced Features**:
-    -   Custom metadata injection
-    -   Document chunking for vector storage
-    -   File path and string content support
-    -   Configurable parsing options
+- **Advanced Features**:
+    - Custom metadata injection
+    - Document chunking for vector storage
+    - File path and string content support
+    - Configurable parsing options
 
 ### Storage System
 
--   **Multi-Provider Storage**: Persistent data management
-    -   Local storage for development and testing
-    -   S3 integration for cloud storage
-    -   Agent-scoped and team-scoped access control
+- **Multi-Provider Storage**: Persistent data management
+    - Local storage for development and testing
+    - S3 integration for cloud storage
+    - Agent-scoped and team-scoped access control
 
 ### Team Management
 
--   **Multi-Agent Orchestration**: Team-based agent management
-    -   Team creation and agent assignment
-    -   Shared resource access (storage, vector databases)
-    -   Access control and data isolation
-    -   Team-wide collaboration features
+- **Multi-Agent Orchestration**: Team-based agent management
+    - Team creation and agent assignment
+    - Shared resource access (storage, vector databases)
+    - Access control and data isolation
+    - Team-wide collaboration features
 
 ### Component Architecture
 
--   **Workflow Components**: Visual workflow building
+- **Workflow Components**: Visual workflow building
+    - API call components with dynamic parameter injection
+    - Output formatting and filtering components
+    - Component interconnection system
+    - Visual workflow representation
 
-    -   API call components with dynamic parameter injection
-    -   Output formatting and filtering components
-    -   Component interconnection system
-    -   Visual workflow representation
-
--   **Component Types**:
-    -   `Component.APICall()` - External API integration
-    -   `Component.APIOutput()` - Response formatting
-    -   Skill components with input/output definitions
+- **Component Types**:
+    - `Component.APICall()` - External API integration
+    - `Component.APIOutput()` - Response formatting
+    - Skill components with input/output definitions
 
 ### Integrations
 
--   **LLM Providers**: Comprehensive language model support
+- **LLM Providers**: Comprehensive language model support
+    - **OpenAI**: GPT-4, GPT-4o, GPT-4o-mini, o3-mini, and reasoning models
+    - **Anthropic**: Claude 3 Sonnet, Claude 3 Haiku, and Claude 3.5 models
+    - **Google AI**: Gemini Pro, Gemini Flash, and Gemini Vision models
+    - **DeepSeek**: DeepSeek Chat and DeepSeek v2.5 models
+    - **Groq**: High-speed inference for various open-source models
+    - **TogetherAI**: Meta Llama, Mistral, Qwen, and other open-source models
+    - **xAI**: Grok and Grok Vision models
+    - **Echo**: Fake LLM that just parses string templates and returns them
+    - **Runware**: Image generation and processing models
+    - Configurable model parameters and provider abstraction layer
 
-    -   **OpenAI**: GPT-4, GPT-4o, GPT-4o-mini, o3-mini, and reasoning models
-    -   **Anthropic**: Claude 3 Sonnet, Claude 3 Haiku, and Claude 3.5 models
-    -   **Google AI**: Gemini Pro, Gemini Flash, and Gemini Vision models
-    -   **DeepSeek**: DeepSeek Chat and DeepSeek v2.5 models
-    -   **Groq**: High-speed inference for various open-source models
-    -   **TogetherAI**: Meta Llama, Mistral, Qwen, and other open-source models
-    -   **xAI**: Grok and Grok Vision models
-    -   **Echo**: Fake LLM that just parses string templates and returns them
-    -   **Runware**: Image generation and processing models
-    -   Configurable model parameters and provider abstraction layer
+- **Vector Databases**:
+    - Pinecone integration
+    - Milvus connector
+    - Local RAM-based vector storage (RAMVec)
+    - Embedding model support (OpenAI text-embedding-3-large)
 
--   **Vector Databases**:
-
-    -   Pinecone integration
-    -   Milvus connector
-    -   Local RAM-based vector storage (RAMVec)
-    -   Embedding model support (OpenAI text-embedding-3-large)
-
--   **Storage Providers**:
-    -   Local filesystem storage
-    -   AWS S3 integration
-    -   Extensible provider architecture
+- **Storage Providers**:
+    - Local filesystem storage
+    - AWS S3 integration
+    - Extensible provider architecture

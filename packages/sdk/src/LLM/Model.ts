@@ -55,9 +55,15 @@ for (const provider of Object.keys(TLLMProvider)) {
 }
 
 export function findClosestModelInfo(models, modelId: string) {
-    if (models[modelId]) {
-        return { ...models[modelId], modelEntryName: modelId };
+    // first check if the model id is an exact match
+    const exactMatch: TLLMModel = models?.[modelId];
+    if (exactMatch) {
+        const resolvedId = exactMatch.alias || modelId;
+
+        return { ...models[resolvedId], modelEntryName: resolvedId };
     }
+
+    // if not, check if the model id is a close match
     const closestModelId = nGramSearch(modelId, Object.keys(models));
     if (closestModelId) {
         const modelInfo = JSON.parse(JSON.stringify(models[closestModelId]));
