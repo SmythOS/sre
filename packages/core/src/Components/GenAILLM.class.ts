@@ -8,6 +8,10 @@ import { Component } from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TLLMEvent } from '@sre/types/LLM.types';
+import { fileConverterRegistry } from '@sre/helpers/FileConverter.helper';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+// Import converters to register them
+import '@sre/helpers/converters/PptxToPdfConverter.class';
 
 //TODO : better handling of context window exceeding max length
 
@@ -407,17 +411,48 @@ export class GenAILLM extends Component {
                 const features = modelInfo?.features || [];
                 const fileTypes = new Set(); // Set to avoid duplicates
 
+                // Get the MIME types the model actually supports (intersection of provider types and model features)
+                const modelSupportedMimeTypes = new Set<string>();
+                Object.entries(supportedFileTypes).forEach(([feature, mimeTypes]) => {
+                    // if (features.includes(feature)) {
+                        (mimeTypes as string[]).forEach((mimeType) => modelSupportedMimeTypes.add(mimeType));
+                    // }
+                });
+
                 const validFiles = await Promise.all(
                     files.map(async (file) => {
-                        const mimeType = file?.mimetype || (await getMimeType(file));
-                        const [requestFeature = ''] =
-                            Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
+                        // Ensure file is a BinaryInput instance
+                        const binaryFile = BinaryInput.from(file, undefined, undefined, AccessCandidate.agent(agent.id));
+                        await binaryFile.ready();
 
+                        let mimeType = binaryFile.mimetype || (await getMimeType(binaryFile));
                         if (mimeType) {
                             fileTypes.add(mimeType);
                         }
 
-                        return features?.includes(requestFeature) ? file : null;
+                        // Check if the file is directly supported by this model
+                        if (mimeType && modelSupportedMimeTypes.has(mimeType)) {
+                            return binaryFile;
+                        }
+
+                        // File is not directly supported - check if we can convert it to a supported type
+                        if (mimeType && modelSupportedMimeTypes.size > 0) {
+                            const converter = fileConverterRegistry.findConverter(mimeType, Array.from(modelSupportedMimeTypes));
+                            if (converter) {
+                                try {
+                                    logger.debug(` Converting file from ${mimeType} to ${converter.targetMimeType}`);
+                                    const convertedFile = await converter.convert(binaryFile, AccessCandidate.agent(agent.id));
+                                    logger.debug(` Successfully converted file to ${converter.targetMimeType}`);
+                                    return convertedFile;
+                                } catch (conversionError) {
+                                    logger.warn(` Failed to convert file from ${mimeType}: ${conversionError instanceof Error ? conversionError.message : String(conversionError)}`);
+                                    return null;
+                                }
+                            }
+                        }
+
+                        // No converter available or conversion failed
+                        return null;
                     }),
                 );
 
@@ -434,10 +469,9 @@ export class GenAILLM extends Component {
                         };
                     }
 
-                    // Case 2: Files detected but model doesn't support those types
+                    // Case 2: Files detected but model doesn't support those types and no converter available
                     const detectedTypes = Array.from(fileTypes).join(', ');
-                    const supportedTypes = new Set(Object.values(supportedFileTypes).flat());
-                    const supportedTypesText = supportedTypes.size > 0 ? `\nSupported types: ${Array.from(supportedTypes).join(', ')}` : '';
+                    const supportedTypesText = modelSupportedMimeTypes.size > 0 ? `\nSupported types: ${Array.from(modelSupportedMimeTypes).join(', ')}` : '';
 
                     return {
                         _error: `Model '${model}' does not support the provided file type(s): ${detectedTypes}.${supportedTypesText}`,
