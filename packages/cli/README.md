@@ -163,32 +163,69 @@ sre agent ./agent.smyth --chat gpt-4o --vault ./vault.json --models ./models.jso
 
 ## Create Command
 
-Create a new SmythOS project with interactive setup:
+Create a new SmythOS project. Supports both interactive and non-interactive (batch) modes.
+
+### Interactive Mode
+
+Run without `--template` and `--res-folder` to use the interactive wizard:
 
 ```bash
 sre create
 sre create "My AI Project"
 ```
 
-**Features:**
+The wizard walks through project name, template selection, resources folder location, and API key configuration.
 
-- Interactive project setup wizard
-- Multiple project templates:
-    - Empty Project
-    - Minimal: Just the basics to get started
-    - Interactive: Chat with one agent
-    - Interactive chat with agent selection
-- Automatic vault setup with API key detection
-- Smart resource folder configuration
+### Batch Mode (Non-Interactive)
 
-**Examples:**
+Provide both `--template` and `--res-folder` to skip all interactive prompts. This is suitable for LLM-driven workflows (e.g. Claude Code) and CI pipelines.
+
+```bash
+sre create "My Agent" --template=empty --res-folder=home
+sre create "My Agent" -t minimal -r project --dir ./my-agent
+```
+
+In batch mode API key prompts are skipped. Environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`) are detected automatically and written to the vault. You can edit the vault file afterwards to add or change keys.
+
+### Options
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--template <name>` | `-t` | Project template. Enables batch mode when combined with `--res-folder`. |
+| `--res-folder <location>` | `-r` | Resources folder: `home` (~/.smyth) or `project` (./<project>/.smyth). Enables batch mode when combined with `--template`. |
+| `--dir <path>` | `-d` | Target directory for the project. Defaults to `./<project-name>`. |
+| `--help` | `-h` | Show help. |
+
+### Available Templates
+
+| Alias | Branch | Description |
+|-------|--------|-------------|
+| `empty` | `sdk-empty` | Empty project |
+| `minimal` | `code-agent-minimal` | Just the basics to get started |
+| `interactive` | `code-agent-book-assistant` | Chat with one agent |
+| `chat-select` | `interactive-chat-agent-select` | Interactive chat with agent selection |
+| `desktop` | `smythos-electron-starter-project` | Desktop App (Electron) |
+| `android` | `android-mobile-agent` | Android Mobile App (React Native) |
+
+Both short aliases and full branch names are accepted.
+
+### Examples
 
 ```bash
 # Interactive project creation
 sre create
 
-# Create project with specific name
+# Create project with specific name (interactive)
 sre create "Customer Support Bot"
+
+# Batch mode: empty project with shared resources
+sre create "My Agent" --template=empty --res-folder=home
+
+# Batch mode: minimal template with project-local resources
+sre create "My Agent" --template=minimal --res-folder=project
+
+# Batch mode: specify target directory explicitly
+sre create "My Agent" -t empty -r home --dir /tmp/my-agent
 ```
 
 ---

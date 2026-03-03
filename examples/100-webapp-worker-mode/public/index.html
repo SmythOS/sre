@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmythOS Worker Mode</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- ── Main Chat Area ────────────────────────────────────── -->
+        <div id="chat-area">
+            <header id="chat-header">
+                <h1>SmythOS Worker Mode</h1>
+                <p>Complex tasks are dispatched to background workers. Results surface automatically.</p>
+            </header>
+
+            <div id="messages"></div>
+
+            <form id="input-form">
+                <input
+                    type="text"
+                    id="input"
+                    placeholder="Ask me anything..."
+                    autocomplete="off"
+                    disabled
+                />
+                <button type="submit" id="send-btn" disabled>Send</button>
+            </form>
+        </div>
+
+        <!-- ── Right Sidebar: Worker Jobs ────────────────────────── -->
+        <aside id="sidebar">
+            <h2>Background Workers</h2>
+            <div id="jobs-list">
+                <p class="empty-state">No active workers yet. Ask something complex to dispatch one.</p>
+            </div>
+        </aside>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="ui.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
