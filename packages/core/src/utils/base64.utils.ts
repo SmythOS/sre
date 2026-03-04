@@ -275,7 +275,7 @@ const _cleanUpBase64Data = (str: string): string => {
     const cleaned = str.replace(/\s|\\n|\\s/g, '');
 
     // Estimate the decoded binary size from the base64 string length (avoids allocating a buffer just for the check)
-    const estimatedBytes = Math.ceil(cleaned.length * 3 / 4);
+    const estimatedBytes = Math.ceil((cleaned.length * 3) / 4);
     if (estimatedBytes > MAX_BASE64_FILE_SIZE) {
         const actualMB = (estimatedBytes / (1024 * 1024)).toFixed(2);
         const limitMB = (MAX_BASE64_FILE_SIZE / (1024 * 1024)).toFixed(0);
