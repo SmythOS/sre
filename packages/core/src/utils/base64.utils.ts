@@ -1,6 +1,8 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { isValidString } from './string.utils';
-import { MAX_FILE_SIZE } from '@sre/constants';
+
+// Inlined here to preserve utils purity (utils must not depend on code outside utils)
+const MAX_BASE64_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 /**
  * This function converts a text string to a base64 URL.
@@ -274,9 +276,9 @@ const _cleanUpBase64Data = (str: string): string => {
 
     // Estimate the decoded binary size from the base64 string length (avoids allocating a buffer just for the check)
     const estimatedBytes = Math.ceil(cleaned.length * 3 / 4);
-    if (estimatedBytes > MAX_FILE_SIZE) {
+    if (estimatedBytes > MAX_BASE64_FILE_SIZE) {
         const actualMB = (estimatedBytes / (1024 * 1024)).toFixed(2);
-        const limitMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+        const limitMB = (MAX_BASE64_FILE_SIZE / (1024 * 1024)).toFixed(0);
         throw new Error(`Invalid file detected during base64 processing: file size (~${actualMB}MB) exceeds the ${limitMB}MB limit.`);
     }
 
