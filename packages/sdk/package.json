@@ -75,9 +75,10 @@
         "express": "^4.21.2",
         "mammoth": "^1.9.1",
         "mime-types": "^3.0.1",
-        "pdfjs-dist": "^4.10.38"
+        "@libpdf/core": "^0.2.10"
     },
     "devDependencies": {
+        "pdf-lib": "^1.17.1",
         "@rollup/plugin-json": "^6.1.0",
         "@rollup/pluginutils": "^5.1.0",
         "cross-env": "^7.0.3",
