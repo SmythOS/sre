@@ -17,6 +17,7 @@ import {
     TLLMMessageRole,
     APIKeySource,
     TLLMEvent,
+    TLLMFinishReason,
     BedrockCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
@@ -31,6 +32,7 @@ import { LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('BedrockConnector');
 
@@ -51,12 +53,13 @@ export class BedrockConnector extends LLMConnector {
         });
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    @hookAsync('LLMConnector.request')
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseCommand(body);
-            const response: ConverseCommandOutput = await bedrock.send(command);
+            const response: ConverseCommandOutput = await bedrock.send(command, { abortSignal });
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
@@ -67,12 +70,12 @@ export class BedrockConnector extends LLMConnector {
             });
 
             const message = response.output?.message;
-            const finishReason = response.stopReason;
+            const finishReason = LLMHelper.normalizeFinishReason(response.stopReason);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_use') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 const toolUseBlocks = message?.content?.filter((block) => block?.toolUse) || [];
 
                 toolsData = toolUseBlocks.map((block, index) => ({
@@ -99,15 +102,15 @@ export class BedrockConnector extends LLMConnector {
             throw error?.error || error;
         }
     }
-
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    @hookAsync('LLMConnector.streamRequest')
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
             const bedrock = await this.getClient(context);
             const command = new ConverseStreamCommand(body);
-            const response: ConverseStreamCommandOutput = await bedrock.send(command);
+            const response: ConverseStreamCommandOutput = await bedrock.send(command, { abortSignal });
             const stream = response.stream;
 
             if (stream) {
@@ -124,14 +127,14 @@ export class BedrockConnector extends LLMConnector {
                         // Handle message start
                         if (chunk.messageStart) {
                             currentMessage.role = chunk.messageStart.role || '';
-                            emitter.emit('data', { role: currentMessage.role });
+                            emitter.emit(TLLMEvent.Data, { role: currentMessage.role });
                         }
 
                         // Handle content deltas
                         if (chunk.contentBlockDelta?.delta?.text) {
                             currentMessage.content += chunk.contentBlockDelta.delta.text;
-                            emitter.emit('data', chunk.contentBlockDelta.delta.text);
-                            emitter.emit('content', chunk.contentBlockDelta.delta.text, currentMessage.role);
+                            emitter.emit(TLLMEvent.Data, chunk.contentBlockDelta.delta.text);
+                            emitter.emit(TLLMEvent.Content, chunk.contentBlockDelta.delta.text, currentMessage.role);
                         }
 
                         // Handle tool use start
@@ -173,10 +176,18 @@ export class BedrockConnector extends LLMConnector {
 
                         // Handle message completion
                         if (chunk.messageStop) {
+                            const finishReason = LLMHelper.normalizeFinishReason(chunk.messageStop.stopReason);
+
                             if (currentMessage.toolCalls.length > 0) {
                                 emitter.emit(TLLMEvent.ToolInfo, currentMessage.toolCalls);
                             }
-                            emitter.emit(TLLMEvent.End, currentMessage.toolCalls);
+
+                            // Emit interrupted event if finishReason is not 'stop'
+                            if (finishReason !== TLLMFinishReason.Stop) {
+                                emitter.emit(TLLMEvent.Interrupted, finishReason);
+                            }
+
+                            emitter.emit(TLLMEvent.End, currentMessage.toolCalls, [], finishReason);
                         }
 
                         if (chunk?.metadata?.usage) {

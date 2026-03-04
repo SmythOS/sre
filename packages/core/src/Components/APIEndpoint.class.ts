@@ -39,7 +39,7 @@ function parseKey(str: string = '', teamId: string): string {
 export class APIEndpoint extends Component {
     protected configSchema = Joi.object({
         endpoint: Joi.string()
-            .pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/)
+            .pattern(/^[a-zA-Z0-9_]+([-_][a-zA-Z0-9_]+)*$/)
             .max(50)
             .required(),
         method: Joi.string().valid('POST', 'GET').allow(''), //we're accepting empty value because we consider it POST by default.
@@ -57,33 +57,26 @@ export class APIEndpoint extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
+        if (typeof config.process === 'function') {
+            //special case, APIEndpoint has a custom process method.
+            //the inputs are not passed directly to APIEndpoints, we need to read them from the context.
+            const contextData = agent?.agentRuntime?.getComponentData(config.id);
+
+            const inputs = Array.isArray(contextData?.input) ? contextData?.input : [contextData?.input];
+
+            const result = await config.process.apply(null, inputs);
+            return result;
+        }
+
         const req: AgentRequest = agent.agentRequest;
         const logger = this.createComponentLogger(agent, config);
 
+        const isTrigger = req.path.startsWith(agent.triggerBasePath);
         const headers = req ? req.headers : {};
-        let body = req ? req.body : input; //handle debugger injection
-        const params = req ? req.params : {};
-        let query = req ? req.query : {};
+        let body = req && !isTrigger ? req.body : input; //handle debugger injection
+        const params = req && !isTrigger ? req.params : {};
+        let query = req && !isTrigger ? req.query : {};
         const _authInfo = req ? req._agent_authinfo : undefined;
-
-        // parse template variables
-        for (const [key, value] of Object.entries(body)) {
-            if (isKeyTemplateVar(value as string)) {
-                body[key] = await parseKey(value as string, agent?.teamId);
-            } else if (isTemplateVar(value as string)) {
-                //body[key] = parseTemplate(value as string, input, { escapeString: false });
-                body[key] = TemplateString(value as string).parse(input).result;
-            }
-        }
-
-        for (const [key, value] of Object.entries(query)) {
-            if (isKeyTemplateVar(value as string)) {
-                query[key] = await parseKey(value as string, agent?.teamId);
-            } else if (isTemplateVar(value as string)) {
-                //query[key] = parseTemplate(value as string, input, { escapeString: false });
-                query[key] = TemplateString(value as string).parse(input).result;
-            }
-        }
 
         // set default value and agent variables
         const inputsWithDefaultValue = config.inputs.filter(
@@ -146,15 +139,30 @@ export class APIEndpoint extends Component {
             //body = input;
         }
 
-        // ensure strong data type
+        // #region parse all template variables (after debugger injection and defaults are set)
+        body = await resolveTemplateVariables(body, input, agent);
+        query = await resolveTemplateVariables(query, input, agent);
+        // #endregion parse all template variables
+
+        // #region ensure strong data type
         body = await performTypeInference(body, config.inputs, agent);
         query = await performTypeInference(query, config.inputs, agent);
+        // #endregion ensure strong data type
 
+        // #region log inputs
         logger.debug('Parsing inputs');
         logger.debug(' Headers', headers);
-        logger.debug(' Body', body);
+        const dbgBody = {};
+        for (let key in body) {
+            const entry = body[key];
+            if (entry instanceof BinaryInput) dbgBody[key] = `BinaryInput<...>`;
+            else dbgBody[key] = entry;
+        }
+
+        logger.debug(' Body', dbgBody);
         logger.debug(' Params', params);
         logger.debug(' Query', query);
+        // #endregion log inputs
 
         //Handle JSON Data
         //FIXME : this is a workaround that parses any json string in the body, we should only parse the json string in the body if the data type is explicitely set to JSON
@@ -171,7 +179,7 @@ export class APIEndpoint extends Component {
                 }
             }
         }
-        logger.debug('Parsed body json input', body);
+        logger.debug('Parsed body json input');
 
         logger.debug('Parsing query json input');
         for (let key in query) {
@@ -231,4 +239,23 @@ export class APIEndpoint extends Component {
 
         return { headers, body, query, params, _authInfo, _debug: logger.output };
     }
+
+    async postProcess(output, config, agent: Agent): Promise<any> {
+        if (typeof config.process === 'function') {
+            return output?.result;
+        }
+        return output;
+    }
+}
+
+async function resolveTemplateVariables(data: any, input: any, agent: Agent): Promise<any> {
+    for (const [key, value] of Object.entries(data)) {
+        if (isKeyTemplateVar(value as string)) {
+            data[key] = await parseKey(value as string, agent.teamId);
+        } else if (isTemplateVar(value as string)) {
+            data[key] = TemplateString(value as string).parse(input).result;
+        }
+    }
+
+    return data;
 }

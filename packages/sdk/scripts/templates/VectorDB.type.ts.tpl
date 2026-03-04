@@ -5,6 +5,7 @@ import { Scope } from '../SDKTypes';
 
 // Define VectorDB provider settings mapping
 export type TVectorDBProviderSettings = {
+    default: {} // Empty config for default provider
 {{typeMapping}}
 };
 
@@ -21,6 +22,7 @@ export type TVectorDBProvider = TBuiltinVectorDBProvider | keyof IVectorDBProvid
 
 // For backward compatibility, export the built-in providers as enum-like object
 export const TVectorDBProvider: Record<TBuiltinVectorDBProvider, TBuiltinVectorDBProvider> = {
+    default: 'default',
 {{builtinProviders}}
 } as const;
 

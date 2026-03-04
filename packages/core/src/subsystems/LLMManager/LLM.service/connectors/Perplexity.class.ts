@@ -14,12 +14,15 @@ import {
     TLLMChatResponse,
     ILLMRequestContext,
     TLLMPreparedParams,
+    TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('PerplexityConnector');
 
@@ -58,14 +61,15 @@ export class PerplexityConnector extends LLMConnector {
         });
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    @hookAsync('LLMConnector.request')
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const perplexity = await this.getClient(context);
-            const response = await perplexity.post('/chat/completions', body);
+            const response = await perplexity.post('/chat/completions', body, { signal: abortSignal });
 
             const content = response?.data?.choices?.[0]?.message.content;
-            const finishReason = response?.data?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(response?.data?.choices?.[0]?.finish_reason);
             const usage = response?.data?.usage as any;
 
             this.reportUsage(usage, {
@@ -84,35 +88,46 @@ export class PerplexityConnector extends LLMConnector {
                 usage,
             };
         } catch (error) {
+            // set the actual error message from the response
+            error.message = error?.response?.data?.error?.message || error?.message || 'Unknown error';
             logger.error(`request ${this.name}`, error, acRequest.candidate);
             throw error;
         }
     }
 
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    @hookAsync('LLMConnector.streamRequest')
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest
         const emitter = new EventEmitter();
 
+        // TODO: need to implement proper streaming for Perplexity
+
         setTimeout(() => {
             try {
                 logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-                this.request({ acRequest, body, context })
+                this.request({ acRequest, body, context, abortSignal })
                     .then((respose) => {
                         const finishReason = respose.finishReason;
                         const usage = respose.usage;
 
-                        emitter.emit('interrupted', finishReason);
-                        emitter.emit('content', respose.content);
-                        emitter.emit('end', undefined, usage, finishReason);
+                        emitter.emit(TLLMEvent.Data, respose);
+                        emitter.emit(TLLMEvent.Content, respose.content);
+
+                        // Only emit Interrupted if finishReason is not 'stop'
+                        if (finishReason !== TLLMFinishReason.Stop) {
+                            emitter.emit(TLLMEvent.Interrupted, finishReason);
+                        }
+
+                        emitter.emit(TLLMEvent.End, [], [usage], finishReason);
                     })
                     .catch((error) => {
-                        emitter.emit('error', error.message || error.toString());
+                        emitter.emit(TLLMEvent.Error, error.message || error.toString());
                     });
                 //emitter.emit('finishReason', respose.finishReason);
             } catch (error) {
                 logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-                emitter.emit('error', error.message || error.toString());
+                emitter.emit(TLLMEvent.Error, error.message || error.toString());
             }
         }, 100);
 
@@ -146,8 +161,15 @@ export class PerplexityConnector extends LLMConnector {
         if (params?.temperature !== undefined) body.temperature = params.temperature;
         if (params?.topP !== undefined) body.top_p = params.topP;
         if (params?.topK !== undefined) body.top_k = params.topK;
-        if (params?.frequencyPenalty) body.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
+
+        // Perplexity API does not allow both presence_penalty and frequency_penalty to be set simultaneously.
+        // A value of 0 means no penalty (same as default), so we only include these parameters when they have a non-zero value.
+        // Apply either frequencyPenalty or presencePenalty, prioritizing frequencyPenalty
+        if (params?.frequencyPenalty) {
+            body.frequency_penalty = params.frequencyPenalty;
+        } else if (params?.presencePenalty) {
+            body.presence_penalty = params.presencePenalty;
+        }
 
         if (params.responseFormat) {
             body.response_format = params.responseFormat;

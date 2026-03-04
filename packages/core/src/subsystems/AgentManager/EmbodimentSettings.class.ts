@@ -44,4 +44,12 @@ export class EmbodimentSettings {
         }
         return _embodiment?.properties;
     }
+
+    public getAll() {
+        const obj = {};
+        this._embodiments.forEach((embodiment: any) => {
+            obj[embodiment.type.toLowerCase()] = embodiment.properties;
+        });
+        return obj;
+    }
 }

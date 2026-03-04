@@ -1,7 +1,7 @@
 import { Agent, Chat, Component, Model, TAgentMode, TLLMEvent } from '@smythos/sdk';
 import chalk from 'chalk';
 import * as readline from 'readline';
-import { EmitUnit, PluginBase, TokenLoom } from 'tokenloom';
+import { EmitUnit, PluginAPI, PluginBase, TokenLoom } from 'tokenloom';
 
 //Show the tasks list and status to the user at every step before performing the tasks, and also give a tasks status summary after tasks.
 //When you display the tasks list to a user show it in a concise way with a summary and checkboxes for each task.
@@ -29,7 +29,7 @@ async function main() {
         When the user asks about a framework or a library that you do not know, make sure to perform a web search to get the information you need.
         NEVER make up information, if you don't know the answer.
         `,
-        model: 'claude-4-sonnet',
+        model: Model.Anthropic('claude-haiku-4-5'),
         // model: Model.OpenAI('gpt-5', {
         //     inputTokens: 300000,
         //     outputTokens: 100000,
@@ -115,7 +115,7 @@ async function main() {
     //#endregion
 
     //we call the chat explicitly with persistance enabled
-    const chat = agent.chat({ id: 'my-chat-0001', persist: false });
+    const chat = agent.chat({ id: 'my-chat-' + Date.now(), persist: false });
 
     // Create readline interface for user input
     const rl = readline.createInterface({
@@ -258,15 +258,16 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
 
         streamChat.on(TLLMEvent.Content, (content) => {
             displayTasksList(currentTasks);
+
             parser.feed({ text: content });
         });
 
         streamChat.on(TLLMEvent.End, () => {
             parser.flush();
-            console.log('\n');
             displayTasksList(currentTasks);
             //wait for the parser to flush
             parser.once('buffer-released', () => {
+                console.log('\n\n');
                 rl.prompt();
             });
         });
@@ -298,6 +299,8 @@ async function handleUserInput(input: string, rl: readline.Interface, chat: Chat
 
         streamChat.on(TLLMEvent.ToolResult, (toolResult) => {
             if (toolResult?.tool?.name.startsWith('_sre_')) {
+                console.log('\n');
+                displayTasksList(currentTasks);
                 return;
             }
 

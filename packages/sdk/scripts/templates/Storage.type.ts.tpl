@@ -5,6 +5,7 @@ import { Scope } from '../SDKTypes';
 
 // Define storage provider settings mapping
 export type TStorageProviderSettings = {
+    default: {} // Empty config for default provider
 {{typeMapping}}
 };
 
@@ -19,6 +20,7 @@ export type TStorageProvider = TBuiltinStorageProvider | keyof IStorageProviders
 
 // For backward compatibility, export the built-in providers as enum-like object
 export const TStorageProvider: Record<TBuiltinStorageProvider, TBuiltinStorageProvider> = {
+    default: 'default',
 {{builtinProviders}}
 } as const;
 

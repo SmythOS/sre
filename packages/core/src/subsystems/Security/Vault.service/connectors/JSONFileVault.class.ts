@@ -1,22 +1,20 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { findValidResourcePath } from '@sre/helpers/Sysconfig.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { EncryptionSettings } from '@sre/types/Security.types';
-import { IVaultRequest, VaultConnector } from '../VaultConnector';
-import os from 'os';
+import * as chokidar from 'chokidar';
 import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
+import { VaultConnector } from '../VaultConnector';
+import { askForValues, colors } from '@sre/utils/index';
+import os from 'os';
 import path from 'path';
-import * as chokidar from 'chokidar';
-import { findSmythPath } from '../../../../helpers/Sysconfig.helper';
 
-const console = Logger('JSONFileVault');
+const logger = Logger('JSONFileVault');
 
 export type JSONFileVaultConfig = {
     file?: string;
@@ -31,6 +29,8 @@ export class JSONFileVault extends VaultConnector {
     private shared: string;
     private vaultFile: string;
     private watcher: chokidar.FSWatcher | null = null;
+
+    private _interactiveVaultCreation: boolean = false;
 
     constructor(protected _settings: JSONFileVaultConfig) {
         super(_settings);
@@ -48,27 +48,35 @@ export class JSONFileVault extends VaultConnector {
     private findVaultFile(vaultFile) {
         let _vaultFile = vaultFile;
 
-        if (fs.existsSync(_vaultFile)) {
+        if (_vaultFile && fs.existsSync(_vaultFile)) {
             return _vaultFile;
         }
-        console.warn('Vault file not found in:', _vaultFile);
+        logger.warn('Vault file not found in:', _vaultFile);
 
-        //try to find the .smyth directory and check if it contains a valid vault
+        let found = '';
 
-        _vaultFile = findSmythPath('.sre/vault.json', (dir, success, nextDir) => {
+        const relativeSearchLocations = ['vault.json', 'vault/vault.json', '.sre/vault.json'];
+        found = findValidResourcePath(relativeSearchLocations, (dir, success, nextDir) => {
             if (!success) {
-                console.warn('Vault file not found in:', nextDir);
+                logger.warn('Vault file not found in:', dir);
             }
         });
 
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
+        if (found) {
+            logger.warn('Found a Vault file in : ', found, ' I will use this one.');
+            return found;
         }
 
         console.warn('!!! All attempts to find the vault file failed !!!');
-        console.warn('!!! Will continue without vault !!!');
-        console.warn('!!! Many features might not work !!!');
+        if (!this._interactiveVaultCreation) {
+            this.createDefaultVaultInteractive();
+            this._interactiveVaultCreation = true;
+            return this.findVaultFile(this.vaultFile);
+        } else {
+            process.stdout.write(colors.red + '[ERR] Could not find or create a valid vault file.\n' + colors.reset);
+            console.warn('!!! SRE Will continue without vault !!!');
+            console.warn('!!! Many features might not work !!!');
+        }
 
         return null;
     }
@@ -81,8 +89,54 @@ export class JSONFileVault extends VaultConnector {
             hideEchoBack: true,
             mask: '*',
         });
-        console.info('Master key entered');
+        logger.info('Master key entered');
         return masterKey;
+    }
+
+    private createDefaultVaultInteractive(): boolean {
+        const userVaultDir = path.resolve(os.homedir(), '.smyth');
+
+        const userVaultPath = path.resolve(userVaultDir, 'vault.json');
+
+        process.stdout.write(colors.red + '\n\n\n\n SRE Initialization was interrupted because no valid vault file was found.\n' + colors.reset);
+        process.stdout.write(
+            colors.red + 'I will help you create a default vault file here : ' + path.relative(process.cwd(), userVaultPath) + '\n' + colors.reset
+        );
+        process.stdout.write(colors.red + '\nUse Ctrl+C to cancel.\n' + colors.reset);
+        process.stdout.write(colors.bright + '===[ SRE : JSON Vault Creation ]=========================' + colors.reset + '\n');
+
+        const apiKeys = askForValues('Please enter the API keys for your LLM providers (Press Enter to skip any key):', {
+            openai: 'OpenAI : ',
+            anthropic: 'Anthropic : ',
+            googleai: 'Google AI : ',
+            xai: 'xAI : ',
+            groq: 'Groq : ',
+        });
+
+        const defaultVault = {
+            default: {
+                echo: '',
+                openai: '',
+                anthropic: '',
+                googleai: '',
+                groq: '',
+                togetherai: '',
+                xai: '',
+                deepseek: '',
+                tavily: '',
+                scrapfly: '',
+                ...apiKeys,
+            },
+        };
+        fs.mkdirSync(userVaultDir, { recursive: true });
+        fs.writeFileSync(userVaultPath, JSON.stringify(defaultVault, null, 2));
+
+        process.stdout.write(colors.bright + colors.green + '\nThe vault file is now created at : ' + userVaultPath + colors.reset);
+        process.stdout.write(colors.bright + '\nYou can edit it later if you want to add/update keys.' + colors.reset);
+
+        process.stdout.write(colors.bright + '\n================================================\n\n\n' + colors.reset);
+
+        return true;
     }
 
     /**
@@ -102,7 +156,7 @@ export class JSONFileVault extends VaultConnector {
         return value.replace(envVarPattern, (match, envVarName) => {
             const envValue = process.env[envVarName];
             if (envValue === undefined) {
-                console.warn(`Environment variable ${envVarName} not found, keeping original value: ${match}`);
+                logger.warn(`Environment variable ${envVarName} not found, keeping original value: ${match}`);
                 return match;
             }
             return envValue;
@@ -186,8 +240,8 @@ export class JSONFileVault extends VaultConnector {
                     this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
                 }
             } catch (e) {
-                console.error('Error parsing vault file:', e);
-                console.error('!!! Vault features might not work properly !!!');
+                logger.error('Error parsing vault file:', e);
+                logger.error('!!! Vault features might not work properly !!!');
                 this.vaultData = {};
             }
 

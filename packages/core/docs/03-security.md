@@ -1,3 +1,7 @@
+---
+title: "Security"
+---
+
 # SRE Security Model
 
 Security is a foundational, non-negotiable component of the Smyth Runtime Environment. It is not an add-on, but a core tenant of the architecture, enforced at the lowest levels of the system. The entire security model is built upon the **Candidate/ACL (Access Control List) system**.

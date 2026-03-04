@@ -1,27 +1,43 @@
-import _ from 'lodash';
-import { type OpenAI } from 'openai';
+import { EventEmitter } from 'events';
 import { encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
+
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { LLMConnector } from './LLM.service/LLMConnector';
-import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageRole, TLLMModel, TLLMChatResponse } from '@sre/types/LLM.types';
-import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { TLLMParams } from '@sre/types/LLM.types';
+import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
 
-const console = Logger('LLMInference');
+import { LLMHelper } from './LLM.helper';
+import { LLMConnector } from './LLM.service/LLMConnector';
+import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
-type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams };
+const logger = Logger('LLMInference');
+
+type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams; onFallback?: (data: any) => void };
 
 export class LLMInference {
-    private model: string | TLLMModel;
-    private llmConnector: LLMConnector;
-    private modelProviderReq: IModelsProviderRequest;
+    private _model: string | TLLMModel;
+    public get model() {
+        return this._model;
+    }
+    public get modelId() {
+        return typeof this._model === 'string' ? this._model : this._model?.modelId;
+    }
+    private _llmConnector: LLMConnector;
+    public get llmConnector() {
+        return this._llmConnector;
+    }
+    private _modelProviderReq: IModelsProviderRequest;
+    public get modelProviderReq() {
+        return this._modelProviderReq;
+    }
+    private _llmProviderName: string;
+    public get llmProviderName() {
+        return this._llmProviderName;
+    }
     public teamId?: string;
 
     public static async getInstance(model: string | TLLMModel, candidate: AccessCandidate) {
@@ -35,18 +51,18 @@ export class LLMInference {
         const llmInference = new LLMInference();
         llmInference.teamId = teamId;
 
-        llmInference.modelProviderReq = modelsProvider.requester(candidate);
+        llmInference._modelProviderReq = modelsProvider.requester(candidate);
 
-        const llmProvider = await llmInference.modelProviderReq.getProvider(model);
-        if (llmProvider) {
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        llmInference._llmProviderName = await llmInference._modelProviderReq.getProvider(model);
+        if (llmInference._llmProviderName) {
+            llmInference._llmConnector = ConnectorService.getLLMConnector(llmInference._llmProviderName);
         }
 
-        if (!llmInference.llmConnector) {
-            console.error(`Model ${model} unavailable for team ${teamId}`);
+        if (!llmInference._llmConnector) {
+            logger.warn(`Model ${model} unavailable for team ${teamId}`);
         }
 
-        llmInference.model = model;
+        llmInference._model = model;
 
         return llmInference;
     }
@@ -54,101 +70,306 @@ export class LLMInference {
     public static user(candidate: AccessCandidate): any {}
 
     public get connector(): LLMConnector {
-        return this.llmConnector;
+        return this._llmConnector;
     }
 
-    public async prompt({ query, contextWindow, files, params }: TPromptParams) {
+    public async prompt({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
-            const content = this.llmConnector.enhancePrompt(query, params);
+            const content = this._llmConnector.enhancePrompt(query, params);
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this._model;
+
         params.messages = messages;
         params.files = files;
 
-        try {
-            let response: TLLMChatResponse = await this.llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this._model });
+        }
 
-            const result = this.llmConnector.postProcess(response?.content);
+        try {
+            let response: TLLMChatResponse = await this._llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
+
+            const result = this._llmConnector.postProcess(response?.content);
             if (result.error) {
-                // If the model stopped before completing the response, this is usually due to output token limit reached.
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                // If the model stopped before completing the response normally, provide specific error message
+                if (response.finishReason !== TLLMFinishReason.Stop) {
+                    const errorMessage = LLMHelper.getFinishReasonErrorMessage(response.finishReason);
+                    throw new Error(errorMessage);
                 }
 
-                // If the model stopped due to other reasons, throw the error
+                // If the model stopped normally but there's a postProcess error, throw the postProcess error
                 throw new Error(result.error);
             }
             return result;
         } catch (error: any) {
-            console.error('Error in chatRequest: ', error);
+            // Attempt fallback for custom models (only if not already in fallback)
+            if (!isInFallback) {
+                const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+                if (isCustomModel) {
+                    try {
+                        const fallbackParams = await this.getSafeFallbackParams(params);
+                        const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
 
+                        // If fallback succeeded, return the result
+                        if (fallbackResult !== null) {
+                            return fallbackResult;
+                        }
+                    } catch (fallbackError) {
+                        // If fallback also failed, log it but continue to throw original error
+                        logger.warn('Fallback also failed:', fallbackError);
+                    }
+                }
+            }
+
+            // If fallback was not attempted or failed, throw the original error
+            logger.error('Error in chatRequest: ', error);
             throw error;
         }
     }
 
-    public async promptStream({ query, contextWindow, files, params }: TPromptParams) {
+    public async promptStream({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
-            const content = this.llmConnector.enhancePrompt(query, params);
+            const content = this._llmConnector.enhancePrompt(query, params);
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this._model;
+
         params.messages = messages;
         params.files = files;
 
-        try {
-            return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
-        } catch (error) {
-            console.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
-            process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
-            });
-            return dummyEmitter;
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this._model });
         }
+
+        // Connectors now always return emitters (they don't throw errors)
+        const primaryEmitter = await this._llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
+
+        // Only wrap with fallback capability if this is a custom model (not already in fallback)
+        // For regular models, return the emitter directly - errors flow naturally to the caller
+        if (!isInFallback) {
+            const isCustomModel = await this._modelProviderReq.isUserCustomLLM(this._model);
+
+            if (isCustomModel) {
+                return this.wrapWithFallback(primaryEmitter, { query, contextWindow, files, params, onFallback });
+            }
+        }
+
+        return primaryEmitter;
+    }
+
+    /**
+     * Creates a safe, minimal set of parameters when switching to a fallback LLM provider.
+     *
+     * **Why this exists:**
+     * Model settings persist in the component's configuration data, even when you switch models.
+     * This can cause issues when fallback models run with settings the user can't see or track.
+     *
+     * **Real-world scenario:**
+     * 1. User configures a GPT-5 model and sets `reasoning_effort: "high"`
+     * 2. This setting gets saved to the component's configuration
+     * 3. User switches to a custom model (e.g., for cost savings)
+     * 4. The UI now shows custom model options - GPT-5 options are hidden
+     * 5. **BUT**: `reasoning_effort: "high"` is STILL in the config data!
+     * 6. Custom model has GPT-5 as its fallback
+     * 7. Primary custom model fails → automatically switches to GPT-5 fallback
+     * 8. GPT-5 fallback runs with the hidden `reasoning_effort: "high"` setting
+     * 9. `reasoning_effort: "high"` requires a high `max_tokens` value
+     * 10. If `max_tokens` is too low → the request fails
+     *
+     * **The impact:**
+     * Users can't track response quality properly because they don't know what configuration
+     * the fallback model is using. The UI doesn't show fallback model settings, so users have
+     * no visibility into how responses are being generated.
+     *
+     * **What this function does:**
+     * Strips out provider-specific settings when falling back, using only universal parameters.
+     * This ensures predictable behavior. (Note: A more robust solution would be showing fallback
+     * configuration in the UI, but for now this handles it at the parameter level.)
+     *
+     * @param params - The full set of LLM parameters from the original request
+     * @returns A filtered parameter object with only provider-agnostic, safe parameters
+     */
+    private async getSafeFallbackParams(params: TLLMParams): Promise<TLLMParams> {
+        const fallbackParams = {
+            agentId: params.agentId,
+            model: params.model,
+            maxContextWindowLength: params.maxContextWindowLength,
+            maxTokens: params.maxTokens,
+            messages: params.messages,
+            passthrough: params.passthrough,
+            useContextWindow: params.useContextWindow,
+        };
+
+        return fallbackParams;
+    }
+
+    /**
+     * Executes fallback logic for custom models when the primary model fails.
+     * Checks if a fallback model is configured and switches to it.
+     * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
+     *
+     * **Important**: This method should only be called for custom models (already verified by caller).
+     *
+     * @param methodName - The name of the method being called ('prompt' or 'promptStream')
+     * @param args - The original arguments passed to the method
+     * @returns The result from the fallback execution, or null if no fallback is configured
+     */
+    private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
+        const fallbackModel = await this._modelProviderReq.getFallbackLLM(this._model);
+
+        // Only execute fallback if a fallback model is configured
+        if (!fallbackModel) {
+            return null;
+        }
+
+        logger.info(`Attempting fallback from ${this._model} to ${fallbackModel}`);
+
+        // Mutate the model and connector to use fallback
+        this._model = fallbackModel;
+
+        const llmProvider = await this._modelProviderReq.getProvider(fallbackModel);
+        if (llmProvider) {
+            this._llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        }
+
+        // Call the appropriate method with isInFallback=true to prevent further fallbacks
+        if (methodName === 'prompt') {
+            return await this.prompt(args, true);
+        } else {
+            return await this.promptStream(args, true);
+        }
+    }
+
+    /**
+     * Wraps an emitter with fallback capability using a proxy pattern.
+     * This creates a transparent proxy that forwards all events from the source emitter.
+     * On error, it attempts to switch to a fallback model and seamlessly redirects events.
+     *
+     * **Important**: This method is only called for custom models that have fallback configured.
+     * Regular models return their emitters directly without wrapping, so errors flow naturally.
+     *
+     * **Design Pattern**: Proxy/Decorator with listener-based event forwarding
+     * **Coupling**: Minimal - reads event types from TLLMEvent enum (single source of truth)
+     * **Reliability**: Uses listeners (not emit interception) to avoid timing issues with async emits
+     *
+     * Note: We use the TLLMEvent enum as the source of truth for all event types.
+     * This provides a good balance between decoupling and reliability. The enum already
+     * defines all possible LLM events, and connectors emit these standard events.
+     *
+     * @param sourceEmitter - The custom model's event emitter
+     * @param args - The original prompt arguments for fallback execution
+     * @returns A proxy emitter that transparently handles primary/fallback switching
+     */
+    private wrapWithFallback(sourceEmitter: EventEmitter, args: TPromptParams): EventEmitter {
+        const proxyEmitter = new EventEmitter();
+        let fallbackAttempted = false;
+
+        /**
+         * Attaches forwarding listeners for all event types in TLLMEvent.
+         * Uses listeners instead of emit() interception to avoid timing issues with setImmediate.
+         * 
+         * @param source - The emitter to forward events from
+         * @param skipErrors - If true, skips forwarding error events (handled separately)
+         */
+        const forwardAllEvents = (source: EventEmitter, skipErrors: boolean) => {
+            // Get all event types from TLLMEvent enum
+            const eventTypes = Object.values(TLLMEvent);
+            
+            for (const eventType of eventTypes) {
+                // Skip error events if we're intercepting them
+                if (skipErrors && eventType === TLLMEvent.Error) {
+                    continue;
+                }
+                
+                // Attach listener to forward this event type
+                source.on(eventType, (...eventArgs: any[]) => {
+                    proxyEmitter.emit(eventType, ...eventArgs);
+                });
+            }
+        };
+
+        // Handle error events for fallback logic
+        const handleError = async (error: Error) => {
+            if (fallbackAttempted) return;
+            fallbackAttempted = true;
+
+            // Stop forwarding from primary emitter
+            sourceEmitter.removeAllListeners();
+
+            try {
+                const fallbackParams = await this.getSafeFallbackParams(args.params);
+                const fallbackEmitter = await this.executeFallback('promptStream', {
+                    ...args,
+                    params: fallbackParams,
+                });
+
+                if (fallbackEmitter) {
+                    // Forward all events from fallback emitter (including errors)
+                    forwardAllEvents(fallbackEmitter, false);
+                    logger.info('Successfully switched to fallback stream');
+                    return;
+                }
+            } catch (fallbackError) {
+                logger.warn('Fallback attempt failed:', fallbackError);
+            }
+
+            // If we get here, fallback failed or was not available - emit error on proxy
+            proxyEmitter.emit(TLLMEvent.Error, error);
+            proxyEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+        };
+
+        // Attach error handler FIRST to intercept errors
+        sourceEmitter.once(TLLMEvent.Error, handleError);
+
+        // Forward all non-error events from primary emitter
+        forwardAllEvents(sourceEmitter, true);
+
+        return proxyEmitter;
     }
 
     public async imageGenRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
-        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
+        return this._llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
     }
 
     public async imageEditRequest({ query, files, params }: TPromptParams) {
         params.prompt = query;
         params.files = files;
-        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
+        return this._llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
     }
 
+    //@deprecated
     public async streamRequest(params: any, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-        try {
-            if (!params.messages || !params.messages?.length) {
-                throw new Error('Input messages are required.');
-            }
-
-            const model = params.model || this.model;
-
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
-        } catch (error) {
-            console.error('Error in streamRequest:', error);
-
-            const dummyEmitter = new EventEmitter();
+        if (!params.messages || !params.messages?.length) {
+            // Return an emitter with error/end events for validation errors
+            const errorEmitter = new EventEmitter();
+            const validationError = new Error('Input messages are required.');
             process.nextTick(() => {
-                dummyEmitter.emit('error', error);
-                dummyEmitter.emit('end');
+                errorEmitter.emit(TLLMEvent.Error, validationError);
+                errorEmitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            return dummyEmitter;
+            return errorEmitter;
         }
+
+        const model = params.model || this._model;
+
+        // Connectors now always return emitters (they don't throw errors)
+        return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
     }
 
+    //@deprecated
     public async multimodalStreamRequest(params: any, fileSources, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
@@ -170,16 +391,17 @@ export class LLMInference {
             //FIXME we need to update the connector multimediaStreamRequest in order to ignore prompt param if not provided
             const userMessage = Array.isArray(params.messages) ? params.messages.pop() : {};
             const prompt = userMessage?.content || '';
-            const model = params.model || this.model;
+            const model = params.model || this._model;
 
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
         } catch (error: any) {
-            console.error('Error in multimodalRequest: ', error);
+            logger.error('Error in multimodalRequest: ', error);
 
             throw error;
         }
     }
 
+    //@deprecated
     public async multimodalStreamRequestLegacy(prompt, files: string[], config: any = {}, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
@@ -200,12 +422,12 @@ export class LLMInference {
         params.files = _files;
 
         try {
-            prompt = this.llmConnector.enhancePrompt(prompt, config);
-            const model = params.model || this.model;
+            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            const model = params.model || this._model;
 
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
         } catch (error: any) {
-            console.error('Error in multimodalRequest: ', error);
+            logger.error('Error in multimodalRequest: ', error);
 
             throw error;
         }
@@ -239,7 +461,7 @@ export class LLMInference {
 
         //#region get max model context
 
-        const modelInfo = await this.modelProviderReq.getModelInfo(this.model, true);
+        const modelInfo = await this._modelProviderReq.getModelInfo(this._model, true);
         let maxModelContext = modelInfo?.tokens;
         let maxModelOutputTokens = modelInfo?.completionTokens || modelInfo?.tokens;
         // const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
@@ -262,10 +484,10 @@ export class LLMInference {
         }
 
         if (maxInputContext <= 0) {
-            console.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
+            logger.warn('Max input context is 0, returning empty context window, This usually indicates a wrong model configuration');
         }
 
-        console.debug(
+        logger.debug(
             `Context Window Configuration: Max Input Tokens: ${maxInputContext}, Max Output Tokens: ${maxOutputContext}, Max Model Tokens: ${maxModelContext}`
         );
         const systemMessage = { role: 'system', content: systemPrompt };
@@ -336,7 +558,7 @@ function countTokens(content: any, model: 'gpt-4o' | 'gpt-4o-mini' = 'gpt-4o') {
         const tokens = encodeChat([{ role: 'user', content: _stringifiedContent } as ChatMessage], model);
         return tokens.length;
     } catch (error) {
-        console.warn('Error in countTokens: ', error);
+        logger.warn('Error in countTokens: ', error);
         return 0;
     }
 }

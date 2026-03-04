@@ -6,6 +6,8 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { Component } from './Component.class';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class AgentPlugin extends Component {
     protected configSchema = Joi.object({
@@ -84,16 +86,31 @@ export class AgentPlugin extends Component {
 
             const conv = new Conversation(model, subAgentId, { systemPrompt: descForModel, agentVersion: version });
 
-            const result = await conv.prompt(prompt, {
+            // # Region: enhance the prompt to produce a JSON output format based on the available component outputs.
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
+
+            // if the llm is undefined, then it means we removed the model from our system
+            if (!llmInference.connector) {
+                return {
+                    _error: `The model '${model}' is not available. Please try a different one.`,
+                    _debug: logger.output,
+                };
+            }
+            const enhancedPrompt = llmInference.connector.enhancePrompt(prompt, config);
+            // # End Region: prompt enhancement
+
+            const result = await conv.prompt(enhancedPrompt, {
                 'X-AGENT-ID': subAgentId,
                 'X-AGENT-VERSION': version,
                 'X-REQUEST-TAG': reqTag, //request Tag identifies the request and tells the called agent that the call comes from internal agent
                 'x-caller-session-id': agent.callerSessionId,
             });
 
-            logger.debug(`Response:\n`, result, '\n');
+            const processedResponse = llmInference.connector.postProcess(result);
 
-            return { Response: result, _debug: logger.output };
+            logger.debug(`Response:\n`, processedResponse, '\n');
+
+            return { Response: processedResponse, _debug: logger.output };
         } catch (error: any) {
             console.error('Error on running Agent Component: ', error);
             return { _error: `Error on running Agent Component!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };

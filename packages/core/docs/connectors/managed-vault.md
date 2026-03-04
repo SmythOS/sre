@@ -1,3 +1,7 @@
+---
+title: 'connectors/Managed Vault'
+---
+
 # ManagedVault Connectors
 
 The ManagedVault subsystem provides enterprise-grade secret management with access controls.

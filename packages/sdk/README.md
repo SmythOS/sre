@@ -4,13 +4,36 @@ The SDK is a lightweight wrapper around the Smyth Runtime Environment. It lets y
 
 ## Key Features
 
--   **Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
--   **Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
--   **Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
--   **Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
--   **Agent Serialization**: Save and load your agent's state, including skills and memory.
--   **Team Management**: Orchestrate multiple agents to work together in teams.
--   **Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
+- **Fluent Agent API**: A clean and intuitive API for creating and interacting with agents.
+- **Extensible Skills**: Easily add new capabilities to your agents, from calling APIs to running custom code.
+- **Streaming Support**: Get real-time responses from your agents for dynamic and interactive experiences.
+- **Integrated AI Components**: Seamlessly connect to LLMs, Vector Databases, and Storage solutions.
+- **Agent Serialization**: Save and load your agent's state, including skills and memory.
+- **Team Management**: Orchestrate multiple agents to work together in teams.
+- **Document Parsing**: Built-in support for parsing various document types like PDF, DOCX, and Markdown.
+- **Full SRE Access**: Access the complete Smyth Runtime Environment API through `@smythos/sdk/core` for advanced use cases.
+
+## Import Paths
+
+The SDK provides two import paths:
+
+### Main SDK (`@smythos/sdk`)
+
+The simplified, developer-friendly API for common use cases:
+
+```typescript
+import { Agent, LLM, VectorDB, Storage } from '@smythos/sdk';
+```
+
+### Core SRE (`@smythos/sdk/core`)
+
+Full access to the complete Smyth Runtime Environment for advanced scenarios:
+
+```typescript
+import { SmythRuntime, SecureConnector, ACL, TAccessLevel } from '@smythos/sdk/core';
+```
+
+This allows you to use a single package while having access to both the simplified SDK API and the full SRE capabilities when needed.
 
 ## Getting Started
 
@@ -97,7 +120,7 @@ You should see your agent respond with the author of the book "The Great Gatsby"
 ### Reporting Issues
 
 If you face any issues with the CLI or the code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
-You can request help on our [Discord](https://discord.gg/smythos) or by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
+You can request help by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
 
 ## Core Concepts
 
@@ -177,6 +200,22 @@ You can also call a skill directly using `agent.call()`:
 const sum = await agent.call('calculator', { operation: 'add', a: 5, b: 3 });
 console.log(sum); // 8
 ```
+
+## Documentation
+
+Comprehensive guides are available in the `docs/` directory:
+
+1. [Getting Started](./docs/01-getting-started.md) - Installation and your first agent
+2. [Building Agents](./docs/02-agents.md) - Agent creation, modes, and skills
+3. [Streaming Responses](./docs/03-streaming.md) - Real-time response handling
+4. [Chat Conversations](./docs/04-chat.md) - Building conversational agents
+5. [Smyth Files](./docs/05-smyth-files.md) - Working with .smyth workflow files
+6. [Workflows](./docs/06-workflows.md) - Building complex workflows
+7. [Services](./docs/07-services.md) - Using LLM, VectorDB, and Storage services
+8. [Vector Databases](./docs/08-vector-db.md) - Vector database integration
+9. [Advanced Topics](./docs/08-advanced-topics.md) - Deep dive into advanced features
+10. [Language Models](./docs/09-models.md) - Complete guide to model configuration
+11. [Cheat Sheet](./docs/99-cheat-sheet.md) - Quick reference guide
 
 ## API Reference
 

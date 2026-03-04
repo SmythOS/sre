@@ -35,6 +35,8 @@ export interface TAPICallSettings {
     oauth2CallbackURL?: string;
     /** Callback URL */
     callbackURL?: string;
+    /** Request Token URL */
+    requestTokenURL?: string;
     /** Access Token URL */
     accessTokenURL?: string;
     /** User Authorization URL */
@@ -67,17 +69,19 @@ export type TAPICallOutputs = {
  * Use this component to make an API call
  */
 export function APICall(settings?: TAPICallSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'APICall', 
+        name: /*settings?.name || */'APICall', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TAPICallOutputs = createSafeAccessor({

@@ -1,7 +1,7 @@
 {
     "name": "@smythos/sdk",
-    "version": "1.1.6",
-    "description": "SRE SDK",
+    "version": "1.6.0",
+    "description": "Build intelligent AI agents with TypeScript. The SmythOS SDK provides a powerful, developer-friendly API for creating agents with custom skills, workflows, streaming, vector databases, and state management - all with full type safety.",
     "keywords": [
         "smythos",
         "agentic AI",
@@ -28,6 +28,10 @@
         ".": {
             "import": "./dist/index.js",
             "types": "./dist/types/index.d.ts"
+        },
+        "./core": {
+            "import": "./dist/core.js",
+            "types": "./dist/types/core.d.ts"
         }
     },
     "files": [
@@ -71,7 +75,7 @@
         "express": "^4.21.2",
         "mammoth": "^1.9.1",
         "mime-types": "^3.0.1",
-        "pdfjs-dist": "^4.0.379"
+        "pdfjs-dist": "^4.10.38"
     },
     "devDependencies": {
         "@rollup/plugin-json": "^6.1.0",

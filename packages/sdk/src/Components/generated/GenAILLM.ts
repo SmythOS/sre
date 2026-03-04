@@ -83,7 +83,7 @@ export interface TGenAILLMSettings {
     /** Verbosity */
     verbosity?: 'low' | 'medium' | 'high';
     /** Controls the level of effort the model will put into reasoning */
-    reasoningEffort?: 'none' | 'default' | 'minimal' | 'low' | 'medium' | 'high';
+    reasoningEffort?: 'none' | 'default' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
     /** Maximum Thinking Tokens */
     maxThinkingTokens?: number;
     /** RSS Link */
@@ -107,17 +107,19 @@ export type TGenAILLMOutputs = {
  * Use this component to generate a responses from an LLM
  */
 export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'GenAILLM', 
+        name: /*settings?.name || */'GenAILLM', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TGenAILLMOutputs = createSafeAccessor({

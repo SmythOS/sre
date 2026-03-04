@@ -9,10 +9,12 @@ import { AccountService } from '@sre/Security/Account.service';
 import { VaultService } from '@sre/Security/Vault.service';
 import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
-import { LogService } from '@sre/IO/Log.service';
+import { LogService } from '@sre/ObservabilityManager/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 import { CodeService } from '@sre/ComputeManager/Code.service';
+import { SchedulerService } from '@sre/AgentManager/Scheduler.service';
+import { TelemetryService } from '@sre/ObservabilityManager/Telemetry.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -30,6 +32,8 @@ export type TServiceRegistry = {
     Component?: ComponentService;
     ModelsProvider?: ModelsProviderService;
     Code?: CodeService;
+    Scheduler?: SchedulerService;
+    Telemetry?: TelemetryService;
 };
 
 export enum TConnectorService {
@@ -48,6 +52,8 @@ export enum TConnectorService {
     Component = 'Component',
     ModelsProvider = 'ModelsProvider',
     Code = 'Code',
+    Scheduler = 'Scheduler',
+    Telemetry = 'Telemetry',
 }
 
 export type SREConnectorConfig = {

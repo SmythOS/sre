@@ -22,17 +22,19 @@ export type TAPIOutputOutputs = {
 };
 
 export function APIOutput(settings?: TAPIOutputSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'APIOutput', 
+        name: /*settings?.name || */'APIOutput', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TAPIOutputOutputs = createSafeAccessor({

@@ -1,3 +1,7 @@
+---
+title: "Architecture"
+---
+
 # SRE Core Architecture
 
 The Smyth Runtime Environment (SRE) is designed with a philosophy inspired by operating system kernels. This approach establishes a clean separation between the core runtime services and the pluggable **Connectors** that interface with external services and infrastructure. This modularity is the key to Sre's flexibility and scalability.

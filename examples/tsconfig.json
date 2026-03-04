@@ -1,7 +1,7 @@
 {
     "extends": "../packages/sdk/tsconfig.json",
     "compilerOptions": {
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "sourceMap": true,

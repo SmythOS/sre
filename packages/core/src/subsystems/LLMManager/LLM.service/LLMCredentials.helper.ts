@@ -1,6 +1,7 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TBedrockSettings, TCustomLLMModel, TLLMCredentials, TLLMModel, TVertexAISettings } from '@sre/types/LLM.types';
+import { TemplateString, Match } from '@sre/helpers/TemplateString.helper';
 
 export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
     //create a credentials list that we can iterate over
@@ -11,8 +12,16 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
 
     for (let credentialsMode of credentialsList) {
         if (typeof credentialsMode === 'object') {
-            //credentials passed directly
-            return credentialsMode;
+            // Resolve key templates for each property in the credentials object
+            const resolvedCredentials: any = {};
+
+            for (const [key, value] of Object.entries(credentialsMode)) {
+                // Resolve {{KEY(...)}} templates from vault (supports nested objects)
+                resolvedCredentials[key] = await resolveKeyTemplate(value, candidate);
+            }
+
+            //credentials passed directly (resolved from vault templates if any)
+            return resolvedCredentials;
         }
 
         switch (credentialsMode) {
@@ -168,4 +177,54 @@ async function getVertexAICredentials(candidate: AccessCandidate, modelInfo: TCu
 
     if (!credentials) return null;
     return { ...credentials, isUserKey: true };
+}
+
+/**
+ * Creates a vault key processor for the TemplateString helper that works with AccessCandidate
+ * @param candidate - The access candidate requesting the credentials
+ * @returns A processor function that resolves vault keys using the candidate's permissions
+ * @private
+ */
+function createVaultKeyProcessor(candidate: AccessCandidate): (token: string) => Promise<string> {
+    return async (token: string) => {
+        try {
+            const vaultConnector = ConnectorService.getVaultConnector();
+            return await vaultConnector.requester(candidate).get(token);
+        } catch (error) {
+            return '';
+        }
+    };
+}
+
+/**
+ * Resolves a vault key template by fetching the value from the vault
+ * Uses the TemplateString helper to parse {{KEY(...)}} templates
+ * Recursively handles nested objects and arrays
+ * @param value - The value to resolve (can be a template string, object, array, or primitive)
+ * @param candidate - The access candidate requesting the credentials
+ * @returns Promise resolving to the vault value or the original value if not a template
+ * @private
+ */
+async function resolveKeyTemplate(value: any, candidate: AccessCandidate): Promise<any> {
+    // Handle strings with templates
+    if (typeof value === 'string') {
+        return await TemplateString(value).process(createVaultKeyProcessor(candidate), Match.fn('KEY')).asyncResult;
+    }
+
+    // Handle arrays recursively
+    if (Array.isArray(value)) {
+        return await Promise.all(value.map((item) => resolveKeyTemplate(item, candidate)));
+    }
+
+    // Handle nested objects recursively
+    if (typeof value === 'object' && value !== null) {
+        const resolvedObject: any = {};
+        for (const [key, val] of Object.entries(value)) {
+            resolvedObject[key] = await resolveKeyTemplate(val, candidate);
+        }
+        return resolvedObject;
+    }
+
+    // Return primitives as-is
+    return value;
 }

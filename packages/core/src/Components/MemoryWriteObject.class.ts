@@ -35,7 +35,7 @@ export class MemoryWriteObject extends Component {
             // Parse the JSON data
             let dataObject;
             try {
-                dataObject = JSON.parse(dataString);
+                dataObject = typeof dataString === 'object' ? dataString : JSON.parse(dataString);
             } catch (parseError) {
                 return { _error: 'Invalid JSON data provided', _debug: logger.output };
             }

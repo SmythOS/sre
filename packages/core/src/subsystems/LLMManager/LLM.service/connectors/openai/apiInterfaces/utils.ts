@@ -7,5 +7,5 @@ import OpenAI from 'openai';
  * Uses array includes for better maintainability when OpenAI adds new values.
  */
 export function isValidOpenAIReasoningEffort(value: unknown): value is OpenAI.Responses.ResponseCreateParams['reasoning']['effort'] {
-    return ['minimal', 'low', 'medium', 'high'].includes(value as string);
+    return ['minimal', 'low', 'medium', 'high', 'xhigh'].includes(value as string);
 }

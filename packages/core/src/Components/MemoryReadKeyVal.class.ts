@@ -10,6 +10,7 @@ const memory = {};
 export class MemoryReadKeyVal extends Component {
     protected configSchema = Joi.object({
         memoryName: Joi.string().max(255).allow('').label('Memory Name'),
+        key: Joi.string().max(255).allow('').label('Key'),
     });
     constructor() {
         super();
@@ -28,7 +29,7 @@ export class MemoryReadKeyVal extends Component {
 
             const memoryName = config.data.memoryName;
 
-            const key = input.Key;
+            const key = TemplateString(config.data.key).parse(input).result;
 
             const sessionId = agent.sessionId;
             const workflowId = agent.agentRuntime.workflowReqId;
@@ -38,18 +39,18 @@ export class MemoryReadKeyVal extends Component {
             const scopeStrData = await connectorRequester.get(scopeKeyId);
 
             if (!scopeStrData) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             logger.debug(`Checking Scope`);
             const scopeData = JSON.parse(scopeStrData);
             const scopeKey = scopeData.value;
             if (scopeData.scope === 'session' && scopeKey !== sessionId) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             if (scopeData.scope === 'request' && scopeKey !== workflowId) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             logger.debug(`Reading Value`);

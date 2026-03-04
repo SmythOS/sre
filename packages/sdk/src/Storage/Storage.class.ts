@@ -20,6 +20,8 @@ const Storage: TStorageProviderInstances = {} as TStorageProviderInstances;
 //generate a storage instance entry for every available storage provider
 for (const provider of Object.keys(TStorageProvider)) {
     Storage[provider] = (storageSettings?: any, scope?: Scope | AccessCandidate) => {
+        const { scope: _scope, ...connectorSettings } = storageSettings || {};
+        if (!scope) scope = _scope;
         let candidate: AccessCandidate;
         if (typeof scope === 'string') {
             let message = `You are trying to use an agent scope in a standalone storage instance.`;
@@ -38,7 +40,7 @@ for (const provider of Object.keys(TStorageProvider)) {
         } else {
             candidate = scope as AccessCandidate;
         }
-        return new StorageInstance(TStorageProvider[provider], storageSettings, candidate);
+        return new StorageInstance(TStorageProvider[provider], connectorSettings, candidate);
     };
 }
 

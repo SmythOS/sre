@@ -129,7 +129,20 @@ export class RAMCache extends CacheConnector {
         const entry = this.cache.get(fullMetadataKey);
 
         if (entry) {
-            entry.metadata = metadata;
+            const existingMetadata = entry.metadata || {};
+            const existingAcl = existingMetadata?.acl;
+            const mergedMetadata: CacheMetadata = { ...existingMetadata, ...metadata } as CacheMetadata;
+
+            // Preserve or establish ACL; always ensure requester retains ownership
+            if (existingAcl) {
+                mergedMetadata.acl = ACL.from(existingAcl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            } else if (mergedMetadata.acl) {
+                mergedMetadata.acl = ACL.from(mergedMetadata.acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            } else {
+                mergedMetadata.acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            }
+
+            entry.metadata = mergedMetadata;
             this.cache.set(fullMetadataKey, entry);
         }
     }

@@ -10,10 +10,16 @@ export class LogicXOR extends Component {
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
+        const logger = this.createComponentLogger(agent, config);
         const result: any = { Output: undefined };
         let trueCount = 0;
 
+        logger.debug(`=== LogicXOR Log ===`);
+        logger.debug(' Input:');
+
         for (let cfgInput of config.inputs) {
+            logger.debug(`${cfgInput.name}: ${input?.[cfgInput.name]}`);
+
             // counts the number of set inputs
             if (input[cfgInput.name]) {
                 trueCount++;
@@ -28,6 +34,11 @@ export class LogicXOR extends Component {
         result.Unverified = !result.Verified;
         if (!result.Verified) delete result.Verified;
         if (!result.Unverified) delete result.Unverified;
+
+        logger.debug(''); // empty line
+        logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
+
+        result._debug = logger.output;
 
         return result;
     }

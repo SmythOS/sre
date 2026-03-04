@@ -1,3 +1,7 @@
+---
+title: 'connectors/Vault'
+---
+
 # Vault Connectors
 
 The Vault subsystem provides secure storage and management of sensitive information such as API keys, passwords, tokens, and other secrets. It ensures encrypted storage and controlled access to confidential data.
@@ -9,11 +13,10 @@ The Vault subsystem provides secure storage and management of sensitive informat
 **Role**: File-based secure vault connector  
 **Summary**: Provides encrypted local file storage for secrets using JSON format. Suitable for development environments and single-node deployments requiring basic secret management.
 
-| Setting   | Type   | Required | Default               | Description                                   |
-| --------- | ------ | -------- | --------------------- | --------------------------------------------- |
-| `file`    | string | No       | `~/.smyth/vault.json` | Path to the vault file                        |
-| `fileKey` | string | No       | `~/.smyth/vault.key`  | Path to the encryption key file               |
-| `shared`  | string | No       | `""`                  | Shared team name for cross-team secret access |
+| Setting  | Type   | Required | Default               | Description                                   |
+| -------- | ------ | -------- | --------------------- | --------------------------------------------- |
+| `file`   | string | No       | `~/.smyth/vault.json` | Path to the vault file                        |
+| `shared` | string | No       | `"default"`           | Shared team name for cross-team secret access |
 
 **Example Configuration:**
 
@@ -25,12 +28,24 @@ SRE.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './secrets/vault.json',
-            fileKey: './secrets/vault.key',
             shared: 'production',
         },
     },
 });
 ```
+
+**vault.json research path:**
+The JSONFileVault connector will search for the vault.json file in the following order:
+
+1. The path specified in the `file` setting
+2. The `.smyth/vault.json` file
+3. The `.smyth/vault/vault.json` file
+4. The `.smyth/.sre/vault.json` file
+5. The `~/.smyth/vault.json` file
+6. The `~/.smyth/vault/vault.json` file
+7. The `~/.smyth/.sre/vault.json` file
+
+The search paths and the used path are visible in SRE logs in case you need to debug the vault file search.
 
 **Use Cases:**
 
@@ -59,6 +74,7 @@ SRE.init({
 | `region`             | string | Yes      | -       | AWS region where secrets are stored               |
 | `awsAccessKeyId`     | string | No       | -       | AWS access key ID (can use IAM roles instead)     |
 | `awsSecretAccessKey` | string | No       | -       | AWS secret access key (can use IAM roles instead) |
+| `prefix`             | string | No       | smythos | Prefix to add to the secret name                  |
 
 **Example Configuration:**
 
@@ -72,10 +88,50 @@ SRE.init({
             region: 'us-east-1',
             awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
             awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            prefix: 'smythos', // Optional, defaults to 'smythos'
         },
     },
 });
 ```
+
+**Secret Naming Convention:**
+
+The SecretsManager connector uses a structured naming format to organize secrets in AWS Secrets Manager:
+
+**Format:** `<prefix>/<teamId>/<secretName>`
+
+-   **prefix**: Namespace for SRE secrets (default: `"smythos"`)
+-   **teamId**: Team identifier (default: `"default"`)
+-   **secretName**: Name of the secret (e.g., `"openai"`, `"anthropic"`, `"custom-key"`)
+
+**Examples:**
+
+1. **Agent with default team** (no `teamId` specified):
+
+    ```typescript
+    const agent = new Agent({
+        id: 'my-agent',
+        behavior: '...',
+        model: 'gpt-4o',
+    });
+    ```
+
+    Secret path in AWS: `smythos/default/openai`
+
+2. **Agent with custom team**:
+
+    ```typescript
+    const agent = new Agent({
+        id: 'my-agent',
+        behavior: '...',
+        teamId: 'team-id-0001',
+        model: 'gpt-4o',
+    });
+    ```
+
+    Secret path in AWS: `smythos/team-id-0001/openai`
+
+This structure enables multi-tenant configurations where different teams can have isolated API keys and secrets, allowing for fine-grained access control and billing separation.
 
 **Use Cases:**
 

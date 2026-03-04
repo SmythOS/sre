@@ -2,6 +2,8 @@ import { Agent, MCPTransport, Model, Scope } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// if you want to use proper SRE configuration./
+// import { SRE } from '@smythos/sdk/core';
 // SRE.init({
 //     Vault: {
 //         Connector: 'JSONFileVault',

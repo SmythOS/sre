@@ -9,9 +9,10 @@ import { Scope } from '../SDKTypes';
 
 // Define VectorDB provider settings mapping
 export type TVectorDBProviderSettings = {
-    Milvus: MilvusConfig
-    Pinecone: PineconeConfig
-    RAMVec: RAMVectorDBConfig
+    default: {} // Empty config for default provider
+    Milvus: MilvusConfig & {scope?: Scope | AccessCandidate}
+    Pinecone: PineconeConfig & {scope?: Scope | AccessCandidate}
+    RAMVec: RAMVectorDBConfig & {scope?: Scope | AccessCandidate}
 };
 
 export type TAllVectorDBProviderSettings = TVectorDBProviderSettings & IVectorDBProviders;
@@ -27,6 +28,7 @@ export type TVectorDBProvider = TBuiltinVectorDBProvider | keyof IVectorDBProvid
 
 // For backward compatibility, export the built-in providers as enum-like object
 export const TVectorDBProvider: Record<TBuiltinVectorDBProvider, TBuiltinVectorDBProvider> = {
+    default: 'default',
     Milvus: 'Milvus',
     Pinecone: 'Pinecone',
     RAMVec: 'RAMVec',

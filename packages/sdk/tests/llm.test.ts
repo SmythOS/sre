@@ -72,7 +72,7 @@ describe('SDK LLM Tests', () => {
     it('LLM - Prompt with attachments', async () => {
         const llm = LLM.OpenAI('gpt-4o-mini', {
             temperature: 0.1,
-            maxTokens: 100,
+            maxTokens: 1000,
         });
 
         const result = await llm.prompt('Describe this image?', {

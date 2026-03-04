@@ -1,14 +1,17 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
-import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMPreparedParams } from '@sre/types/LLM.types';
+import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMEvent, TLLMPreparedParams } from '@sre/types/LLM.types';
 import { Logger } from '@sre/helpers/Log.helper';
+import { delay } from '@sre/utils/index';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('EchoConnector');
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -27,6 +30,7 @@ export class EchoConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
@@ -45,18 +49,18 @@ export class EchoConnector extends LLMConnector {
 
                 for (let i = 0; i < chunks.length; i++) {
                     // Simulate network delay
-                    await new Promise((resolve) => setTimeout(resolve, 50));
+                    await delay(3);
 
                     const isLastChunk = i === chunks.length - 1;
                     // Add space between chunks except for the last one to avoid trailing space in file URLs
                     const delta = { content: chunks[i] + (isLastChunk ? '' : ' ') };
-                    emitter.emit('data', delta);
-                    emitter.emit('content', delta.content);
+                    emitter.emit(TLLMEvent.Data, delta);
+                    emitter.emit(TLLMEvent.Content, delta.content);
                 }
 
                 // Emit end event after all chunks are processed
                 setTimeout(() => {
-                    emitter.emit('end', [], []); // Empty arrays for toolsData and usage_data
+                    emitter.emit(TLLMEvent.End, [], [], 'stop'); // Empty arrays for toolsData and usage_data, with finishReason
                 }, 100);
             })();
 

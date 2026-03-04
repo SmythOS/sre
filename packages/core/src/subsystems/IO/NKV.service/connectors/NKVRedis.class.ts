@@ -105,7 +105,9 @@ export class NKVRedis extends NKVConnector {
         keys = keys.filter((key) => {
             return ![this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)].includes(key);
         });
-        await this.redisCacheConnector.client.del(keys);
+        if (keys.length > 0) {
+            await this.redisCacheConnector.client.del(keys);
+        }
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {

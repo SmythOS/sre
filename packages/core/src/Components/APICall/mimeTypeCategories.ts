@@ -28,7 +28,22 @@ const mimeTypeCategories = {
         'font/woff2',
         'model/',
     ],
-    json: ['application/graphql', 'application/json', 'application/ld+json', 'application/vnd.api+json'],
+    json: [
+        'application/json',
+        'application/ld+json',
+        'application/geo+json',
+        'application/graphql',
+        'application/vnd.api+json',
+        'application/json-patch+json',
+        'application/merge-patch+json',
+        'application/problem+json',
+        'application/hal+json',
+        'application/vnd.collection+json',
+        'application/json-seq',
+        'application/csp-report',
+        'application/manifest+json',
+        'application/cloudevents+json',
+    ],
     text: [
         'text/', //all starting with text/
         'application/xml',

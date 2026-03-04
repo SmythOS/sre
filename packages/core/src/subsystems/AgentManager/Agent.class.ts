@@ -1,21 +1,22 @@
 import { Component } from '@sre/Components/Component.class';
+import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 import { AgentLogger } from './AgentLogger.class';
 import { AgentRequest } from './AgentRequest.class';
 import { AgentRuntime } from './AgentRuntime.class';
 import { AgentSettings } from './AgentSettings.class';
 import { OSResourceMonitor } from './OSResourceMonitor';
-import config from '@sre/config';
-import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { hookAsync } from '@sre/Core/HookService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { AgentSSE } from './AgentSSE.class';
-import { IAgent } from '@sre/types/Agent.types';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { Trigger } from '@sre/Components/Triggers/Trigger.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { AgentSSE } from './AgentSSE.class';
 
-const console = Logger('Agent');
+const logger = Logger('Agent');
 const idPromise = (id) => id;
 const MAX_LATENCY = 50;
 
@@ -23,13 +24,17 @@ export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
+    //if the agent was triggered from a conversation, this will be the conversation id
+    public conversationId: string;
     public components: any;
     public connections: any;
     public endpoints: any = {};
+    public triggers: any = {};
     public sessionId;
     public sessionTag = '';
     public callerSessionId;
     public apiBasePath = '/api';
+    public triggerBasePath = '/trigger';
     public agentRuntime: AgentRuntime | any;
 
     public usingTestDomain = false;
@@ -40,7 +45,7 @@ export class Agent implements IAgent {
 
     //public baseUrl = '';
     public agentVariables: any = {};
-    private _kill = false;
+    private _killReason = '';
     //public agentRequest: Request | AgentRequest | any;
     public async = false;
     public jobID = '';
@@ -89,6 +94,11 @@ export class Agent implements IAgent {
             this.endpoints[`${this.apiBasePath}/${endpoint.data.endpoint}`][method] = endpoint;
         }
 
+        const triggers = this.data.components.filter((c) => typeof c.data?.triggerEndpoint == 'string');
+        for (let trigger of triggers) {
+            this.triggers[`${this.triggerBasePath}/${trigger.data.triggerEndpoint}`] = trigger;
+        }
+
         this.components = {};
         for (let component of this.data.components) {
             //FIXME : this does not persist in debug mode, it breaks key value mem logic
@@ -117,14 +127,27 @@ export class Agent implements IAgent {
             const output = sourceComponent.outputs[sourceIndex];
             output.index = sourceIndex; // legacy ids (numbers)
 
-            const input = targetComponent.inputs[targetIndex];
-            input.index = targetIndex;
-
             if (!output.next) output.next = [];
             output.next.push(targetComponent.id);
 
-            if (!input.prev) input.prev = [];
-            input.prev.push(sourceComponent.id);
+            //when a trigger is connected to an APIEndpoint it does not use the standard inputs
+            //the targetIndex is then -1 and the input does not really exist
+            //in that case, we should consider the trigger as an ancestor for all APIEndpoint inputs
+
+            if (targetIndex >= 0) {
+                const input = targetComponent.inputs[targetIndex];
+                if (input) {
+                    input.index = targetIndex;
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
+            } else {
+                //if the targetIndex is -1, we should consider the trigger as an ancestor for all APIEndpoint inputs
+                for (let input of targetComponent.inputs) {
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
+            }
         }
 
         this.tagAsyncComponents();
@@ -148,7 +171,7 @@ export class Agent implements IAgent {
                     this._componentInstancesLoader.resolve(true);
                 });
         } catch (error) {
-            console.warn('Could not load custom components', AccessCandidate.agent(this.id));
+            logger.warn('Could not load custom components', AccessCandidate.agent(this.id));
             this._componentInstancesLoader.reject('Could not load custom components');
         }
 
@@ -183,8 +206,12 @@ export class Agent implements IAgent {
         const sessionTags = this?.agentRequest?.headers['x-session-tag'];
         if (sessionTags) this.sessionTag += this.sessionTag ? `,${sessionTags}` : sessionTags;
 
-        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?${this.apiBasePath}\/(.*)`);
-        if (this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) || this.agentRequest?.path?.match(regex)) {
+        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?(${this.apiBasePath}|${this.triggerBasePath})\/(.*)`);
+        if (
+            this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) ||
+            this.agentRequest?.path?.startsWith(`${this.triggerBasePath}/`) ||
+            this.agentRequest?.path?.match(regex)
+        ) {
             //we only need runtime context for API calls
             this.agentRuntime = new AgentRuntime(this);
             this.callerSessionId =
@@ -197,11 +224,11 @@ export class Agent implements IAgent {
         this.callback = callback;
     }
 
-    public kill() {
-        this._kill = true;
+    public kill(reason: string = 'kill') {
+        this._killReason = reason;
     }
     public isKilled() {
-        return this._kill;
+        return !!this._killReason;
     }
     private async parseVariables() {
         //parse vault agent variables
@@ -216,6 +243,7 @@ export class Agent implements IAgent {
         }
     }
 
+    @hookAsync('SREAgent.process')
     async process(endpointPath, input) {
         await this.agentRuntime.ready();
 
@@ -251,7 +279,7 @@ export class Agent implements IAgent {
         });
 
         const method = this.agentRequest.method.toUpperCase();
-        const endpoint = this.endpoints[endpointPath]?.[method];
+        const endpoint = this.endpoints[endpointPath]?.[method] || this.triggers[endpointPath];
 
         //first check if this is a debug session, and return debug result if it's the case
         if (this.agentRuntime.debug) {
@@ -303,12 +331,13 @@ export class Agent implements IAgent {
             step = await this.agentRuntime.runCycle();
 
             //adjust latency based on cpu load
-            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * MAX_LATENCY || 0);
+            const qosLatency = Math.floor((OSResourceMonitor.cpu.load / 100) * MAX_LATENCY || 0);
 
-            await delay(10 + qosLatency);
-        } while (!step?.finalResult && !this._kill);
+            await delay(qosLatency);
+            await new Promise((resolve) => setImmediate(resolve)); // yield to the event loop to prevent blocking other operations
+        } while (!step?.finalResult && !this._killReason);
 
-        if (this._kill) {
+        if (this._killReason) {
             const endTime = Date.now();
             const duration = endTime - startTime;
             this.sse.send('agent', {
@@ -323,8 +352,8 @@ export class Agent implements IAgent {
                 input,
                 error: 'Agent killed',
             });
-            console.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
-            return { error: 'Agent killed' };
+            logger.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
+            return { error: 'AGENT_KILLED', reason: this._killReason };
         }
         result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
 
@@ -378,7 +407,9 @@ export class Agent implements IAgent {
         //tasks count update logic
     }
 
-    public async postProcess(result) {
+    @hookAsync('SREAgent.postProcess')
+    public async postProcess(_result) {
+        let result = JSON.parse(JSON.stringify(_result)); //deep clone the result to avoid modifying the original object
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
 
@@ -390,6 +421,8 @@ export class Agent implements IAgent {
             if (!_result) continue;
             if (_result._debug) delete _result._debug;
             if (_result._debug_time) delete _result._debug_time;
+            if (_result.result?._debug) delete _result.result._debug;
+            if (_result.result?._debug_time) delete _result.result._debug_time;
             const _componentData = this.components[_result.id];
             if (!_componentData) continue;
             const _component: Component = this._componentInstance[_componentData.name];
@@ -423,16 +456,31 @@ export class Agent implements IAgent {
     //     this.agentRuntime.resetComponent(componentId);
     // }
 
+    // private hasLoopAncestor(inputEntry) {
+    //     if (!inputEntry.prev) return false;
+    //     for (let prevId of inputEntry.prev) {
+    //         const prevComponentData = this.components[prevId];
+    //         if (prevComponentData.name == 'ForEach') return true;
+
+    //         for (let inputEntry of prevComponentData.inputs) {
+    //             if (this.hasLoopAncestor(inputEntry)) return true;
+    //         }
+    //     }
+    // }
     private hasLoopAncestor(inputEntry) {
         if (!inputEntry.prev) return false;
         for (let prevId of inputEntry.prev) {
             const prevComponentData = this.components[prevId];
-            if (prevComponentData.name == 'ForEach') return true;
+            const prevRuntimeData = this.agentRuntime.getRuntimeData(prevId);
+
+            // Consider any component with _LoopData as a loop ancestor
+            if (prevRuntimeData?._LoopData) return true;
 
             for (let inputEntry of prevComponentData.inputs) {
                 if (this.hasLoopAncestor(inputEntry)) return true;
             }
         }
+        return false;
     }
 
     private clearChildLoopRuntimeComponentData(componentId) {
@@ -525,6 +573,7 @@ export class Agent implements IAgent {
         agentRuntime.updateComponent(componentId, { step });
     }
 
+    @hookAsync('SREAgent.callComponent')
     async callComponent(sourceId, componentId, input?) {
         const startTime = Date.now();
         const agentRuntime = this.agentRuntime;
@@ -544,8 +593,8 @@ export class Agent implements IAgent {
             input,
         });
 
-        if (this._kill) {
-            console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
+        if (this._killReason) {
+            logger.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
 
             const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
 
@@ -669,10 +718,10 @@ export class Agent implements IAgent {
                         await this.parseVariables(); //make sure that any vault variable is loaded before processing the component
                         //TODO: apply type inference here instead of in the component .process method
                         output = await component.process({ ...this.agentVariables, ..._input }, { ...componentData, eventId }, this);
-                        console.debug(output, AccessCandidate.agent(this.id));
+                        logger.debug(output, AccessCandidate.agent(this.id));
                     } catch (error: any) {
                         //this are fatal errors requiring to cancel the execution of this component.
-                        console.error(
+                        logger.error(
                             'Error on component process: ',
                             { componentId, name: componentData.name, input: _input },
                             error,
@@ -847,7 +896,7 @@ export class Agent implements IAgent {
         return currentProperty;
     }
 
-    //
+    @hookAsync('SREAgent.callNextComponents')
     async callNextComponents(componentId, output) {
         const agentRuntime = this.agentRuntime;
         //agentRuntime.incStep();
@@ -911,6 +960,16 @@ export class Agent implements IAgent {
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
+                    // if (component instanceof Trigger) {
+                    //     //handle trigger connections
+                    //     console.log('Trigger', connection);
+                    //     for (let input of targetComponentData.inputs) {
+                    //         if (connection.output?.Payload) {
+                    //             nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                    //         }
+                    //     }
+                    //     continue;
+                    // }
                     const output = connection.output;
                     const componentData = connection.componentData;
                     const outputEndpoint = componentData.outputs[connection.sourceIndex]; //source

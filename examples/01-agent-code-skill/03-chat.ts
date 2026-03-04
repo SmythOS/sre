@@ -32,7 +32,7 @@ async function main() {
     //But in this example the conversation is only persisted during process run time
     //once the process is finished, the conversation is lost
 
-    //==> in the next example we will see how to persist the conversation across process runs
+    //==> in the example #04 we will see how to persist the conversation across process runs
 }
 
 main();

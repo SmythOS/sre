@@ -1,0 +1,588 @@
+{
+        "version": "1.0.0",
+        "components": [
+            {
+                "id": "CLYQPG97PT0G",
+                "name": "FTimestamp",
+                "outputs": [
+                    {
+                        "name": "Timestamp",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Trigger",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {},
+                "top": "919px",
+                "left": "151px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Timestamp",
+                "title": "Timestamp",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "CLYQPM7QOHE",
+                "name": "FHash",
+                "outputs": [
+                    {
+                        "name": "Hash",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "algorithm": "md5",
+                    "encoding": "hex"
+                },
+                "top": "1190.36px",
+                "left": "159.107px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Hash",
+                "title": "MD5 :: hex",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "CLYQPMF218O",
+                "name": "FEncDec",
+                "outputs": [
+                    {
+                        "name": "Output",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "action": "Encode",
+                    "encoding": "hex"
+                },
+                "top": "1689.28px",
+                "left": "191.836px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Encode/Decode",
+                "title": "hex Encode",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "CLYQPR6ESZF",
+                "name": "FSign",
+                "outputs": [
+                    {
+                        "name": "Signature",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "Key",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 1,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "signMethod": "HMAC",
+                    "dataTransform": "Stringify",
+                    "key": "",
+                    "hashType": "md5",
+                    "RSA_padding": "RSA_PKCS1_PADDING",
+                    "RSA_saltLength": "",
+                    "encoding": "hex"
+                },
+                "top": "2139.32px",
+                "left": "230.976px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Sign",
+                "title": "HMAC-MD5 :: hex",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "CLYQPRHIYEVD",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    }
+                ],
+                "inputs": [],
+                "data": {
+                    "endpoint": "timestamp",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "757.813px",
+                "left": "-189.307px",
+                "width": "256.55px",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Timestamp",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            },
+            {
+                "id": "LYQPSR9TQDJ",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    },
+                    {
+                        "name": "body.data",
+                        "color": "#3C89F9",
+                        "index": 3,
+                        "default": false
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": false
+                    }
+                ],
+                "data": {
+                    "endpoint": "hash",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "1026px",
+                "left": "-189.36px",
+                "width": "",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Hash",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            },
+            {
+                "id": "LYQPSTMTS3K",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    },
+                    {
+                        "name": "body.data",
+                        "color": "#3C89F9",
+                        "index": 3,
+                        "default": false
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": false
+                    }
+                ],
+                "data": {
+                    "endpoint": "dec",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "1353.98px",
+                "left": "-192.037px",
+                "width": "247px",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Decode Hex",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            },
+            {
+                "id": "LYQPSVGWYX",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    },
+                    {
+                        "name": "body.data",
+                        "color": "#3C89F9",
+                        "index": 3,
+                        "default": false
+                    },
+                    {
+                        "name": "body.key",
+                        "color": "#3C89F9",
+                        "index": 4,
+                        "default": false
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "key",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": false
+                    },
+                    {
+                        "name": "data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 1,
+                        "default": false
+                    }
+                ],
+                "data": {
+                    "endpoint": "sign",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "2024.62px",
+                "left": "-178.71px",
+                "width": "",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Sign",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            },
+            {
+                "id": "LYQPTE87PO8",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    },
+                    {
+                        "name": "body.data",
+                        "color": "#3C89F9",
+                        "index": 3,
+                        "default": false
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": false
+                    }
+                ],
+                "data": {
+                    "endpoint": "enc",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "1675px",
+                "left": "-184px",
+                "width": "",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Encode Hex",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            },
+            {
+                "id": "LYQPVTHUTUJ",
+                "name": "FEncDec",
+                "outputs": [
+                    {
+                        "name": "Output",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Data",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "action": "Decode",
+                    "encoding": "hex"
+                },
+                "top": "1491px",
+                "left": "186px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Encode/Decode",
+                "title": "hex Decode",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "CLYRF6U1AZXS",
+                "name": "FSleep",
+                "outputs": [
+                    {
+                        "name": "Output",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Input",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "delay": "10"
+                },
+                "top": "2566.27px",
+                "left": "245.975px",
+                "width": "130px",
+                "height": "",
+                "displayName": "F:Sleep",
+                "title": "Sleep for 10s",
+                "aiTitle": "",
+                "description": ""
+            },
+            {
+                "id": "LYRF6ZI3QBN",
+                "name": "APIEndpoint",
+                "outputs": [
+                    {
+                        "name": "headers",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    },
+                    {
+                        "name": "body",
+                        "color": "#3C89F9",
+                        "index": 1,
+                        "default": true
+                    },
+                    {
+                        "name": "query",
+                        "color": "#3C89F9",
+                        "index": 2,
+                        "default": true
+                    }
+                ],
+                "inputs": [],
+                "data": {
+                    "endpoint": "sleep_10",
+                    "description": "",
+                    "ai_exposed": true,
+                    "summary": "",
+                    "method": "POST"
+                },
+                "top": "2506px",
+                "left": "-208px",
+                "width": "",
+                "height": "",
+                "displayName": "APIEndpoint",
+                "title": "Delay 10s",
+                "aiTitle": "",
+                "description": "HTTP API Endpoint - Expose your agent as a REST API"
+            }
+        ],
+        "connections": [
+            {
+                "sourceId": "CLYQPRHIYEVD",
+                "sourceIndex": 1,
+                "targetId": "CLYQPG97PT0G",
+                "targetIndex": 0
+            },
+            {
+                "sourceId": "LYQPSVGWYX",
+                "sourceIndex": 4,
+                "targetId": "CLYQPR6ESZF",
+                "targetIndex": 1
+            },
+            {
+                "sourceId": "LYQPSVGWYX",
+                "sourceIndex": 3,
+                "targetId": "CLYQPR6ESZF",
+                "targetIndex": 1
+            },
+            {
+                "sourceId": "LYQPTE87PO8",
+                "sourceIndex": 3,
+                "targetId": "CLYQPMF218O",
+                "targetIndex": 0
+            },
+            {
+                "sourceId": "LYQPSR9TQDJ",
+                "sourceIndex": 3,
+                "targetId": "CLYQPM7QOHE",
+                "targetIndex": 0
+            },
+            {
+                "sourceId": "LYQPSTMTS3K",
+                "sourceIndex": 3,
+                "targetId": "LYQPVTHUTUJ",
+                "targetIndex": 0
+            },
+            {
+                "sourceId": "LYRF6ZI3QBN",
+                "sourceIndex": 1,
+                "targetId": "CLYRF6U1AZXS",
+                "targetIndex": 0
+            }
+        ],
+        "description": "",
+        "behavior": "",
+        "debugSessionEnabled": false,
+        "ui": {
+            "panzoom": {
+                "currentPan": {
+                    "x": 560.4753966599353,
+                    "y": -2086.042344478873
+                },
+                "currentZoom": 1.000000000000004
+            }
+        }
+    }

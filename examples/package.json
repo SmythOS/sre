@@ -14,9 +14,11 @@
         "@smythos/sre": "workspace:*",
         "chalk": "^5.4.1",
         "dotenv": "^16.5.0",
+        "express": "^4.21.0",
         "tokenloom": "^1.0.7"
     },
     "devDependencies": {
+        "@types/express": "^5.0.0",
         "@types/node": "^20.19.0",
         "ts-node": "^10.9.2",
         "tsx": "^4.7.0",

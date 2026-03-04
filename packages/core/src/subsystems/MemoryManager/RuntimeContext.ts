@@ -36,6 +36,7 @@ export class RuntimeContext extends EventEmitter {
     private _cacheConnector: CacheConnector;
 
     private _readyPromise: Promise<boolean>;
+    private _lastCtxLength: number = 0;
 
     constructor(private runtime: AgentRuntime) {
         super();
@@ -91,11 +92,11 @@ export class RuntimeContext extends EventEmitter {
     private initRuntimeContext() {
         if (this._runtimeFileReady) return;
 
-        const endpointDBGCall = this.runtime.xDebugId?.startsWith('dbg-'); //weak check for debug session, we need to improve this
+        //const endpointDBGCall = this.runtime.xDebugId?.startsWith('dbg-'); //weak check for debug session, we need to improve this
         console.debug('Init Agent Context', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
         const agent = this.runtime.agent;
-        let method = (agent.agentRequest.method || 'POST').toUpperCase();
-        const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
+        //let method = (agent.agentRequest.method || 'POST').toUpperCase();
+        //const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
 
         let ctxData: any = {};
 
@@ -114,12 +115,13 @@ export class RuntimeContext extends EventEmitter {
                             ctx: { active: false, name: ctxData.components[cptId].name },
                         };
 
-                        const cpt = ctxData.components[cptId];
-                        //if this debug session was initiated from an endpoint, we mark the endpoint component as active
-                        if (endpoint && endpoint.id != undefined && cpt.id == endpoint.id && endpointDBGCall) {
-                            //cpt.dbg.active = true;
-                            cpt.ctx.active = true;
-                        }
+                        // //TODO : the endpoint initialization logic should be moved to the AgentRuntime class
+                        // const cpt = ctxData.components[cptId];
+                        // //if this debug session was initiated from an endpoint, we mark the endpoint component as active
+                        // if (endpoint && endpoint.id != undefined && cpt.id == endpoint.id && endpointDBGCall) {
+                        //     //cpt.dbg.active = true;
+                        //     cpt.ctx.active = true;
+                        // }
                     }
 
                     await this._cacheConnector
@@ -153,7 +155,13 @@ export class RuntimeContext extends EventEmitter {
         //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
         if (data) {
             let serializedData = JSON.stringify(data);
-            console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+
+            if (serializedData.length != this._lastCtxLength) {
+                //only log if context has changes
+                //We use the length as a weak but fast way to detect changes
+                console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+                this._lastCtxLength = serializedData.length;
+            }
 
             await this._cacheConnector
                 .requester(AccessCandidate.agent(this.runtime.agent.id))
@@ -184,7 +192,7 @@ export class RuntimeContext extends EventEmitter {
 
     public enqueueSync() {
         if (!this.ctxFile) return;
-        console.log('ENQUEUE SYNC');
+
         this._syncQueue = this._syncQueue
             .then(() => this.sync())
             .catch((err) => {

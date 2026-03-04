@@ -18,14 +18,28 @@ export class LogicAtMost extends Component {
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
+        const logger = this.createComponentLogger(agent, config);
         const result: any = { Output: undefined };
 
+        logger.debug(`=== LogicAtMost Log ===`);
+        logger.debug(' Input:');
+
+        for (let cfgInput of config.inputs) {
+            logger.debug(`${cfgInput.name}: ${input?.[cfgInput.name]}`);
+        }
+
         if (config.data.maxSetInputs === '' || isNaN(Number(config.data.maxSetInputs))) {
+            logger.debug(''); // empty line
+            logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
+            result._debug = logger.output;
             return result;
         }
 
         const maxSetInputs = Number(config.data.maxSetInputs);
         if (config.inputs.length < maxSetInputs) {
+            logger.debug(''); // empty line
+            logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
+            result._debug = logger.output;
             return result;
         }
 
@@ -47,6 +61,11 @@ export class LogicAtMost extends Component {
         result.Unverified = !result.Verified;
         if (!result.Verified) delete result.Verified;
         if (!result.Unverified) delete result.Unverified;
+
+        logger.debug(''); // empty line
+        logger.debug(` Result: \n${JSON.stringify(result, null, 2)}`);
+
+        result._debug = logger.output;
 
         return result;
     }

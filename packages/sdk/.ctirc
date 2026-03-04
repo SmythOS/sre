@@ -26,6 +26,7 @@
                 "src/components/generated/**/*",
                 "src/utils/console.utils.ts",
                 "src/utils/general.utils.ts",
+                "src/core.ts",
                 "**/*.deprecated",
                 "**/*.bak"
             ],

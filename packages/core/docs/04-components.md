@@ -1,3 +1,7 @@
+---
+title: "Components"
+---
+
 # SRE Component System
 
 Components are the fundamental building blocks of an agent's behavior in SRE. An agent is essentially a workflow, or graph, of interconnected components. Each component is a self-contained unit of logic that performs a specific task.

@@ -3,7 +3,14 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
-import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
+import {
+    DatasourceDto,
+    IStorageVectorDataSource,
+    IVectorDataSourceDto,
+    QueryOptions,
+    VectorDBResult,
+    VectorsResultData,
+} from '@sre/types/VectorDB.types';
 
 export type DeleteFilterOptions = {
     datasourceId?: string;
@@ -12,7 +19,7 @@ export type DeleteFilterOptions = {
 export type DeleteTarget = string | string[] | DeleteFilterOptions;
 
 export interface IVectorDBRequest {
-    search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorsResultData>;
+    search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorDBResult[]>;
     // insert(namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
     // delete(namespace: string, id: string | string[]): Promise<void>;
 
@@ -28,6 +35,7 @@ export interface IVectorDBRequest {
 
 export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest> {
     protected readonly USER_METADATA_KEY = 'user_metadata';
+    protected readonly LEGACY_USER_METADATA_KEY = 'metadata';
 
     public abstract id: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
@@ -68,9 +76,13 @@ export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest
         namespace: string,
         query: string | number[],
         options: QueryOptions
-    ): Promise<VectorsResultData>;
+    ): Promise<VectorDBResult[]>;
 
-    protected abstract insert(acRequest: AccessRequest, namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
+    protected abstract insert(
+        acRequest: AccessRequest,
+        namespace: string,
+        source: IVectorDataSourceDto | IVectorDataSourceDto[]
+    ): Promise<VectorDBResult[]>;
 
     protected abstract delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void>;
 

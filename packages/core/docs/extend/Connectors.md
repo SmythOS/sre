@@ -1,3 +1,7 @@
+---
+title: 'extend/Custom Connectors'
+---
+
 # 🔌 Extending SRE: Building Custom Connectors
 
 > **Extend the Runtime with Custom Service Implementations**

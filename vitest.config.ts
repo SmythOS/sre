@@ -8,6 +8,9 @@ export default defineConfig({
         environment: 'node',
         include: ['packages/*/tests/**/*.test.ts'],
         exclude: ['node_modules', 'dist'],
+        env: {
+            // ENABLE_INTEGRATION_TESTS: 'true',
+        },
         coverage: {
             reporter: ['text', 'text-summary', 'html'],
             reportsDirectory: './coverage',
@@ -18,9 +21,12 @@ export default defineConfig({
         pool: 'forks',
         poolOptions: {
             forks: {
-                singleFork: true,
+                singleFork: false, // Each test file gets its own process for isolation
             },
         },
+        // sequence: {
+        //     concurrent: false, // run test files sequentially
+        // },
     },
     build: {
         sourcemap: 'inline',

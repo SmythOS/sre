@@ -1,0 +1,10 @@
+{
+    "name": "smythos-worker-mode-webapp",
+    "version": "1.0.0",
+    "description": "Web app demonstrating SmythOS Worker mode with SSE streaming and job sidebar",
+    "type": "module",
+    "scripts": {
+        "start": "tsx server.ts",
+        "dev": "tsx watch server.ts"
+    }
+}

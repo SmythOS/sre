@@ -1,3 +1,7 @@
+---
+title: 'subsystems/LLM Manager'
+---
+
 # LLM Manager Subsystem
 
 The LLM (Large Language Model) Manager Subsystem provides a powerful, unified abstraction layer for interacting with various LLM providers. Its primary goal is to decouple the agent's logic from the specific implementation details and APIs of any single LLM provider.

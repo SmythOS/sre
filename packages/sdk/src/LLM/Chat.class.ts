@@ -1,15 +1,18 @@
 import { TLLMModel, Conversation, TLLMEvent, ILLMContextStore, AccessCandidate } from '@smythos/sre';
 import { EventEmitter } from 'events';
 import { uid } from '../utils/general.utils';
-import { AgentData, ChatOptions } from '../types/SDKTypes';
+import { AgentData, ChatOptions, PromptOptions } from '../types/SDKTypes';
 import { SDKObject } from '../Core/SDKObject.class';
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { SDKLog } from '../utils/console.utils';
-
+import type { Agent, TAgentMode } from '../Agent/Agent.class';
 const console = SDKLog;
 
 class LocalChatStore extends SDKObject implements ILLMContextStore {
     private _storage: StorageInstance;
+    public get id() {
+        return this._conversationId;
+    }
     constructor(private _conversationId: string, candidate: AccessCandidate) {
         super();
         this._storage = new StorageInstance(null, null, candidate);
@@ -43,7 +46,7 @@ class LocalChatStore extends SDKObject implements ILLMContextStore {
 class ChatCommand {
     private _conversation: Conversation;
 
-    constructor(private prompt: string, private chat: Chat) {
+    constructor(private prompt: string, private chat: Chat, private options?: PromptOptions) {
         this._conversation = chat._conversation;
     }
 
@@ -53,8 +56,21 @@ class ChatCommand {
 
     private async run(): Promise<string> {
         await this.chat.ready;
-        const result = await this._conversation.streamPrompt(this.prompt);
-        return result;
+        await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
+
+        // Acquire the stream lock — ensures only one streamPrompt() runs at a time
+        let releaseLock!: () => void;
+        const lockGate = new Promise<void>((resolve) => { releaseLock = resolve; });
+        const acquired = this.chat._streamLock.then(() => {});
+        this.chat._streamLock = this.chat._streamLock.then(() => lockGate);
+        await acquired;
+
+        try {
+            const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
+            return result;
+        } finally {
+            releaseLock();
+        }
     }
 
     /**
@@ -79,8 +95,18 @@ class ChatCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this.chat.ready;
+        await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
 
         const eventEmitter = new EventEmitter();
+
+        // Acquire the stream lock — ensures only one streamPrompt() runs at a time.
+        // We await the previous lock so handler registration + streamPrompt() don't
+        // start until any prior stream has fully completed (including removeHandlers).
+        let releaseLock!: () => void;
+        const lockGate = new Promise<void>((resolve) => { releaseLock = resolve; });
+        const acquired = this.chat._streamLock.then(() => {});
+        this.chat._streamLock = this.chat._streamLock.then(() => lockGate);
+        await acquired;
 
         const toolInfoHandler = (toolInfo: any) => {
             eventEmitter.emit(TLLMEvent.ToolInfo, toolInfo);
@@ -133,6 +159,7 @@ class ChatCommand {
             this._conversation.off(TLLMEvent.ToolInfo, toolInfoHandler);
             this._conversation.off(TLLMEvent.Interrupted, interruptedHandler);
             this._conversation.off(TLLMEvent.Data, dataHandler);
+            releaseLock(); // Release the stream lock so the next queued stream can start
         };
 
         this._conversation.on(TLLMEvent.ToolCall, toolCallHandler);
@@ -145,7 +172,10 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.Interrupted, interruptedHandler);
         this._conversation.on(TLLMEvent.Data, dataHandler);
 
-        this._conversation.streamPrompt(this.prompt);
+        // Start the streaming process - don't await as we want to return the eventEmitter immediately
+        this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls).catch((error) => {
+            eventEmitter.emit(TLLMEvent.Error, error);
+        });
         return eventEmitter;
     }
 }
@@ -153,12 +183,21 @@ class ChatCommand {
 export class Chat extends SDKObject {
     private _id: string;
     public _conversation: Conversation;
+    public _streamLock: Promise<void> = Promise.resolve();
+    /**
+     * The SRE Conversation Manager instance that is used to handle the current chat conversation.
+     */
+    public get conversation() {
+        return this._conversation;
+    }
+
+    private _curAgentModes: string = '';
 
     public get id() {
         return this._id;
     }
 
-    private _data: any = {
+    private _emptyData: any = {
         version: '1.0.0',
         name: 'Agent',
         behavior: '',
@@ -167,13 +206,17 @@ export class Chat extends SDKObject {
         defaultModel: '',
         id: uid(),
     };
+    private _data: any = {};
     public get agentData() {
         return this._data;
     }
-    constructor(options: ChatOptions & { candidate: AccessCandidate }, _model: string | TLLMModel, _data?: any, private _convOptions: any = {}) {
+    constructor(options: ChatOptions & { candidate: AccessCandidate }, private source?: Agent | Record<string, any>, private _convOptions: any = {}) {
         super();
 
-        this._data = { ...this._data, ..._data, defaultModel: _model };
+        const _data = source?.data || source || {};
+
+        const _model = options.model || _data?.defaultModel || '';
+        this._data = { ...this._emptyData, ..._data, defaultModel: _model };
 
         this._id = options.id || uid();
         if (options.persist) {
@@ -199,6 +242,9 @@ export class Chat extends SDKObject {
             this._convOptions.maxOutputTokens = options.maxOutputTokens;
         }
 
+        if ((this.source as Agent)?.modes) {
+            this._curAgentModes = (this.source as Agent).modes.join('|');
+        }
         this._conversation = createConversation(this._data, this._convOptions);
     }
 
@@ -236,15 +282,28 @@ export class Chat extends SDKObject {
      * @param prompt - The message or question to send to the chat
      * @returns ChatCommand that can be executed or streamed
      */
-    prompt(prompt: string) {
-        return new ChatCommand(prompt, this);
+    prompt(prompt: string, options?: PromptOptions) {
+        if ((this.source as Agent)?.modes) {
+            const modes = (this.source as Agent).modes.join('|');
+            if (modes !== this._curAgentModes) {
+                //agent mode changed we need to recreate the conversation object
+                const _data = this.source.data || this.source;
+                const _model = this._data?.defaultModel || '';
+                this._data = { ...this._emptyData, ..._data, defaultModel: _model };
+
+                //this._conversation = createConversation(this._data, this._convOptions);
+                this._conversation.spec = this._data;
+                this._curAgentModes = modes;
+            }
+        }
+        return new ChatCommand(prompt, this, options);
     }
 }
 
 function createConversation(agentData: AgentData, options?: any) {
     const filteredAgentData = {
         ...agentData,
-        components: agentData.components.filter((c) => !c.process),
+        components: agentData.components, //agentData.components.filter((c) => !c.process),
     };
     const conversation = new Conversation(agentData.defaultModel, filteredAgentData, {
         agentId: agentData.id,
@@ -252,23 +311,24 @@ function createConversation(agentData: AgentData, options?: any) {
     });
 
     conversation.on(TLLMEvent.Error, (error) => {
-        console.error('An error occurred while running the agent: ', error.message);
+        console.error('An error occurred while running the agent: ', error.message, error.stack);
     });
 
     return conversation;
 }
 
 async function registerProcessSkills(conversation: Conversation, agentData: AgentData) {
-    const processSkills: any[] = agentData.components.filter((c) => c.process);
-    for (const skill of processSkills) {
-        await conversation.addTool({
-            name: skill.data.endpoint,
-            description: skill.data.description,
-            //arguments: _arguments,
-            handler: skill.process,
-            inputs: skill.inputs,
-        });
-    }
+    // await conversation.ready;
+    // const processSkills: any[] = agentData.components.filter((c) => c.process);
+    // for (const skill of processSkills) {
+    //     await conversation.addTool({
+    //         name: skill.data.endpoint,
+    //         description: skill.data.description,
+    //         //arguments: _arguments,
+    //         handler: skill.process,
+    //         inputs: skill.inputs,
+    //     });
+    // }
 }
 
 export async function prepareConversation(agentData: AgentData, options?: any) {

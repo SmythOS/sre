@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const span = li.querySelector('span');
         if (!span) return;
         const text = span.textContent.trim();
-        const parts = text.split('\\');
+        const parts = text.split(/\\|\//);
         if (parts.length > 1) {
             if (!group[parts[0]]) group[parts[0]] = [];
             group[parts[0]].push(li);

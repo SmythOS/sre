@@ -14,9 +14,9 @@ export class MCPClient extends Component {
         model: Joi.string().optional(),
         openAiModel: Joi.string().optional(), // for backward compatibility
         mcpUrl: Joi.string().max(2048).uri().required().description('URL of the MCP'),
-        descForModel: Joi.string().max(5000).required().allow('').label('Description for Model'),
+        descForModel: Joi.string().max(5000).allow('').label('Description for Model'),
         name: Joi.string().max(500).required().allow(''),
-        desc: Joi.string().max(5000).required().allow('').label('Description'),
+        desc: Joi.string().max(5000).allow('').label('Description'),
         logoUrl: Joi.string().max(8192).allow(''),
         id: Joi.string().max(200),
         version: Joi.string().max(100).allow(''),
@@ -51,7 +51,7 @@ export class MCPClient extends Component {
             }
 
             // TODO [Forhad]: Need to check and validate input prompt token
-            const { client } = await this.connectMCP(mcpUrl);
+            const { client } = await this.connectMCP(mcpUrl, logger);
 
             const toolsData = await client.listTools();
             const conv = new Conversation(
@@ -70,7 +70,7 @@ export class MCPClient extends Component {
                     ],
                     paths: {},
                 },
-                { agentId: agent?.id },
+                { agentId: agent?.id }
             );
 
             for (const tool of toolsData.tools) {
@@ -105,34 +105,33 @@ export class MCPClient extends Component {
             return { _error: `Error on running MCP Client!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
     }
-    private async connectMCP(mcpUrl: string) {
+    private async connectMCP(mcpUrl: string, logger: any) {
         const client = new Client({ name: 'auto-client', version: '1.0.0' });
-      
+
         // 1) Try Streamable HTTP first
         try {
-          const st = new StreamableHTTPClientTransport(new URL(mcpUrl));
-          await client.connect(st);
-          console.debug('Connected to MCP using Streamable HTTP');
-          return { client, transport: 'streamable' as const };
+            const st = new StreamableHTTPClientTransport(new URL(mcpUrl));
+            await client.connect(st);
+            logger.debug('Connected to MCP using Streamable HTTP');
+            return { client, transport: 'streamable' as const };
         } catch (e: any) {
-          console.debug('Failed to connect to MCP using Streamable HTTP, falling back to SSE');
-          // 2) If clearly unsupported, fall back to SSE
-          const msg = String(e?.message || e);
-          const isUnsupported =
-            /404|405|ENOTFOUND|ECONNREFUSED|CORS/i.test(msg);
-      
-          // 406 means wrong/missing Accept for Streamable → retry Streamable with proper header
-          const isAcceptProblem = /406|Not Acceptable|text\/event-stream/i.test(msg);
-          if (isAcceptProblem) {
-            throw new Error('Server is Streamable; include Accept: application/json, text/event-stream');
-          }
-      
-          if (!isUnsupported) throw e;
-      
-          // SSE fallback
-          const sse = new SSEClientTransport(new URL(mcpUrl));
-          await client.connect(sse);
-          return { client, transport: 'sse' as const };
+            logger.debug('Failed to connect to MCP using Streamable HTTP, falling back to SSE');
+            // 2) If clearly unsupported, fall back to SSE
+            const msg = String(e?.message || e);
+            const isUnsupported = /404|405|ENOTFOUND|ECONNREFUSED|CORS/i.test(msg);
+
+            // 406 means wrong/missing Accept for Streamable → retry Streamable with proper header
+            const isAcceptProblem = /406|Not Acceptable|text\/event-stream/i.test(msg);
+            if (isAcceptProblem) {
+                throw new Error('Server is Streamable; include Accept: application/json, text/event-stream');
+            }
+
+            if (!isUnsupported) throw e;
+
+            // SSE fallback
+            const sse = new SSEClientTransport(new URL(mcpUrl));
+            await client.connect(sse);
+            return { client, transport: 'sse' as const };
         }
-      }
+    }
 }

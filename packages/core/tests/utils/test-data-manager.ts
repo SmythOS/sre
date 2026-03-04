@@ -1,3 +1,4 @@
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -43,7 +44,7 @@ export class TestDataManager {
      */
     public readJsonData(filename: string): any {
         const filePath = this.getDataPath(filename);
-        console.log('filePath', filePath);
+
         if (!fs.existsSync(filePath)) {
             throw new Error(`Test data file not found: ${filePath}`);
         }
@@ -62,6 +63,13 @@ export class TestDataManager {
         return fs.readFileSync(filePath, 'utf-8');
     }
 
+    public readBinaryData(filename: string): Buffer {
+        const filePath = this.getDataPath(filename);
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`Test data file not found: ${filePath}`);
+        }
+        return fs.readFileSync(filePath);
+    }
     /**
      * Read and parse a .smyth agent file
      */
@@ -123,4 +131,17 @@ export function loadTestData(filename: string): any {
  */
 export function getTestDataPath(filename: string): string {
     return testData.getDataPath(filename);
+}
+
+export function checkIntegrationTestConsent() {
+    if (process.env.ENABLE_INTEGRATION_TESTS !== 'true') {
+        console.warn(`⚠️  Skipping conversation tests: ENABLE_INTEGRATION_TESTS is not set to true`);
+        console.warn(`!!! Integration tests can consume LLM credits from your configured accounts !!!`);
+        console.warn(`!!! They are disabled by default. !!!`);
+        console.warn(
+            `If you know what your are doing your can enable them by setting ENABLE_INTEGRATION_TESTS environment variable to true in the project root level`
+        );
+
+        throw new Error('Integration Test Consent failed');
+    }
 }

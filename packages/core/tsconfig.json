@@ -42,6 +42,9 @@
             "@sre/ComputeManager/*": ["subsystems/ComputeManager/*"],
             "@sre/ComputeManager": ["subsystems/ComputeManager/index"],
 
+            "@sre/ObservabilityManager/*": ["subsystems/ObservabilityManager/*"],
+            "@sre/ObservabilityManager": ["subsystems/ObservabilityManager/index"],
+
             "@sre/AgentManager/*": ["subsystems/AgentManager/*"],
             "@sre/AgentManager": ["subsystems/AgentManager/index"],
 

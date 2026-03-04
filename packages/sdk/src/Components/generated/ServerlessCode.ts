@@ -40,17 +40,19 @@ export type TServerlessCodeOutputs = {
 };
 
 export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'ServerlessCode', 
+        name: /*settings?.name || */'ServerlessCode', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TServerlessCodeOutputs = createSafeAccessor({

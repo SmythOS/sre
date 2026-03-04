@@ -3,9 +3,7 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/generative-ai';
-import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, FunctionCallingConfigMode, FileState, type GenerateContentResponseUsageMetadata } from '@google/genai/node';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -25,8 +23,11 @@ import {
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TGoogleAIRequestBody,
+    TGoogleAIToolPrompt,
     ILLMRequestContext,
     TLLMPreparedParams,
+    LLMInterface,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -35,20 +36,9 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 
 import { LLMConnector } from '../LLMConnector';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('GoogleAIConnector');
-
-const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
-    'gemini-1.5-pro-exp-0801',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-001',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash',
-];
-const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
@@ -59,7 +49,12 @@ const VALID_MIME_TYPES = [
 ];
 
 // will be removed after updating the SDK
-type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount: number };
+type UsageMetadataWithThoughtsToken = GenerateContentResponseUsageMetadata & { thoughtsTokenCount?: number; cost?: number };
+
+const IMAGE_GEN_FIXED_PRICING = {
+    'imagen-4': 0.04, // Standard Imagen 4
+    'imagen-4-ultra': 0.06, // Imagen 4 Ultra
+};
 
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
@@ -69,56 +64,87 @@ export class GoogleAIConnector extends LLMConnector {
         image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    private async getClient(params: ILLMRequestContext): Promise<GoogleGenerativeAI> {
+    private async getClient(params: ILLMRequestContext): Promise<GoogleGenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
         if (!apiKey) throw new Error('Please provide an API key for Google AI');
 
-        return new GoogleGenerativeAI(apiKey);
+        return new GoogleGenAI({ apiKey });
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    @hookAsync('LLMConnector.request')
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
-            const prompt = body.messages;
-            delete body.messages;
 
-            const genAI = await this.getClient(context);
-            const $model = genAI.getGenerativeModel(body);
-
-            const result = await $model.generateContent(prompt);
-
-            const response = await result.response;
-            const content = response.text();
-            const finishReason = response.candidates[0].finishReason || 'stop';
-            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-            this.reportUsage(usage, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
+            const promptSource = body.messages ?? body.contents ?? '';
+            const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
+            const requestConfig = this.buildRequestConfig({
+                generationConfig: body.generationConfig,
+                systemInstruction: body.systemInstruction,
+                promptConfig,
+                abortSignal,
             });
 
-            const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+            const genAI = await this.getClient(context);
+            const requestPayload: Record<string, any> = {
+                model: body.model,
+                contents: contents ?? '',
+            };
+
+            if (requestConfig) {
+                requestPayload.config = requestConfig;
+            }
+
+            const response = await genAI.models.generateContent(requestPayload as any);
+            const content = response.text ?? '';
+            const finishReason = LLMHelper.normalizeFinishReason(response.candidates?.[0]?.finishReason || TLLMFinishReason.Stop);
+            const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
+
+            if (usage) {
+                this.reportUsage(usage, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
+
+            const toolCalls = response.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
             if (toolCalls && toolCalls.length > 0) {
+                // Extract the thoughtSignature from the first tool call (Google AI only attaches it to the first one)
+                const sharedThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+
+                /**
+                 * Unique ID per streamRequest call to prevent tool ID collisions.
+                 * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+                 * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+                 */
+                const requestId = uid();
+
                 toolsData = toolCalls.map((toolCall, index) => ({
                     index,
-                    id: `tool-${index}`,
+                    id: `tool-${requestId}-${index}`,
                     type: 'function',
-                    name: toolCall.functionCall.name,
-                    arguments: JSON.stringify(toolCall.functionCall.args),
+                    name: toolCall.functionCall?.name,
+                    arguments:
+                        typeof toolCall.functionCall?.args === 'string'
+                            ? toolCall.functionCall?.args
+                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
+                    // All parallel tool calls share the same thoughtSignature from the first one
+                    thoughtSignature: (toolCall as any).thoughtSignature || sharedThoughtSignature,
                 }));
                 useTool = true;
             }
 
             return {
                 content,
-                finishReason: finishReason.toLowerCase(),
+                finishReason,
                 useTool,
                 toolsData,
                 message: { content, role: 'assistant' },
@@ -130,101 +156,268 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    /**
+     * Stream request implementation.
+     *
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     *
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     *
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
+    @hookAsync('LLMConnector.streamRequest')
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
 
-        const prompt = body.messages;
-        delete body.messages;
+        const promptSource = body.messages ?? body.contents ?? '';
+        const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
+        const requestConfig = this.buildRequestConfig({
+            generationConfig: body.generationConfig,
+            systemInstruction: body.systemInstruction,
+            promptConfig,
+            abortSignal,
+        });
 
         const genAI = await this.getClient(context);
-        const $model = genAI.getGenerativeModel(body);
 
         try {
-            const result = await $model.generateContentStream(prompt);
+            const stream = await genAI.models.generateContentStream({
+                model: body.model,
+                contents: contents ?? '',
+                ...(requestConfig ? { config: requestConfig } : {}),
+            } as any);
 
             let toolsData: ToolData[] = [];
-            let usage: UsageMetadataWithThoughtsToken;
+            let usage: UsageMetadataWithThoughtsToken | undefined;
+            let streamThoughtSignature: string | undefined; // Track signature across streaming chunks
 
-            // Process stream asynchronously while as we need to return emitter immediately
-            (async () => {
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
-                    emitter.emit('content', chunkText);
+            /**
+             * Unique ID per streamRequest call to prevent tool ID collisions.
+             * Without unique IDs, each call would generate "tool-0", causing UI merge conflicts.
+             * Example: tool-ABC123-0, tool-DEF456-0, tool-GHI789-0 (instead of all "tool-0")
+             */
+            const requestId = uid();
 
-                    if (chunk.candidates[0]?.content?.parts) {
-                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
-                        if (toolCalls.length > 0) {
-                            toolsData = toolCalls.map((toolCall, index) => ({
-                                index,
-                                id: `tool-${index}`,
-                                type: 'function',
-                                name: toolCall.functionCall.name,
-                                arguments: JSON.stringify(toolCall.functionCall.args),
-                                role: TLLMMessageRole.Assistant,
-                            }));
+            // Defer async processing to next tick to ensure event listeners are attached first
+            // This prevents race condition where fast tool calls emit events before listeners are ready
+            setImmediate(() => {
+                (async () => {
+                    try {
+                        for await (const chunk of stream) {
+                            emitter.emit(TLLMEvent.Data, chunk);
+
+                            const parts = chunk.candidates?.[0]?.content?.parts || [];
+                            // Extract text from parts, filtering out non-text parts and ensuring type safety
+                            const textParts = parts
+                                .map((part) => part?.text)
+                                .filter((text): text is string => typeof text === 'string')
+                                .join('');
+                            if (textParts) {
+                                emitter.emit(TLLMEvent.Content, textParts);
+                            }
+
+                            const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                            if (toolCalls && toolCalls.length > 0) {
+                                // Capture thoughtSignature from the first tool call chunk if we haven't already
+                                if (!streamThoughtSignature) {
+                                    streamThoughtSignature = (toolCalls[0] as any).thoughtSignature;
+                                }
+
+                                // For streaming, replace toolsData with the latest chunk (chunks contain cumulative tool calls)
+                                // All tool calls in this request share the same requestId for uniqueness
+                                toolsData = toolCalls.map((toolCall, index) => ({
+                                    index,
+                                    id: `tool-${requestId}-${index}`,
+                                    type: 'function' as const,
+                                    name: toolCall.functionCall?.name,
+                                    arguments:
+                                        typeof toolCall.functionCall?.args === 'string'
+                                            ? toolCall.functionCall?.args
+                                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
+                                    role: TLLMMessageRole.Assistant as any,
+                                    // All tool calls share the thoughtSignature from the first chunk
+                                    thoughtSignature: (toolCall as any).thoughtSignature || streamThoughtSignature,
+                                }));
+                            }
+
+                            if (chunk.usageMetadata) {
+                                usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                            }
+                        }
+
+                        // Emit ToolInfo once after all chunks are processed (similar to Anthropic's finalMessage pattern)
+                        if (toolsData.length > 0) {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
+
+                        const finishReason: TLLMFinishReason = TLLMFinishReason.Stop; // GoogleAI doesn't provide finishReason in streaming
+                        const reportedUsage: any[] = [];
+
+                        if (usage) {
+                            const reported = this.reportUsage(usage, {
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
+                            });
+                            reportedUsage.push(reported);
+                        }
+
+                        // Note: GoogleAI stream doesn't provide explicit finish reasons
+                        // If we had a non-stop finish reason, we would emit Interrupted here
+
+                        setTimeout(() => {
+                            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
+                        }, 100);
+                    } catch (error) {
+                        const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+                        if (isAbort) {
+                            logger.debug(`streamRequest ${this.name} aborted`, error, acRequest.candidate);
+                            // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                            const abortError = new DOMException('Request aborted', 'AbortError');
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.Abort, abortError);
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                            });
+                        } else {
+                            logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                            setImmediate(() => {
+                                emitter.emit(TLLMEvent.Error, error);
+                                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+                            });
+                        }
                     }
-
-                    // the same usage is sent on each emit. IMPORTANT: google does not send usage for each chunk but
-                    // rather just sends the same usage for the entire request.
-                    // notice that the output tokens are only sent in the last chunk usage metadata.
-                    // so we will just update a var to hold the latest usage and report it when the stream ends.
-                    // e.g emit1: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
-                    if (chunk?.usageMetadata) {
-                        usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
-                    }
-                }
-
-                if (usage) {
-                    this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    });
-                }
-
-                setTimeout(() => {
-                    emitter.emit('end', toolsData);
-                }, 100);
-            })();
+                })();
+            });
 
             return emitter;
         } catch (error: any) {
+            const isAbort = error?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            return emitter;
         }
     }
     // #region Image Generation, will be moved to a different subsystem/service
+
     protected async imageGenRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
-        try {
-            const apiKey = (context.credentials as BasicCredentials)?.apiKey;
-            if (!apiKey) throw new Error('Please provide an API key for Google AI');
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Google AI');
 
-            const model = body.model || 'imagen-3.0-generate-001';
+        const model = body.model || 'imagen-3.0-generate-001';
+        const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-            // Use Imagen models via GoogleGenAI
-            const ai = new GoogleGenAI({ apiKey });
+        // Use traditional Imagen models
+        const config = {
+            numberOfImages: body.n || 1,
+            aspectRatio: body.aspect_ratio || body.size || '1:1',
+            personGeneration: body.person_generation || 'allow_adult',
+        };
 
-            // Prepare the configuration for image generation
-            const config = {
-                numberOfImages: body.n || 1,
-                aspectRatio: body.aspect_ratio || body.size || '1:1',
-                personGeneration: body.person_generation || 'allow_adult',
+        const ai = new GoogleGenAI({ apiKey });
+
+        // Default to GenerateImages interface if not specified
+        const modelInterface = context.modelInfo?.interface || LLMInterface.GenerateImages;
+
+        let response: any;
+
+        if (modelInterface === LLMInterface.GenerateContent) {
+            // Use Gemini image generation API
+            response = await ai.models.generateContent({
+                model,
+                contents: body.prompt,
+            });
+
+            // Extract image data from Gemini response format
+            const imageData: any[] = [];
+            if (response.candidates?.[0]?.content?.parts) {
+                for (const part of response.candidates[0].content.parts) {
+                    if (part.inlineData?.data) {
+                        imageData.push({
+                            url: `data:image/png;base64,${part.inlineData.data}`,
+                            b64_json: part.inlineData.data,
+                            revised_prompt: body.prompt,
+                        });
+                    }
+                }
+            }
+
+            // Report input tokens and image cost pricing based on the official pricing page:
+            // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
+            const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+
+            this.reportUsage(usageMetadata, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
+            });
+
+            if (imageData.length === 0) {
+                throw new Error(
+                    'Please enter a valid prompt — for example: "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme."',
+                );
+            }
+
+            return {
+                created: Math.floor(Date.now() / 1000),
+                data: imageData,
             };
-
-            // Generate images using the SDK
-            const response = await ai.models.generateImages({
+        } else if (modelInterface === LLMInterface.GenerateImages) {
+            response = await ai.models.generateImages({
                 model,
                 prompt: body.prompt,
                 config,
             });
 
-            // Transform the response to match OpenAI format for compatibility
+            // Report input tokens and image cost pricing based on the official pricing page:
+            // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
+            const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+
+            const isImagen4 = modelName.startsWith('imagen-4');
+
+            if (isImagen4) {
+                this.reportImageCost({
+                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
+                    numberOfImages: config.numberOfImages,
+                    context,
+                });
+            } else {
+                this.reportUsage(usageMetadata, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
+
             return {
                 created: Math.floor(Date.now() / 1000),
                 data:
@@ -234,13 +427,57 @@ export class GoogleAIConnector extends LLMConnector {
                         revised_prompt: body.prompt,
                     })) || [],
             };
-        } catch (error: any) {
-            throw error;
+        } else {
+            throw new Error(`Unsupported interface: ${modelInterface}`);
         }
     }
 
     protected async imageEditRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
-        throw new Error('Image editing is not supported for Google AI. Imagen models only support image generation.');
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Google AI');
+
+        // A model supports image editing if it implements the `generateContent` interface.
+        const supportsEditing = context.modelInfo?.interface === LLMInterface.GenerateContent;
+        if (!supportsEditing) {
+            throw new Error(`Image editing is not supported for model: ${body.model}. This model only supports image generation.`);
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
+
+        // Use the prepared body which already contains processed files and contents
+        const response = await ai.models.generateContent({
+            model: body.model,
+            contents: body.contents,
+        });
+
+        // Extract image data from Gemini response format
+        const imageData: any[] = [];
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData?.data) {
+                    imageData.push({
+                        url: `data:image/png;base64,${part.inlineData.data}`,
+                        b64_json: part.inlineData.data,
+                        revised_prompt: body._metadata?.prompt || body.prompt,
+                    });
+                }
+            }
+        }
+
+        // Report pricing for input tokens and image costs
+        const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+
+        this.reportUsage(usageMetadata, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
+        });
+
+        return {
+            created: Math.floor(Date.now() / 1000),
+            data: imageData,
+        };
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
@@ -248,29 +485,44 @@ export class GoogleAIConnector extends LLMConnector {
 
         // Check if this is an image generation request based on capabilities
         if (params?.capabilities?.imageGeneration) {
-            return this.prepareBodyForImageGenRequest(params) as any;
+            // Determine if this is image editing (has files) or generation
+            const hasFiles = params?.files?.length > 0;
+            if (hasFiles) {
+                return this.prepareImageEditBody(params) as any;
+            } else {
+                return this.prepareBodyForImageGenRequest(params) as any;
+            }
+        }
+
+        // Extract system messages before preparing messages
+        // All modern Gemini models (2.0+, 2.5, 3.0) support native system instruction
+        let systemInstruction = '';
+        const originalMessages = params?.messages || [];
+
+        if (LLMHelper.hasSystemMessage(originalMessages)) {
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(originalMessages);
+            systemInstruction = this.extractMessageContent(systemMessage as TLLMMessageBlock);
+            // Pass only non-system messages to prepareMessages
+            params = { ...params, messages: otherMessages };
         }
 
         const messages = await this.prepareMessages(params);
 
-        let body: ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest } = {
+        const body: TGoogleAIRequestBody = {
             model: model as string,
             messages,
         };
 
         const responseFormat = params?.responseFormat || '';
         let responseMimeType = '';
-        let systemInstruction = '';
 
         if (responseFormat === 'json') {
             systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
+            responseMimeType = 'application/json';
         }
 
-        const config: GenerationConfig = {};
+        const config: Record<string, any> = {};
 
         if (params.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
         if (params.temperature !== undefined) config.temperature = params.temperature;
@@ -278,6 +530,13 @@ export class GoogleAIConnector extends LLMConnector {
         if (params.topK !== undefined) config.topK = params.topK;
         if (params.stopSequences?.length) config.stopSequences = params.stopSequences;
         if (responseMimeType) config.responseMimeType = responseMimeType;
+
+        // #region Gemini 3 specific fields
+        const isGemini3Model = params.modelEntryName?.includes('gemini-3');
+
+        if (isGemini3Model) {
+            if (params?.reasoningEffort) config.thinkingConfig = { thinkingLevel: params.reasoningEffort };
+        }
 
         if (systemInstruction) body.systemInstruction = systemInstruction;
         if (Object.keys(config).length > 0) {
@@ -287,41 +546,149 @@ export class GoogleAIConnector extends LLMConnector {
         return body;
     }
 
-    protected reportUsage(
-        usage: UsageMetadataWithThoughtsToken,
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
-        const modelEntryName = metadata.modelEntryName;
-        let tier = '';
-
-        const tierThresholds = {
-            'gemini-1.5-pro': 128_000,
-            'gemini-2.5-pro': 200_000,
-        };
-
-        const textInputTokens =
-            usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || usage?.promptTokenCount || 0;
-        const audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
-
-        // Find matching model and set tier based on threshold
-        const modelWithTier = Object.keys(tierThresholds).find((model) => modelEntryName.includes(model));
-        if (modelWithTier) {
-            tier = textInputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+    private normalizePrompt(prompt: TGoogleAIRequestBody['messages'] | TGoogleAIRequestBody['contents']): {
+        contents: any;
+        config?: Record<string, any>;
+    } {
+        if (prompt == null) {
+            return { contents: '' };
         }
 
-        // #endregion
+        if (typeof prompt === 'string' || Array.isArray(prompt)) {
+            return { contents: prompt };
+        }
 
+        if (typeof prompt === 'object' && 'contents' in (prompt as TGoogleAIToolPrompt)) {
+            const { contents, systemInstruction, tools, toolConfig } = prompt as TGoogleAIToolPrompt;
+            const config: Record<string, any> = {};
+
+            if (systemInstruction) config.systemInstruction = systemInstruction;
+            if (tools) config.tools = tools;
+            if (toolConfig) config.toolConfig = toolConfig;
+
+            return {
+                contents,
+                config: Object.keys(config).length > 0 ? config : undefined,
+            };
+        }
+
+        return { contents: prompt };
+    }
+
+    private buildRequestConfig({
+        generationConfig,
+        systemInstruction,
+        promptConfig,
+        abortSignal,
+    }: {
+        generationConfig?: TGoogleAIRequestBody['generationConfig'];
+        systemInstruction?: TGoogleAIRequestBody['systemInstruction'];
+        promptConfig?: Record<string, any>;
+        abortSignal?: AbortSignal;
+    }): Record<string, any> | undefined {
+        const config: Record<string, any> = {};
+
+        if (generationConfig) {
+            for (const [key, value] of Object.entries(generationConfig)) {
+                if (value !== undefined) {
+                    config[key] = value;
+                }
+            }
+        }
+
+        if (promptConfig?.tools) {
+            config.tools = promptConfig.tools;
+        }
+
+        if (promptConfig?.toolConfig) {
+            config.toolConfig = promptConfig.toolConfig;
+        }
+
+        if (promptConfig?.systemInstruction) {
+            config.systemInstruction = promptConfig.systemInstruction;
+        } else if (systemInstruction) {
+            config.systemInstruction = systemInstruction;
+        }
+
+        if (abortSignal) {
+            config.abortSignal = abortSignal;
+        }
+
+        return Object.keys(config).length > 0 ? config : undefined;
+    }
+
+    protected reportUsage(
+        usage: UsageMetadataWithThoughtsToken,
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+    ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
+        // Initially, all input tokens – such as text, audio, image, video, document, etc. – were included in promptTokenCount.
+        let inputTokens = usage?.promptTokenCount || 0;
+
+        // The pricing is the same for output and thinking tokens, so we can add them together.
+        let outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
+
+        // If cached input tokens are available, we need to subtract them from the input tokens.
+        let cachedInputTokens = usage?.cachedContentTokenCount || 0;
+
+        if (cachedInputTokens) {
+            inputTokens = inputTokens - cachedInputTokens;
+        }
+
+        // #region Find matching model and set tier based on threshold
+        const isProModel = modelName.includes('pro');
+        const tierThreshold = 200_000;
+
+        let tier = '';
+
+        if (isProModel) {
+            tier = inputTokens <= tierThreshold ? 'tier1' : 'tier2';
+        }
+        // #endregion
+
+        // #region Calculate audio input tokens
+        // Since Gemini 2.5 Flash has a different pricing model for audio input tokens, we need to report audio input tokens separately.
+        let audioInputTokens = 0;
+        let cachedAudioInputTokens = 0;
+        const isFlashModel = modelName.includes('flash');
+
+        if (isFlashModel) {
+            // There is no concept of different pricing for Flash models based on token tiers (e.g., less than or greater than 200k),
+            // so we don't need to provide tier information for audio input tokens.
+            audioInputTokens = usage?.promptTokensDetails?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+
+            // subtract the audio cached input tokens from the audio input tokens and total cached input tokens.
+            cachedAudioInputTokens = usage?.cacheTokensDetails?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+            if (cachedAudioInputTokens) {
+                audioInputTokens = audioInputTokens - cachedAudioInputTokens;
+                cachedInputTokens = cachedInputTokens - cachedAudioInputTokens;
+            }
+
+            inputTokens = inputTokens - audioInputTokens;
+        }
+        // #endregion
+
+        // #region Calculate image tokens
+        const imageOutputTokens = usage?.candidatesTokensDetails?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        // Gemini models does not return output text tokens right now for Image Generation, so we need to subtract the output image tokens from the output tokens to get the output text tokens.
+        if (imageOutputTokens) {
+            outputTokens = outputTokens - imageOutputTokens;
+        }
+        // #endregion Calculate image tokens
+
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: textInputTokens,
-            output_tokens: usage.candidatesTokenCount,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            output_tokens_image: imageOutputTokens,
             input_tokens_audio: audioInputTokens,
-            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
+            input_tokens_cache_read: cachedInputTokens,
+            input_tokens_cache_read_audio: cachedAudioInputTokens,
             input_tokens_cache_write: 0,
-            reasoning_tokens: usage.thoughtsTokenCount,
+            // reasoning_tokens: usage?.thoughtsTokenCount, // * reasoning tokens are included in the output tokens.
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
@@ -330,6 +697,62 @@ export class GoogleAIConnector extends LLMConnector {
         SystemEvents.emit('USAGE:LLM', usageData);
 
         return usageData;
+    }
+
+    /**
+     * Extract text and image tokens from Google AI usage metadata
+     */
+    private extractTokenCounts(usage: UsageMetadataWithThoughtsToken): { textTokens: number; imageTokens: number } {
+        const textTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || 0;
+        const imageTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        return { textTokens, imageTokens };
+    }
+
+    protected reportImageCost({ cost, context, numberOfImages = 1 }) {
+        const imageUsageData = {
+            sourceId: `api:imagegen.smyth`,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+
+            cost: cost * numberOfImages,
+
+            agentId: context.agentId,
+            teamId: context.teamId,
+        };
+        SystemEvents.emit('USAGE:API', imageUsageData);
+    }
+
+    /**
+     * Normalizes function response values to ensure they conform to Google AI's STRUCT requirement.
+     * Gemini expects functionResponse.response to be a STRUCT (JSON object format), not a list or scalar.
+     */
+    private normalizeFunctionResponse(value: unknown): any {
+        // Return objects as-is (but not arrays, which are also objects in JS)
+        if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
+            return value;
+        }
+        // Wrap all other types (arrays, scalars, null, undefined) in result key
+        return { result: value ?? null };
+    }
+
+    /**
+     * Parses and normalizes function response values, handling string JSON and various data types.
+     */
+    private parseFunctionResponse(response: unknown): any {
+        if (typeof response === 'string') {
+            try {
+                const parsed = JSON.parse(response);
+                // If parsed result is still a string, try parsing again (handles double-stringified JSON)
+                if (typeof parsed === 'string' && parsed !== response) {
+                    return this.parseFunctionResponse(parsed);
+                }
+                return this.normalizeFunctionResponse(parsed);
+            } catch (error) {
+                // If parsing fails, wrap the string in an object to satisfy Google AI's Struct requirement
+                return { result: response };
+            }
+        }
+        return this.normalizeFunctionResponse(response);
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
@@ -374,94 +797,323 @@ export class GoogleAIConnector extends LLMConnector {
     }): TLLMToolResultMessageBlock[] {
         const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
-        if (messageBlock) {
-            const content = [];
-            if (typeof messageBlock.content === 'string') {
-                content.push({ text: messageBlock.content });
-            } else if (Array.isArray(messageBlock.content)) {
-                content.push(...messageBlock.content);
+        const parseFunctionArgs = (args: unknown) => {
+            if (typeof args === 'string') {
+                try {
+                    return JSON.parse(args);
+                } catch {
+                    return args;
+                }
             }
+            return args ?? {};
+        };
 
-            if (messageBlock.parts) {
-                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
-                if (functionCalls.length > 0) {
-                    content.push(
-                        ...functionCalls.map((call) => ({
+        //#region Function call parts
+        if (messageBlock) {
+            const content: any[] = [];
+            let partFunctionCallIndex = 0; // Track function calls within this message block
+
+            if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {
+                for (const part of messageBlock.parts) {
+                    if (!part) continue;
+
+                    if (typeof part.text === 'string' && part.text.trim()) {
+                        content.push({ text: part.text.trim() });
+                        continue;
+                    }
+
+                    if (part.functionCall) {
+                        const functionCallPart: any = {
                             functionCall: {
-                                name: call.functionCall.name,
-                                args: JSON.parse(call.functionCall.args),
+                                name: part.functionCall.name,
+                                args: parseFunctionArgs(part.functionCall.args),
                             },
-                        }))
-                    );
+                        };
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (partFunctionCallIndex === 0 && (part as any).thoughtSignature) {
+                            functionCallPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
+                        content.push(functionCallPart);
+                        partFunctionCallIndex++;
+                        continue;
+                    }
+
+                    if (part.functionResponse) {
+                        content.push({
+                            functionResponse: {
+                                name: part.functionResponse.name,
+                                response: this.parseFunctionResponse(part.functionResponse.response),
+                            },
+                        });
+                        continue;
+                    }
+
+                    if ((part as any).inlineData) {
+                        content.push({ inlineData: (part as any).inlineData });
+                    }
+                }
+            } else {
+                if (typeof messageBlock.content === 'string' && messageBlock.content.trim()) {
+                    content.push({ text: messageBlock.content.trim() });
+                } else if (Array.isArray(messageBlock.content) && messageBlock.content.length > 0) {
+                    content.push(...messageBlock.content);
                 }
             }
 
+            const hasFunctionCall = content.some((part) => part.functionCall);
+            if (!hasFunctionCall && toolsData.length > 0) {
+                toolsData.forEach((toolCall, index) => {
+                    const functionCallPart: any = {
+                        functionCall: {
+                            name: toolCall.name,
+                            args: parseFunctionArgs(toolCall.arguments),
+                        },
+                    };
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (index === 0 && toolCall.thoughtSignature) {
+                        functionCallPart.thoughtSignature = toolCall.thoughtSignature;
+                    }
+                    content.push(functionCallPart);
+                });
+            }
+
+            if (content.length > 0) {
+                let role = messageBlock.role;
+                if (role === TLLMMessageRole.Assistant) {
+                    role = TLLMMessageRole.Model;
+                }
+
+                messageBlocks.push({
+                    role,
+                    parts: content,
+                });
+            }
+        }
+        //#endregion Function call parts
+
+        //#region Function response parts
+        const functionResponseParts = toolsData
+            .filter((toolData) => toolData.result !== undefined)
+            .map((toolData) => ({
+                functionResponse: {
+                    name: toolData.name,
+                    response: this.parseFunctionResponse(toolData.result),
+                },
+            }));
+
+        if (functionResponseParts.length > 0) {
             messageBlocks.push({
-                role: messageBlock.role,
-                parts: content,
+                role: TLLMMessageRole.Function,
+                parts: functionResponseParts,
             });
         }
+        //#endregion Function response parts
 
-        const transformedToolsData = toolsData.map(
-            (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.User,
-                parts: [
-                    {
-                        functionResponse: {
-                            name: toolData.name,
-                            response: {
-                                name: toolData.name,
-                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-                            },
-                        },
-                    },
-                ],
-            })
-        );
-
-        return [...messageBlocks, ...transformedToolsData];
+        return messageBlocks;
     }
 
     public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
         const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
         return _messages.map((message) => {
-            const _message = { ...message };
-            let textContent = '';
+            const _message: TLLMMessageBlock = { ...message };
+
+            const parseFunctionArgs = (args: unknown) => {
+                if (typeof args === 'string') {
+                    try {
+                        return JSON.parse(args);
+                    } catch {
+                        return args;
+                    }
+                }
+
+                return args ?? {};
+            };
+
+            const pushTextPart = (parts: any[], text?: string) => {
+                const value = typeof text === 'string' && text.trim() ? text : undefined;
+                if (value) {
+                    parts.push({ text: value });
+                }
+            };
+
+            const normalizedParts: any[] = [];
+            let functionCallCount = 0; // Track function call parts for thoughtSignature handling
 
             // Map roles to valid Google AI roles
+            // Note: System role is preserved so it can be extracted as systemInstruction later
             switch (_message.role) {
                 case TLLMMessageRole.Assistant:
-                case TLLMMessageRole.System:
+                case TLLMMessageRole.Model:
                     _message.role = TLLMMessageRole.Model;
                     break;
+                case TLLMMessageRole.System:
+                    // Keep system role as-is for later extraction to systemInstruction
+                    _message.role = TLLMMessageRole.System;
+                    break;
+                case TLLMMessageRole.Function:
+                case TLLMMessageRole.Tool:
+                    _message.role = TLLMMessageRole.Function;
+                    break;
                 case TLLMMessageRole.User:
-                    // User role is already valid
                     break;
                 default:
-                    _message.role = TLLMMessageRole.User; // Default to user for unknown roles
+                    _message.role = TLLMMessageRole.User;
             }
 
-            // * empty text causes error that's why we added '...'
+            if (Array.isArray(message?.parts)) {
+                for (const part of message.parts) {
+                    if (!part) continue;
 
-            if (_message?.parts) {
-                textContent = _message.parts.map((textBlock) => textBlock?.text || '...').join(' ');
-            } else if (Array.isArray(_message?.content)) {
-                textContent = _message.content.map((textBlock) => textBlock?.text || '...').join(' ');
-            } else if (_message?.content) {
-                textContent = (_message.content as string) || '...';
+                    const normalizedPart: any = { ...part };
+
+                    if (typeof normalizedPart.text === 'string') {
+                        normalizedPart.text = normalizedPart.text.trim() || '...';
+                    }
+
+                    if (part.functionCall) {
+                        normalizedPart.functionCall = {
+                            name: part.functionCall.name,
+                            args: parseFunctionArgs(part.functionCall.args),
+                        };
+                        // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                        if (functionCallCount === 0 && (part as any).thoughtSignature) {
+                            normalizedPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
+                        functionCallCount++;
+                    }
+
+                    if (part.functionResponse) {
+                        normalizedPart.functionResponse = {
+                            name: part.functionResponse.name,
+                            response: this.parseFunctionResponse(part.functionResponse.response),
+                        };
+                    }
+
+                    const hasMeaningfulContent = Object.values(normalizedPart).some((value) => value !== undefined && value !== null && value !== '');
+
+                    if (hasMeaningfulContent) {
+                        normalizedParts.push(normalizedPart);
+                    }
+                }
             }
 
-            _message.parts = [{ text: textContent || '...' }];
+            if (!normalizedParts.length && Array.isArray(message?.content)) {
+                for (const contentPart of message.content) {
+                    if (!contentPart) continue;
+
+                    if (typeof contentPart === 'string') {
+                        pushTextPart(normalizedParts, contentPart);
+                    } else if (typeof contentPart === 'object') {
+                        if ('text' in contentPart && typeof contentPart.text === 'string') {
+                            pushTextPart(normalizedParts, contentPart.text);
+                        } else if ('functionCall' in contentPart && (contentPart as any).functionCall) {
+                            const functionCallPart = (contentPart as any).functionCall;
+                            const normalizedFunctionCall: any = {
+                                functionCall: {
+                                    name: functionCallPart.name,
+                                    args: parseFunctionArgs(functionCallPart.args),
+                                },
+                            };
+                            // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                            if (functionCallCount === 0 && (contentPart as any).thoughtSignature) {
+                                normalizedFunctionCall.thoughtSignature = (contentPart as any).thoughtSignature;
+                            }
+                            normalizedParts.push(normalizedFunctionCall);
+                            functionCallCount++;
+                        } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
+                            const functionResponsePart = (contentPart as any).functionResponse;
+                            normalizedParts.push({
+                                functionResponse: {
+                                    name: functionResponsePart.name,
+                                    response: this.parseFunctionResponse(functionResponsePart.response),
+                                },
+                            });
+                        } else {
+                            const fallbackText = typeof (contentPart as any)?.toString === 'function' ? (contentPart as any).toString() : '';
+                            if (fallbackText && fallbackText !== '[object Object]') {
+                                pushTextPart(normalizedParts, fallbackText);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!normalizedParts.length) {
+                if (typeof message?.content === 'string') {
+                    pushTextPart(normalizedParts, message.content);
+                } else if (message?.content && typeof message.content === 'object') {
+                    if ('text' in (message.content as any)) {
+                        pushTextPart(normalizedParts, (message.content as any).text);
+                    } else {
+                        const fallbackText = typeof (message.content as any)?.toString === 'function' ? (message.content as any).toString() : '';
+                        if (fallbackText && fallbackText !== '[object Object]') {
+                            pushTextPart(normalizedParts, fallbackText);
+                        }
+                    }
+                }
+            }
+
+            if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+                let functionCallIndex = 0;
+                for (const toolCall of message.tool_calls) {
+                    if (!toolCall?.function?.name) continue;
+
+                    const normalizedFunctionCall: any = {
+                        functionCall: {
+                            name: toolCall.function.name,
+                            args: parseFunctionArgs(toolCall.function.arguments),
+                        },
+                    };
+                    // Only the first function call part should have the thoughtSignature (Google AI requirement)
+                    if (functionCallIndex === 0 && (toolCall as any).thoughtSignature) {
+                        normalizedFunctionCall.thoughtSignature = (toolCall as any).thoughtSignature;
+                    }
+                    normalizedParts.push(normalizedFunctionCall);
+                    functionCallIndex++;
+                }
+            }
+
+            if (!normalizedParts.length) {
+                normalizedParts.push({ text: '...' });
+            }
+
+            _message.parts = normalizedParts as any;
 
             delete _message.content; // Remove content to avoid error
+            delete (_message as any).tool_calls;
 
             return _message;
         });
     }
 
-    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
-        let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
+    /**
+     * Extracts text content from a message block, handling multiple formats (.parts, .content as string/array)
+     * This ensures compatibility with messages that have been normalized by getConsistentMessages or come in various formats
+     */
+    private extractMessageContent(message: TLLMMessageBlock | any): string {
+        if (!message) return '';
+
+        // Handle .parts array format (Google AI native format)
+        if (message.parts && Array.isArray(message.parts)) {
+            return message.parts.map((part) => part?.text || '').join(' ');
+        }
+
+        // Handle .content as string
+        if (typeof message.content === 'string') {
+            return message.content;
+        }
+
+        // Handle .content as array
+        if (Array.isArray(message.content)) {
+            return message.content.map((part) => (typeof part === 'string' ? part : part?.text || '')).join(' ');
+        }
+
+        return '';
+    }
+
+    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | TGoogleAIToolPrompt> {
+        let messages: string | TLLMMessageBlock[] | TGoogleAIToolPrompt = (params?.messages as any) || '';
 
         const files: BinaryInput[] = params?.files || [];
 
@@ -480,7 +1132,6 @@ export class GoogleAIConnector extends LLMConnector {
         const model = params.model;
 
         let messages: string | TLLMMessageBlock[] = params?.messages || '';
-        let systemInstruction = '';
         const files: BinaryInput[] = params?.files || [];
 
         // #region Upload files
@@ -531,12 +1182,7 @@ export class GoogleAIConnector extends LLMConnector {
         const fileData = this.getFileData(uploadedFiles);
 
         const userMessage: TLLMMessageBlock = Array.isArray(messages) ? messages.pop() : { role: TLLMMessageRole.User, content: '' };
-        let prompt = userMessage?.content || '';
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
+        let prompt = this.extractMessageContent(userMessage);
         //#endregion Separate system message and add JSON response instruction if needed
 
         // Adjust input structure handling for multiple image files to accommodate variations.
@@ -545,88 +1191,52 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<GenerateContentRequest> {
-        let formattedMessages: TLLMMessageBlock[];
-        let systemInstruction = '';
+    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<TGoogleAIToolPrompt> {
+        const messages = params?.messages || [];
 
-        let messages = params?.messages || [];
-
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-
-        if (hasSystemMessage) {
-            const separateMessages = LLMHelper.separateSystemMessages(messages);
-            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
-            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
-            formattedMessages = separateMessages.otherMessages;
-        } else {
-            formattedMessages = messages;
-        }
-
-        const toolsPrompt: GenerateContentRequest = {
-            contents: formattedMessages as any,
+        const toolsPrompt: TGoogleAIToolPrompt = {
+            contents: messages as any,
         };
-
-        if (systemInstruction) {
-            toolsPrompt.systemInstruction = systemInstruction;
-        }
 
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
             // Map tool choice to valid Google AI function calling modes
-            let mode: FunctionCallingMode = FunctionCallingMode.AUTO; // default
+            const toolConfig = toolsPrompt.toolConfig ?? { functionCallingConfig: {} };
+            const functionConfig = toolConfig.functionCallingConfig ?? {};
             const toolChoice = params?.toolsConfig?.tool_choice;
 
             if (toolChoice === 'auto') {
-                mode = FunctionCallingMode.AUTO;
+                functionConfig.mode = FunctionCallingConfigMode.AUTO;
             } else if (toolChoice === 'required') {
-                mode = FunctionCallingMode.ANY;
+                functionConfig.mode = FunctionCallingConfigMode.ANY;
             } else if (toolChoice === 'none') {
-                mode = FunctionCallingMode.NONE;
+                functionConfig.mode = FunctionCallingConfigMode.NONE;
             } else if (typeof toolChoice === 'object' && toolChoice.type === 'function') {
                 // Handle OpenAI-style named tool choice - force any function call
-                mode = FunctionCallingMode.ANY;
+                functionConfig.mode = FunctionCallingConfigMode.ANY;
+                const functionName = this.sanitizeFunctionName(toolChoice.function?.name ?? '');
+                if (functionName) {
+                    functionConfig.allowedFunctionNames = [functionName];
+                }
+            } else {
+                functionConfig.mode = FunctionCallingConfigMode.AUTO;
             }
 
-            toolsPrompt.toolConfig = {
-                functionCallingConfig: { mode },
-            };
+            toolConfig.functionCallingConfig = functionConfig;
+            toolsPrompt.toolConfig = toolConfig;
         }
 
         return toolsPrompt;
     }
 
     private async prepareMessagesWithTextQuery(params: TLLMPreparedParams): Promise<string> {
-        const model = params.model;
-        let systemInstruction = '';
+        const messages = (params?.messages as TLLMMessageBlock[]) || [];
         let prompt = '';
 
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(params?.messages as TLLMMessageBlock[]);
-
-        if ('content' in systemMessage) {
-            systemInstruction = systemMessage.content as string;
+        if (messages?.length > 0) {
+            // Concatenate messages using the helper method
+            prompt = messages.map((message) => this.extractMessageContent(message)).join('\n');
         }
-
-        const responseFormat = params?.responseFormat || '';
-        let responseMimeType = '';
-
-        if (responseFormat === 'json') {
-            systemInstruction += JSON_RESPONSE_INSTRUCTION;
-
-            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model as string)) {
-                responseMimeType = 'application/json';
-            }
-        }
-
-        if (otherMessages?.length > 0) {
-            // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt += otherMessages.map((message) => message?.parts?.[0]?.text || '').join('\n');
-        }
-
-        // if the the model does not support system instruction, we will add it to the prompt
-        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model as string)) {
-            prompt = `${prompt}\n${systemInstruction}`;
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
 
         return prompt;
     }
@@ -637,6 +1247,65 @@ export class GoogleAIConnector extends LLMConnector {
             model: params.model,
             aspectRatio: (params as any).aspectRatio,
             personGeneration: (params as any).personGeneration,
+        };
+    }
+
+    private async prepareImageEditBody(params: TLLMPreparedParams): Promise<any> {
+        const model = params.model || 'gemini-2.5-flash-image-preview';
+
+        // Construct edit prompt with image and instructions
+        let editPrompt = params.prompt || 'Edit this image';
+        if ((params as any).instruction) {
+            editPrompt += `. ${(params as any).instruction}`;
+        }
+
+        // For image editing, we need to include the original image in the contents
+        const contents: any[] = [];
+        const files: BinaryInput[] = params?.files || [];
+
+        if (files.length > 0) {
+            // Get only valid image files for editing
+            const validImageFiles = this.getValidFiles(files, 'image');
+
+            if (validImageFiles.length === 0) {
+                throw new Error('No valid image files found for editing. Please provide at least one image file.');
+            }
+
+            // Process each image file
+            for (const file of validImageFiles) {
+                try {
+                    // Read the file data as base64
+                    const bufferData = await file.getBuffer();
+                    const base64Image = Buffer.from(bufferData).toString('base64');
+
+                    contents.push({
+                        inlineData: {
+                            mimeType: file.mimetype,
+                            data: base64Image,
+                        },
+                    });
+                } catch (error) {
+                    throw new Error(`Failed to process image file: ${error.message}`);
+                }
+            }
+        } else {
+            throw new Error('No image provided for editing. Please include an image file.');
+        }
+
+        // Add the edit instruction
+        contents.push({ text: editPrompt });
+
+        // Return the complete request body that can be used directly in imageEditRequest
+        return {
+            model,
+            contents,
+            // Additional metadata for usage reporting
+            _metadata: {
+                prompt: editPrompt,
+                numberOfImages: (params as any).n || 1,
+                aspectRatio: (params as any).aspect_ratio || (params as any).size || '1:1',
+                personGeneration: (params as any).person_generation || 'allow_adult',
+            },
         };
     }
 
@@ -672,47 +1341,45 @@ export class GoogleAIConnector extends LLMConnector {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
-            // Create a temporary directory
             const tempDir = os.tmpdir();
             const fileName = uid();
             const tempFilePath = path.join(tempDir, fileName);
 
             const bufferData = await file.readData(AccessCandidate.agent(agentId));
-
-            // Write buffer data to temp file
             await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
 
-            // Upload the file to the Google File Manager
-            const fileManager = new GoogleAIFileManager(apiKey);
+            const ai = new GoogleGenAI({ apiKey });
 
-            const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
-                displayName: fileName,
+            const uploadResponse = await ai.files.upload({
+                file: tempFilePath,
+                config: {
+                    mimeType: file.mimetype,
+                    displayName: fileName,
+                },
             });
 
-            const name = uploadResponse.file.name;
+            const name = uploadResponse.name;
+            if (!name) {
+                throw new Error('File upload did not return a file name.');
+            }
 
-            // Poll getFile() on a set interval (10 seconds here) to check file state.
-            let uploadedFile = await fileManager.getFile(name);
+            let uploadedFile = uploadResponse;
             while (uploadedFile.state === FileState.PROCESSING) {
                 process.stdout.write('.');
-                // Sleep for 10 seconds
                 await new Promise((resolve) => setTimeout(resolve, 10_000));
-                // Fetch the file from the API again
-                uploadedFile = await fileManager.getFile(name);
+                uploadedFile = await ai.files.get({ name });
             }
 
             if (uploadedFile.state === FileState.FAILED) {
                 throw new Error('File processing failed.');
             }
 
-            // Clean up temp file
             await fs.promises.unlink(tempFilePath);
 
             return {
-                url: uploadResponse.file.uri || '',
+                url: uploadedFile.uri || '',
             };
-        } catch (error) {
+        } catch (error: any) {
             throw new Error(`Error uploading file for Google AI: ${error.message}`);
         }
     }
@@ -737,7 +1404,7 @@ export class GoogleAIConnector extends LLMConnector {
         files: {
             url: string;
             mimetype: string;
-        }[]
+        }[],
     ): {
         fileData: {
             mimeType: string;

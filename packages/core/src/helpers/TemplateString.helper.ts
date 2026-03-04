@@ -101,14 +101,31 @@ export class TemplateStringHelper {
     /**
      * Parses a template string by replacing the placeholders with the values from the provided data object
      * unmatched placeholders will be left as is
+     * Recursively resolves nested template variables until no more variables are found
      */
-    public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
+    public parse(data: Record<string, unknown>, regex: TemplateStringMatch = Match.default, maxDepth: number = 5) {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
-        this._current = this._current.replace(regex, (match, token) => {
-            const val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
 
-            return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
-        });
+        // Keep parsing until no more template variables are resolved or max depth is reached
+        // this is useful for chained template variables : e.g {{defaultVar}} => "text {{nestedVar}} more text" ==> "text value of nestedVar more text"
+        for (let i = 0; i < maxDepth; i++) {
+            const previous = this._current;
+
+            this._current = this._current.replace(regex, (match, token) => {
+                let val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
+
+                // if no exact match, try to parse the token as a JSON expression
+                // * Nullish check: using `==` intentionally to match both null and undefined
+                if (data?.[token] == null) {
+                    val = JSONExpression(data, token) ?? `{{${token}}}`; //if no match, use the token as is
+                }
+
+                return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val as string);
+            });
+
+            // Break early if no changes were made : we parsed all the template variables
+            if (previous === this._current) break;
+        }
 
         return this;
     }
@@ -221,6 +238,26 @@ export class TemplateStringHelper {
     //         resolve(this._current);
     //     });
     // }
+}
+/**
+ * A helper function that takes an object and a property string and returns the value of the property
+ * @param obj the object to get the property from
+ * @param propertyString the property string to get the value from
+ * @returns the value of the property
+ */
+export function JSONExpression(obj, propertyString) {
+    const properties = propertyString.split(/\.|\[|\]\.|\]\[|\]/).filter(Boolean);
+    let currentProperty = obj;
+
+    for (let property of properties) {
+        if (currentProperty === undefined || currentProperty === null) {
+            return undefined;
+        }
+
+        currentProperty = currentProperty[property];
+    }
+
+    return currentProperty;
 }
 
 /**

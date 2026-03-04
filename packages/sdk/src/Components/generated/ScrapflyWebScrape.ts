@@ -15,6 +15,8 @@ export interface TScrapflyWebScrapeSettings {
     autoScroll?: boolean;
     /** Format */
     format?: string;
+    /** Countries */
+    countries?: any[];
 }
 
 export type TScrapflyWebScrapeInputs = {
@@ -35,17 +37,19 @@ export type TScrapflyWebScrapeOutputs = {
  * Use this component to scrape web pages
  */
 export function ScrapflyWebScrape(settings?: TScrapflyWebScrapeSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'ScrapflyWebScrape', 
+        name: /*settings?.name || */'ScrapflyWebScrape', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TScrapflyWebScrapeOutputs = createSafeAccessor({

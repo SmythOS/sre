@@ -3,7 +3,7 @@ import { Logger } from '../helpers/Log.helper';
 import { createHash } from 'crypto';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-const console = Logger('Connector');
+const logger = Logger('Connector');
 //const lCache = new LocalCache();
 
 export class Connector<TRequest = any> {
@@ -68,12 +68,12 @@ export class Connector<TRequest = any> {
     }
 
     public async start() {
-        console.info(`Starting ${this.name} connector ...`);
+        logger.info(`Starting ${this.name} connector ...`);
         this.started = true;
     }
 
     public async stop() {
-        console.info(`Stopping ${this.name} connector ...`);
+        logger.info(`Stopping ${this.name} connector ...`);
     }
 
     public ready() {
@@ -110,6 +110,10 @@ export class Connector<TRequest = any> {
         if (typeof candidate === 'string') {
             return this.requester(AccessCandidate.user(candidate));
         }
+
+        //backward compatibility
+        //this will be deprecated in the future, use .requester for this case
+        // .user will only accept strings representing the user id
         return this.requester(candidate);
     }
 
@@ -119,5 +123,9 @@ export class Connector<TRequest = any> {
 
     public agent(agentId: string): TRequest {
         return this.requester(AccessCandidate.agent(agentId));
+    }
+
+    public handleEvent(eventName: string, data: any): void {
+        logger.debug(`Connector ${this.name} received event ${eventName} `);
     }
 }

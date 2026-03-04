@@ -7,12 +7,14 @@ import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
 export interface TMCPClientSettings {
     model?: string;
-    openAiModel: string;
+    openAiModel?: string;
+    /** URL of the MCP */
+    mcpUrl: string;
     /** Description for Model */
-    descForModel: string;
+    descForModel?: string;
     name: string;
     /** Description */
-    desc: string;
+    desc?: string;
     logoUrl?: string;
     id?: string;
     version?: string;
@@ -30,17 +32,19 @@ export type TMCPClientOutputs = {
 };
 
 export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'MCPClient', 
+        name: /*settings?.name || */'MCPClient', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TMCPClientOutputs = createSafeAccessor({

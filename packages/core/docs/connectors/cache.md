@@ -1,3 +1,7 @@
+---
+title: 'connectors/Cache'
+---
+
 # Cache Connectors
 
 The Cache subsystem provides high-performance temporary data storage for frequently accessed information. It supports TTL (Time-To-Live) expiration, automatic cleanup, and various storage backends for different performance and scalability requirements.

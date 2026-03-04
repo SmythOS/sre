@@ -1,6 +1,11 @@
 import { SmythLLMUsage, SmythTaskUsage } from '@sre/types/LLM.types';
 import { TServiceRegistry } from '@sre/types/SRE.types';
 import { EventEmitter } from 'events';
+import { ExternalEventsReceiver } from './ExternalEventsReceiver';
+import { createHash } from 'crypto';
+import { Logger } from '../helpers/Log.helper';
+
+const logger = Logger('SystemEvents');
 
 export type SystemEventMap = {
     'SRE:BootStart': [];
@@ -12,5 +17,17 @@ export type SystemEventMap = {
 };
 
 const SystemEvents = new EventEmitter<SystemEventMap>();
+
+// /!\ incomplete implementation, do not enable yet
+// if (process.env?.SRE_SECRET?.trim()) {
+//     const secretHash = createHash('sha256').update(process.env.SRE_SECRET).digest('hex');
+//     // Create server instance
+//     new ExternalEventsReceiver({
+//         port: process.env.SRE_PORT ? parseInt(process.env.SRE_PORT) : 55555,
+//         authTokens: [secretHash],
+//     });
+// } else {
+//     logger.warn('SRE_SECRET is not set, external events receiver will not be started');
+// }
 
 export { SystemEvents };

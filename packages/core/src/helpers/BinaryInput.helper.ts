@@ -23,7 +23,7 @@ export class BinaryInput {
         data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>,
         private _name?: string,
         public mimetype?: string,
-        private candidate?: IAccessCandidate,
+        private candidate?: IAccessCandidate
     ) {
         if (!_name) _name = uid();
         this._name = _name;
@@ -97,6 +97,9 @@ export class BinaryInput {
                     this._ready = true;
                 }
             } else {
+                //try to guess the mimetype from the url extension
+                const ext = this.url.split('.').pop();
+                this.mimetype = mime.getType(ext) || '';
                 this._ready = true;
             }
             return;
@@ -205,8 +208,6 @@ export class BinaryInput {
             this._ready = true;
             return;
         }
-
-        
     }
 
     private async getUrlInfo(url) {
@@ -221,9 +222,9 @@ export class BinaryInput {
         }
     }
 
-    public static from(data, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
-        if (data instanceof BinaryInput) return data;
-        return new BinaryInput(data, name, mimetype, candidate);
+    public static from(source, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
+        if (source instanceof BinaryInput) return source;
+        return new BinaryInput(source, name, mimetype, candidate);
     }
 
     public async upload(candidate: IAccessCandidate, ttl?: number) {
@@ -239,8 +240,7 @@ export class BinaryInput {
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
                 await SmythFS.Instance.write(this.url, this._source, candidate, undefined, ttl);
                 this._uploading = false;
-            }
-            else {
+            } else {
                 this._uploading = false;
             }
         } catch (error) {

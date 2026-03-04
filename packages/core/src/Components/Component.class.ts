@@ -2,21 +2,38 @@ import Joi from 'joi';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
-import { hookAsync } from '@sre/Core/HookService';
+import { hookableClass, hookAsync } from '@sre/Core/HookService';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
-export type ComponentSchema = {
+export type TComponentSchema = {
     name: string;
     settings?: Record<string, any>;
     inputs?: Record<string, any>;
     outputs?: Record<string, any>;
 };
 
+export enum ComponentInputType {
+    Any = 'Any',
+    Binary = 'Binary',
+    String = 'Text',
+    Text = 'Text',
+    Image = 'Image',
+    Video = 'Video',
+    Number = 'Number',
+    Integer = 'Integer',
+    Boolean = 'Boolean',
+    Date = 'Date',
+    Array = 'Array',
+    Object = 'Object',
+}
+
+@hookableClass
 export class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;
     public alwaysActive = false; //for components like readable memories
     public exclusive = false; //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    protected schema: ComponentSchema = {
+    protected schema: TComponentSchema = {
         name: 'Component',
         settings: {},
         inputs: {},
@@ -107,7 +124,19 @@ export class Component {
         if (agent.isKilled()) {
             throw new Error('Agent killed');
         }
-        const _input = await performTypeInference(input, config?.inputs, agent);
+
+        let _input = {};
+
+        // #region Resolve agent variables so that:
+        // - type inference works correctly
+        // - we don’t need a separate resolution step when the variable name
+        //   matches the component input name
+        for (let [key, value] of Object.entries(input)) {
+            _input[key] = TemplateString(value as string).parse(agent.agentVariables).result;
+        }
+        // #endregion
+
+        _input = await performTypeInference(_input, config?.inputs, agent);
 
         // modify the input object for component's process method
         for (const [key, value] of Object.entries(_input)) {
@@ -116,7 +145,8 @@ export class Component {
     }
     async postProcess(output, config, agent: Agent): Promise<any> {
         if (output?.result) {
-            delete output?.result?._debug;
+            if (!agent.agentRuntime?.debug) delete output?.result?._debug;
+
             if (!output?.result?._error) delete output?.result?._error;
         }
         return output;
@@ -129,4 +159,15 @@ export class Component {
     hasOutput(id, config, agent: Agent): any {
         return false;
     }
+
+    /**
+     * A generic registration function that can be overridden by child classes to register the trigger with providers
+     * this function is usually called outside of a workflow in order to register the trigger with providers
+     * @param componentId the id of the component to register (in SRE a single trigger instance handles all the triggers of the same type)
+     * @param agent the agent instance
+     * @param payload any additional payload to pass to the trigger
+     */
+    async register(componentId: string, componentSettings: any, payload?: any) {}
+
+    async unregister(componentId: string, componentSettings: any, payload?: any) {}
 }

@@ -112,6 +112,7 @@ export abstract class LLMConnector extends Connector {
                 const response = await this.request({
                     acRequest: candidate.readRequest,
                     body: preparedParams.body,
+                    abortSignal: preparedParams.abortSignal,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
@@ -137,6 +138,7 @@ export abstract class LLMConnector extends Connector {
                 const requestParams = {
                     acRequest: candidate.readRequest,
                     body: preparedParams.body,
+                    abortSignal: preparedParams.abortSignal,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
@@ -262,24 +264,36 @@ export abstract class LLMConnector extends Connector {
 
     private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMPreparedParams> {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        // Assign file from the original parameters to avoid overwriting the original constructor
-        const files = params?.files;
-        delete params?.files; // need to remove files to avoid any issues during JSON.stringify() especially when we have large files
+        // Extract files and abortSignal from the original parameters to avoid overwriting the original constructor
+        const { files, abortSignal, ...restParams } = params;
 
-        const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
+        const clonedParams = JSON.parse(JSON.stringify(restParams)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
         const _params: TLLMPreparedParams = this.formatParamValues(clonedParams);
+
+        // Re-attach non-serializable properties ignored before cloning
+        _params.abortSignal = abortSignal;
+        _params.files = files;
 
         const model = _params.model;
         const teamId = await this.getTeamId(candidate);
 
         // We need the model entry name for usage reporting
-        _params.modelEntryName = typeof model === 'string' ? model : (model as TLLMModel).modelId;
+        _params.modelEntryName = typeof model === 'string' ? model : model?.modelEntryName || model?.modelId;
         _params.teamId = teamId;
 
         const modelProviderCandidate = modelsProvider.requester(candidate);
         const modelInfo: TLLMModel | TCustomLLMModel = await modelProviderCandidate.getModelInfo(model);
+
+        // If the model entry has an alias, it means this entry forwards to another model.
+        // Usage must be reported against the alias (the actual model being billed),
+        // not the forwarding entry (which may have stale/different pricing).
+        // Guard: skip for custom/enterprise LLMs — they are not billed and should
+        // retain their own entry name (enterprise models use alias only for config inheritance).
+        if (modelInfo?.alias && !(modelInfo as TCustomLLMModel)?.isCustomLLM) {
+            _params.modelEntryName = modelInfo.alias;
+        }
 
         //if the model has default params make sure to set them if they are not present
         if (modelInfo.params) {
@@ -307,8 +321,6 @@ export abstract class LLMConnector extends Connector {
         }
 
         _params.model = await modelProviderCandidate.getModelId(model);
-        // Attach the files again after formatting the parameters
-        _params.files = files;
 
         const features = modelInfo?.features || [];
 
@@ -326,6 +338,9 @@ export abstract class LLMConnector extends Connector {
             openai: await this.prepareOpenAIToolsInfo(_params),
             xai: await this.prepareXAIToolsInfo(_params),
         };
+
+        // Filter out default and system-specific outputs (e.g., _debug, _error) to isolate custom outputs for structured response
+        _params.structuredOutputs = _params?.outputs?.filter((output) => !output.default && !['_debug', '_error'].includes(output.name)) || [];
 
         // The input adapter transforms the standardized parameters into the specific format required by the target LLM provider
         _params.agentId = candidate.id;
@@ -461,6 +476,7 @@ export abstract class LLMConnector extends Connector {
             }
 
             //FIXME: to revisit by Alaa-eddine
+            // TODO: This part is a bit confusing. We send “consistent” messages to the LLM, but they still aren’t truly consistent. For example, we send { role: 'system', content: 'You are a helpful assistant.' }, which isn’t compatible with Google AI. However, we still need to mark it as `system` because we later convert it to `systemInstruction`. We should revisit the architecture later and make the flow simpler and more straightforward.
             if (key === 'messages') {
                 _value = this.getConsistentMessages(_value);
             }

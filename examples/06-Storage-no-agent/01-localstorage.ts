@@ -1,17 +1,13 @@
 import { Storage } from '@smythos/sdk';
 
-async function main() {
-    const localStorage = Storage.LocalStorage();
-        
-    await localStorage.write('test.txt', 'Hello, world!');
+// you can also explicitly specify the storage that you want to use
+// here we explicitly use a local storage
+const localStorage = Storage.LocalStorage();
 
-    const data = await localStorage.read('test.txt');
+await localStorage.write('test.txt', 'Hello, world!');
 
-    const dataAsString = data.toString();
+const data = await localStorage.read('test.txt');
 
-    console.log(dataAsString);
+const dataAsString = data.toString();
 
-
-}
-
-main();
+console.log(dataAsString);

@@ -11,16 +11,14 @@ import fs from 'fs';
 import mime from 'mime';
 import path from 'path';
 import { ConnectorService } from './ConnectorsService';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export class AgentProcess {
     public agent: Agent;
 
     private _loadPromise: Promise<any>;
 
-    private constructor(
-        private agentData: any,
-        private agentVersion?: string,
-    ) {
+    private constructor(private agentData: any, private agentVersion?: string) {
         this.initAgent(agentData, agentVersion);
     }
     private async initAgent(agentData: any, agentVersion?: string) {
@@ -101,7 +99,7 @@ export class AgentProcess {
      */
     public async run(
         reqConfig: TAgentProcessParams | Array<string> | AgentRequest,
-        callback?: (data: any) => void,
+        callback?: (data: any) => void
     ): Promise<{
         status?: number;
         data: any;
@@ -116,7 +114,7 @@ export class AgentProcess {
             this.agent.setCallback(callback);
         }
 
-        const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
+        const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/(api|trigger)\/(.+)?)/);
         if (!pathMatches || !pathMatches[2]) {
             return { status: 404, data: { error: 'Endpoint not found' } };
         }

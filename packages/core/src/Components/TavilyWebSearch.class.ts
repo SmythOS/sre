@@ -55,6 +55,9 @@ export class TavilyWebSearch extends Component {
             const api_key = await getCredentials(AccessCandidate.team(teamId), 'tavily');
 
             logger.debug('Payload:', JSON.stringify(config.data));
+
+            const excludeDomains = config.data.excludeDomains?.length ? config.data.excludeDomains.split(',').map((d) => d.trim()) : [];
+
             const response = await axios({
                 method: 'post',
                 url: 'https://api.tavily.com/search',
@@ -62,7 +65,7 @@ export class TavilyWebSearch extends Component {
                     api_key,
                     query: searchQuery,
                     topic: config.data.searchTopic,
-                    exclude_domains: config.data.excludeDomains?.length ? config.data.excludeDomains.split(',') : [],
+                    exclude_domains: excludeDomains,
                     max_results: config.data.sourcesLimit,
                     ...(config.data.timeRange !== 'None' ? { time_range: config.data.timeRange } : {}),
                     ...(config.data.includeImages ? { include_images: true } : {}),

@@ -1,12 +1,34 @@
 import os from 'os';
 import process from 'process';
 
-const OSResourceMonitor: any = {
+// Store previous CPU times for delta calculation
+let previousCpuTimes: { user: number; nice: number; sys: number; idle: number; irq: number } | null = null;
+
+const monitorData: any = {
     mem: getMemoryUsage(),
-    //processMemory: getProcessMemoryUsage(),
     cpu: getCpuUsage(),
+    //processMemory: getProcessMemoryUsage(),
     //processCpu: getProcessCpuUsage(),
 };
+
+const itv = setInterval(() => {
+    monitorData.mem = getMemoryUsage();
+    monitorData.cpu = getCpuUsage();
+    //monitorData.processMemory = getProcessMemoryUsage();
+    //monitorData.processCpu = getProcessCpuUsage();
+}, 5000);
+
+itv.unref();
+
+const OSResourceMonitor: any = {
+    get mem() {
+        return monitorData.mem;
+    },
+    get cpu() {
+        return monitorData.cpu;
+    },
+};
+
 export { OSResourceMonitor };
 
 function getCpuUsage() {
@@ -16,8 +38,8 @@ function getCpuUsage() {
     let sys = 0;
     let idle = 0;
     let irq = 0;
-    let total = 0;
 
+    // Sum up times across all CPU cores
     for (let cpu of cpus) {
         user += cpu.times.user;
         nice += cpu.times.nice;
@@ -26,13 +48,52 @@ function getCpuUsage() {
         irq += cpu.times.irq;
     }
 
-    total = user + nice + sys + idle + irq;
+    const currentTimes = { user, nice, sys, idle, irq };
+
+    // If this is the first measurement, store it and return zero load
+    if (!previousCpuTimes) {
+        previousCpuTimes = currentTimes;
+        return {
+            user: 0,
+            sys: 0,
+            idle: 100,
+            load: 0,
+        };
+    }
+
+    // Calculate deltas since last measurement
+    const userDelta = currentTimes.user - previousCpuTimes.user;
+    const niceDelta = currentTimes.nice - previousCpuTimes.nice;
+    const sysDelta = currentTimes.sys - previousCpuTimes.sys;
+    const idleDelta = currentTimes.idle - previousCpuTimes.idle;
+    const irqDelta = currentTimes.irq - previousCpuTimes.irq;
+
+    const totalDelta = userDelta + niceDelta + sysDelta + idleDelta + irqDelta;
+
+    // Store current times for next calculation
+    previousCpuTimes = currentTimes;
+
+    // Avoid division by zero
+    if (totalDelta === 0) {
+        return {
+            user: 0,
+            sys: 0,
+            idle: 100,
+            load: 0,
+        };
+    }
+
+    // Calculate percentages based on delta (actual usage since last check)
+    const userPercent = (userDelta / totalDelta) * 100;
+    const sysPercent = (sysDelta / totalDelta) * 100;
+    const idlePercent = (idleDelta / totalDelta) * 100;
+    const loadPercent = 100 - idlePercent;
 
     return {
-        user: (user / total) * 100,
-        sys: (sys / total) * 100,
-        idle: (idle / total) * 100,
-        load: 100 - (idle / total) * 100,
+        user: Math.round(userPercent * 100) / 100, // Round to 2 decimals
+        sys: Math.round(sysPercent * 100) / 100,
+        idle: Math.round(idlePercent * 100) / 100,
+        load: Math.round(loadPercent * 100) / 100,
     };
 }
 

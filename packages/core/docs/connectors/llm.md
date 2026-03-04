@@ -1,3 +1,7 @@
+---
+title: 'connectors/LLM Providers'
+---
+
 # LLM Connectors
 
 The LLM (Large Language Model) subsystem provides access to various language models from different providers. It supports text generation, chat completions, embeddings, and model management with unified interfaces across providers.

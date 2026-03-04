@@ -1,5 +1,6 @@
 import {
     AccessCandidate,
+    AgentDataConnector,
     AgentProcess,
     BinaryInput,
     ConnectorService,
@@ -20,6 +21,8 @@ import { DummyAccountHelper } from '../Security/DummyAccount.helper';
 
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
+import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/generated/Scheduler.types';
+import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
 import { isFile, uid } from '../utils/general.utils';
 import { SDKObject } from '../Core/SDKObject.class';
 import fs from 'fs';
@@ -28,6 +31,8 @@ import { HELP, showHelp } from '../utils/help';
 import { Team } from '../Security/Team.class';
 import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
 import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
+import { TCacheProvider, TCacheProviderInstances } from '../types/generated/Cache.types';
+import { CacheInstance } from '../Cache/CacheInstance.class';
 import { TLLMInstanceFactory, TLLMProviderInstances } from '../LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
@@ -122,7 +127,7 @@ class AgentCommand {
         const result = await conversation
             .streamPrompt({ message: this.prompt + attachmentsPrompt, files: hasBinarySkill ? undefined : files })
             .catch((error) => {
-                console.error('Error on streamPrompt: ', error);
+                console.error('Error on streamPrompt: ', error?.message, error?.stack);
                 return JSON.stringify({ error });
             });
 
@@ -225,6 +230,7 @@ class AgentCommand {
 export enum TAgentMode {
     DEFAULT = 'default',
     PLANNER = 'planner',
+    WORKER = 'worker',
 }
 /**
  * Configuration settings for creating an Agent instance.
@@ -246,7 +252,11 @@ export type TAgentSettings = {
     /** Optional behavior description that guides the agent's responses */
     behavior?: string;
     /** The mode of the agent */
-    mode?: TAgentMode;
+    mode?: TAgentMode | TAgentMode[];
+
+    /** Explicitly specifies the agent teamId */
+    teamId?: string;
+
     [key: string]: any;
 };
 
@@ -279,9 +289,16 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
+    public get hasExplicitId(): boolean {
+        return this._hasExplicitId;
+    }
+    #isEphemeral: boolean = true;
+    #agentDataConnector: AgentDataConnector;
     private _warningDisplayed = {
         storage: false,
+        cache: false,
         vectorDB: false,
+        scheduler: false,
     };
     private _data: AgentData & { version: string } = {
         version: '1.0.0', //schema version
@@ -294,6 +311,12 @@ export class Agent extends SDKObject {
         connections: [],
     };
 
+    private _modes: TAgentMode[] = [];
+
+    public get id(): string {
+        return this._data.id;
+    }
+
     public get behavior() {
         return this._data.behavior;
     }
@@ -302,14 +325,26 @@ export class Agent extends SDKObject {
         this._data.behavior = behavior;
     }
 
+    public get modes() {
+        return this._modes;
+    }
+
+    private _structure: any = {
+        components: [],
+        connections: [],
+    };
     /**
      * The agent internal structure
      * used for by internal operations to generate the agent data
      */
-    public structure = {
-        components: [],
-        connections: [],
-    };
+    public get structure() {
+        return this._structure;
+    }
+    public set structure(structure: any) {
+        this._structure = structure;
+
+        this.sync();
+    }
 
     private _team: Team;
     public get team() {
@@ -394,8 +429,14 @@ export class Agent extends SDKObject {
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
 
         if (mode) {
-            this.addMode(mode);
+            if (Array.isArray(mode)) {
+                mode.forEach((m) => this.setMode(m));
+            } else {
+                this.setMode(mode);
+            }
         }
+
+        this.sync();
     }
 
     protected async init() {
@@ -425,6 +466,16 @@ export class Agent extends SDKObject {
         this._readyPromise.resolve(true);
     }
 
+    public sync() {
+        if (!this.#agentDataConnector) {
+            this.#agentDataConnector = ConnectorService.getAgentDataConnector();
+        }
+
+        if (this.#agentDataConnector && this.#isEphemeral) {
+            //SDK agents loaded by data or implemented programmatically are ephemeral
+            this.#agentDataConnector.setEphemeralAgentData(this._data.id, this.data);
+        }
+    }
     private _validateId(id: string) {
         //only accept alphanumeric, hyphens and underscores
         return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
@@ -464,7 +515,7 @@ export class Agent extends SDKObject {
      */
     static import(data: TAgentSettings): Agent;
     static import(data: string, overrides?: any): Agent;
-    static import(data: string | TAgentSettings, overrides?: TAgentSettings) {
+    static import(data: string | TAgentSettings, overrides?: TAgentSettings): Agent {
         if (typeof data === 'string') {
             if (!fs.existsSync(data)) {
                 throw new Error(`File ${data} does not exist`);
@@ -473,8 +524,8 @@ export class Agent extends SDKObject {
             data = JSON.parse(fs.readFileSync(data, 'utf8')) as TAgentSettings;
 
             //when importing a .smyth file we need to override the id and teamId
-            delete data.id;
-            delete data.teamId;
+            //delete data.id;
+            //delete data.teamId;
         }
 
         const _data = {
@@ -543,12 +594,14 @@ export class Agent extends SDKObject {
      * When using storage from the agent, the agent id will be used as data owner
      *
      * **Supported providers and calling patterns:**
+     * - `agent.storage.default()` - Default storage provider
      * - `agent.storage.LocalStorage()` - Local storage
      * - `agent.storage.S3()` - S3 storage
      *
      * @example
      * ```typescript
      * // Direct storage access
+     * const defaultStorage = agent.storage.default();
      * const local = agent.storage.LocalStorage();
      * const s3 = agent.storage.S3();
      * ```
@@ -560,6 +613,8 @@ export class Agent extends SDKObject {
             this._storageProviders = {} as TStorageProviderInstances;
             for (const provider of Object.values(TStorageProvider)) {
                 this._storageProviders[provider] = (storageSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = storageSettings || {};
+                    if (!scope) scope = _scope;
                     if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.storage) {
                         this._warningDisplayed.storage = true;
                         console.warn(
@@ -569,12 +624,38 @@ export class Agent extends SDKObject {
                     const candidate =
                         scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
 
-                    return new StorageInstance(provider as TStorageProvider, storageSettings, candidate);
+                    return new StorageInstance(provider as TStorageProvider, connectorSettings, candidate);
                 };
             }
         }
 
         return this._storageProviders;
+    }
+
+    private _cacheProviders: TCacheProviderInstances;
+
+    public get cache() {
+        if (!this._cacheProviders) {
+            this._cacheProviders = {} as TCacheProviderInstances;
+            for (const provider of Object.values(TCacheProvider)) {
+                this._cacheProviders[provider] = (cacheSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = cacheSettings || {};
+                    if (!scope) scope = _scope;
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.cache) {
+                        this._warningDisplayed.cache = true;
+                        console.warn(
+                            `You are performing cache operations with an unidentified agent.\nThe data will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the data with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate =
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+
+                    return new CacheInstance(provider as TCacheProvider, connectorSettings, candidate);
+                };
+            }
+        }
+
+        return this._cacheProviders;
     }
 
     /**
@@ -583,6 +664,7 @@ export class Agent extends SDKObject {
      * When using vectorDB from the agent, the agent id will be used as data owner
      *
      * **Supported providers and calling patterns:**
+     * - `agent.vectorDB.default()` - Default vectorDB provider (RAMVec)
      * - `agent.vectorDB.RAMVec()` - A local RAM vectorDB
      * - `agent.vectorDB.Pinecone()` - Pinecone vectorDB
      */
@@ -592,6 +674,9 @@ export class Agent extends SDKObject {
             this._vectorDBProviders = {} as TVectorDBProviderInstances;
             for (const provider of Object.values(TVectorDBProvider)) {
                 this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = vectorDBSettings || {};
+                    if (!scope) scope = _scope;
+
                     if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.vectorDB) {
                         this._warningDisplayed.vectorDB = true;
                         console.warn(
@@ -600,12 +685,59 @@ export class Agent extends SDKObject {
                     }
                     const candidate =
                         scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
-                    return new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, candidate);
+                    return new VectorDBInstance(provider as TVectorDBProvider, { ...connectorSettings, namespace }, candidate);
                 };
             }
         }
 
         return this._vectorDBProviders;
+    }
+
+    /**
+     * Access to scheduler instances from the agent for direct scheduler interactions.
+     *
+     * When using scheduler from the agent, the agent id will be used as job owner
+     *
+     * **Supported providers and calling patterns:**
+     * - `agent.scheduler.default()` - Default scheduler provider (LocalScheduler)
+     * - `agent.scheduler.LocalScheduler()` - Local scheduler
+     *
+     * @example
+     * ```typescript
+     * // Direct scheduler access
+     * const scheduler = agent.scheduler.default();
+     *
+     * // Add a scheduled job
+     * await scheduler.add('health-check',
+     *   Schedule.every('5m'),
+     *   new Job(async () => {
+     *     console.log('Checking health...');
+     *   }, { name: 'Health Check' })
+     * );
+     * ```
+     */
+    private _schedulerProviders: TSchedulerProviderInstances;
+    public get scheduler() {
+        if (!this._schedulerProviders) {
+            this._schedulerProviders = {} as TSchedulerProviderInstances;
+            for (const provider of Object.values(TSchedulerProvider)) {
+                this._schedulerProviders[provider] = (schedulerSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = schedulerSettings || {};
+                    if (!scope) scope = _scope;
+
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.scheduler) {
+                        this._warningDisplayed.scheduler = true;
+                        console.warn(
+                            `You are performing scheduler operations with an unidentified agent.\nThe jobs will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the jobs with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate = scope !== Scope.TEAM && this._hasExplicitId ? this : AccessCandidate.team(this._data.teamId);
+                    return new SchedulerInstance(provider as TSchedulerProvider, connectorSettings, candidate);
+                };
+            }
+        }
+
+        return this._schedulerProviders;
     }
 
     private _vault: VaultInstance;
@@ -668,25 +800,54 @@ export class Agent extends SDKObject {
         return component;
     }
 
+    /**
+     * Remove a skill from the agent.
+     *
+     * @param skillName - The name of the skill to remove
+     * @returns The removed skill
+     *
+     * @example
+     * ```typescript
+     * agent.removeSkill('fetch_weather');
+     * ```
+     */
+    removeSkill(skillName: string) {
+        const component = this.structure.components.find((c) => c.data.data.endpoint === skillName);
+        if (component) {
+            this._structure.components = this._structure.components.filter((c) => c.data.data.endpoint !== skillName);
+            this._data.components = this._data.components.filter((c) => c.data.endpoint !== skillName);
+        }
+    }
+
+    public get skillNames() {
+        return this._data.components.map((c) => c.data.endpoint);
+    }
+
     async call(skillName: string, ...args: (Record<string, any> | any)[]) {
         try {
             const _agentData = this.data;
             const skill = _agentData.components.find((c) => c.data.endpoint === skillName);
-            if (skill?.process) {
-                const processSkill: ComponentWrapper = this.structure.components.find(
-                    (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
-                );
 
-                const handler = processSkill?.internalData?.process || (() => null);
+            // if (skill?.process) {
+            //     const processSkill: ComponentWrapper = this.structure.components.find(
+            //         (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
+            //     );
 
-                const result = await handler(...args);
+            //     const handler = processSkill?.internalData?.process || (() => null);
 
-                return result;
-            }
+            //     const result = await handler(...args);
+
+            //     return result;
+            // }
+
+            // const filteredAgentData = {
+            //     ..._agentData,
+            //     components: _agentData.components.filter((c) => !c.process),
+            // };
 
             const filteredAgentData = {
                 ..._agentData,
-                components: _agentData.components.filter((c) => !c.process),
+                components: _agentData.components,
             };
 
             const method = skill.data.method.toUpperCase();
@@ -793,9 +954,15 @@ export class Agent extends SDKObject {
             chatOptions.persist = false;
         }
 
-        return new Chat(chatOptions, this._data.defaultModel, this.data, {
+        if (!chatOptions.model) {
+            chatOptions.model = this._data.defaultModel;
+        }
+        const chat = new Chat(chatOptions, this, {
             agentId: this._data.id,
+            baseUrl: chatOptions.baseUrl,
         });
+        this.emit('chatCreated', chat);
+        return chat;
     }
 
     /**
@@ -833,15 +1000,33 @@ export class Agent extends SDKObject {
      * @example
      * ```typescript
      * agent.setMode(TAgentMode.PLANNER);
-     * //or
-     * agent.addMode('planner');
      * ```
      *
      * @param mode - The mode to apply, currently only "planner" is supported
      */
-    public addMode(mode: TAgentMode) {
+    public setMode(mode: TAgentMode) {
         if (typeof AgentMode?.[mode]?.apply === 'function') {
             AgentMode[mode].apply(this);
+            this._modes.push(mode);
+        } else {
+            console.warn(`Mode ${mode} is not a valid mode, skipping...`);
+        }
+    }
+
+    /**
+     * Remove the operational mode of the agent.
+     *
+     * @example
+     * ```typescript
+     * agent.unsetMode(TAgentMode.PLANNER);
+     * ```
+     *
+     * @param mode - The mode to remove
+     */
+    public unsetMode(mode: TAgentMode) {
+        if (typeof AgentMode?.[mode]?.remove === 'function') {
+            AgentMode[mode].remove(this);
+            this._modes = this._modes.filter((m) => m !== mode);
         } else {
             console.warn(`Mode ${mode} is not a valid mode, skipping...`);
         }

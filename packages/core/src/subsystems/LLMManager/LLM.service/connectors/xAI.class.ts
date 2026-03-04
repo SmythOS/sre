@@ -14,12 +14,15 @@ import {
     ILLMRequestFuncParams,
     TLLMChatResponse,
     ILLMRequestContext,
+    TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('xAIConnector');
 
@@ -97,21 +100,22 @@ export class xAIConnector extends LLMConnector {
         });
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    @hookAsync('LLMConnector.request')
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const grok = await this.getClient(context);
-            const response = await grok.post('/chat/completions', body);
+            const response = await grok.post('/chat/completions', body, { signal: abortSignal });
 
             const message = response?.data?.choices?.[0]?.message;
-            const finishReason = response?.data?.choices?.[0]?.finish_reason;
+            const finishReason = LLMHelper.normalizeFinishReason(response?.data?.choices?.[0]?.finish_reason);
             const usage = response?.data?.usage as TUsage;
             const citations = response?.data?.citations;
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_calls') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 toolsData =
                     message?.tool_calls?.map((tool, index) => ({
                         index,
@@ -153,7 +157,8 @@ export class xAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    @hookAsync('LLMConnector.streamRequest')
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
         try {
@@ -164,11 +169,12 @@ export class xAIConnector extends LLMConnector {
                 { ...body, stream: true, stream_options: { include_usage: true } },
                 {
                     responseType: 'stream',
+                    signal: abortSignal,
                 }
             );
 
             const reportedUsage: any[] = [];
-            let finishReason = 'stop';
+            let finishReason: TLLMFinishReason = TLLMFinishReason.Stop;
             let toolsData: any[] = [];
             let usage: any = {};
             let citations: any[] = [];
@@ -199,10 +205,10 @@ export class xAIConnector extends LLMConnector {
                             }
 
                             if (delta) {
-                                emitter.emit('data', delta);
+                                emitter.emit(TLLMEvent.Data, delta);
 
                                 if (delta.content) {
-                                    emitter.emit('content', delta.content, delta.role);
+                                    emitter.emit(TLLMEvent.Content, delta.content, delta.role);
                                 }
 
                                 if (delta.tool_calls) {
@@ -221,7 +227,7 @@ export class xAIConnector extends LLMConnector {
                             }
 
                             if (parsed.choices?.[0]?.finish_reason) {
-                                finishReason = parsed.choices[0].finish_reason;
+                                finishReason = LLMHelper.normalizeFinishReason(parsed.choices[0].finish_reason);
                             }
                         } catch (e) {
                             // Ignore parsing errors for incomplete chunks
@@ -235,11 +241,11 @@ export class xAIConnector extends LLMConnector {
                 if (citations && citations.length > 0) {
                     const citationsText = '\n\n**Sources:**\n' + citations.map((url, index) => `${index + 1}. ${url}`).join('\n');
 
-                    emitter.emit('content', citationsText, 'assistant');
+                    emitter.emit(TLLMEvent.Content, citationsText, 'assistant');
                 }
 
                 if (toolsData.length > 0) {
-                    emitter.emit('toolInfo', toolsData);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
                 // Report usage if available
@@ -253,21 +259,21 @@ export class xAIConnector extends LLMConnector {
                     reportedUsage.push(_reported);
                 }
 
-                if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
+                if (finishReason !== TLLMFinishReason.Stop) {
+                    emitter.emit(TLLMEvent.Interrupted, finishReason);
                 }
 
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, reportedUsage, finishReason);
+                    emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
                 }, 100);
             });
 
             response.data.on('error', (error) => {
-                emitter.emit('error', error);
+                emitter.emit(TLLMEvent.Error, error);
             });
         } catch (error) {
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            emitter.emit('error', error);
+            emitter.emit(TLLMEvent.Error, error);
         }
 
         return emitter;

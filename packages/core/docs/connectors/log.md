@@ -1,3 +1,7 @@
+---
+title: 'connectors/Logging'
+---
+
 # Log Connectors
 
 The Log subsystem handles application logging and monitoring.

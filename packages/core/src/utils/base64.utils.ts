@@ -110,7 +110,7 @@ export function isBase64(str: string): boolean {
     const cleanedBase64Data = cleanBase64(str);
 
     // Sometimes words like 'male' and hashes like md5, sha1, sha256, sha512 are detected as base64
-    if (cleanedBase64Data.length < 128) return false;
+    //if (cleanedBase64Data.length < 128) return false;
 
     try {
         const buffer = Buffer.from(cleanedBase64Data, 'base64');

@@ -10,7 +10,7 @@ export interface ISmythAccountRequest {
     getCandidateTeam(): Promise<string | undefined>;
     getAllTeamSettings(): Promise<KeyValueObject>;
     getAllUserSettings(): Promise<KeyValueObject>;
-    getTeamSetting(settingKey: string): Promise<string>;
+    getTeamSetting(settingKey: string, group?: string): Promise<string>;
     getUserSetting(settingKey: string): Promise<string>;
     getAgentSetting(settingKey: string): Promise<string>;
     getTeam(): Promise<string>;
@@ -25,7 +25,7 @@ export abstract class AccountConnector extends Connector {
             getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),
             getUserSetting: async (settingKey: string) => this.getUserSetting(candidate.readRequest, candidate.id, settingKey),
             getAllTeamSettings: async () => this.getAllTeamSettings(candidate.readRequest, candidate.id),
-            getTeamSetting: async (settingKey: string) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
+            getTeamSetting: async (settingKey: string, group?: string) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey, group),
             isTeamMember: async (teamId: string) => this.isTeamMember(teamId, candidate),
             getCandidateTeam: async () => this.getCandidateTeam(candidate),
             getTeam: async () => this.getCandidateTeam(candidate),
@@ -38,7 +38,7 @@ export abstract class AccountConnector extends Connector {
     public abstract getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined>;
     public abstract getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject>;
     public abstract getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject>;
-    public abstract getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string>;
+    public abstract getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string, group?: string): Promise<string>;
     public abstract getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string>;
     public abstract getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string>;
 }

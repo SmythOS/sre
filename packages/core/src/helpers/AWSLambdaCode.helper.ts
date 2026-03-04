@@ -2,7 +2,17 @@ import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import zl from 'zip-lib';
-import { InvokeCommand, Runtime, LambdaClient, UpdateFunctionCodeCommand, CreateFunctionCommand, GetFunctionCommand, GetFunctionCommandOutput, InvokeCommandOutput, UpdateFunctionConfigurationCommand } from '@aws-sdk/client-lambda';
+import {
+    InvokeCommand,
+    Runtime,
+    LambdaClient,
+    UpdateFunctionCodeCommand,
+    CreateFunctionCommand,
+    GetFunctionCommand,
+    GetFunctionCommandOutput,
+    InvokeCommandOutput,
+    UpdateFunctionConfigurationCommand,
+} from '@aws-sdk/client-lambda';
 import { GetRoleCommand, CreateRoleCommand, IAMClient, GetRoleCommandOutput, CreateRoleCommandOutput } from '@aws-sdk/client-iam';
 import fs from 'fs';
 import { AWSConfig, AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
@@ -18,7 +28,6 @@ const PER_SECOND_COST = 0.0001;
 export function getLambdaFunctionName(agentId: string, componentId: string) {
     return `${agentId}-${componentId}`;
 }
-
 
 export function generateCodeHash(code_body: string, codeInputs: string[], envVariables: string[]) {
     const bodyHash = getSanitizeCodeHash(code_body);
@@ -79,9 +88,7 @@ export async function getDeployedCodeHash(agentId: string, componentId: string) 
 
 export async function setDeployedCodeHash(agentId: string, componentId: string, codeHash: string) {
     const redisCache = ConnectorService.getCacheConnector();
-    await redisCache
-        .user(AccessCandidate.agent(agentId))
-        .set(`${cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, cacheTTL);
+    await redisCache.user(AccessCandidate.agent(agentId)).set(`${cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, cacheTTL);
 }
 
 function replaceVaultKeysTemplateVars(code: string, envVariables: Record<string, string>) {
@@ -121,19 +128,13 @@ export async function zipCode(directory: string) {
             },
             function (err) {
                 reject(err);
-            },
+            }
         );
     });
 }
 
 export async function createOrUpdateLambdaFunction(functionName, zipFilePath, awsConfigs, envVariables: Record<string, string>) {
-    const client = new LambdaClient({
-        region: awsConfigs.region,
-        credentials: {
-            accessKeyId: awsConfigs.accessKeyId,
-            secretAccessKey: awsConfigs.secretAccessKey,
-        },
-    });
+    const client = getAWSLambdaClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey)
     const functionContent = fs.readFileSync(zipFilePath);
 
     try {
@@ -161,20 +162,14 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
             let roleArn = '';
             // check if the role exists
             try {
-                const iamClient = new IAMClient({
-                    region: awsConfigs.region,
-                    credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
-                });
+                const iamClient = getAWSIAMClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey);
                 const getRoleCommand = new GetRoleCommand({ RoleName: `smyth-${functionName}-role` });
                 const roleResponse: GetRoleCommandOutput = await iamClient.send(getRoleCommand);
                 roleArn = roleResponse.Role.Arn;
             } catch (error) {
                 if (error.name === 'NoSuchEntityException') {
                     // create role
-                    const iamClient = new IAMClient({
-                        region: awsConfigs.region,
-                        credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
-                    });
+                    const iamClient = getAWSIAMClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey);
                     const createRoleCommand = new CreateRoleCommand({
                         RoleName: `smyth-${functionName}-role`,
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
@@ -201,14 +196,9 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                 MemorySize: 256,
                 ...(envVariables && Object.keys(envVariables).length ? { Environment: { Variables: envVariables } } : {}),
             };
-
-            const functionCreateCommand = new CreateFunctionCommand(functionParams);
-            await client.send(functionCreateCommand);
-            // console.log('Function ARN:', functionResponse.FunctionArn);
+            // Retry mechanism for Lambda function creation with exponential backoff
+            await createLambdaFunction(client, functionParams);
             await verifyFunctionDeploymentStatus(functionName, client);
-            // wait 500 ms to let the function trust policy be applied
-            // it will only occur when the function is created for the first time
-            await new Promise((resolve) => setTimeout(resolve, 500));
         }
     } catch (error) {
         throw error;
@@ -226,20 +216,47 @@ function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: s
     return client.send(updateFunctionConfigurationCommand);
 }
 
+async function createLambdaFunction(client: LambdaClient, functionParams: any, maxRetries: number = 5): Promise<void> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const functionCreateCommand = new CreateFunctionCommand(functionParams);
+            await client.send(functionCreateCommand);
+            return; // Success, exit the retry loop
+        } catch (error) {
+            lastError = error;
+            // Check if this is a role trust policy error
+            if (error?.message?.includes('cannot be assumed by Lambda')) {
+                if (attempt < maxRetries) {
+                    // Exponential backoff: 2^attempt seconds (2, 4, 8, 16, 32 seconds)
+                    const waitTime = Math.pow(2, attempt) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    continue;
+                }
+            }
+            // For other errors or if we've exhausted retries, throw immediately
+            throw error;
+        }
+    }
+
+    // If we get here, all retries failed
+    throw lastError || new Error('Lambda function creation failed after all retry attempts');
+}
+
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
     return new Promise((resolve, reject) => {
-        try {
-            let interval = setInterval(async () => {
-                const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
-                const roleResponse = await client.send(getRoleCommand);
-                if (roleResponse.Role.AssumeRolePolicyDocument) {
-                    clearInterval(interval);
-                    return resolve(true);
-                }
-            }, 7000);
-        } catch (error) {
-            return false;
-        }
+        const interval = setInterval(async () => {
+            const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
+            const roleResponse = await client.send(getRoleCommand);
+
+            // Check if role exists and has assume role policy document
+            if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
+                clearInterval(interval);
+                setTimeout(() => resolve(true), 2000);
+                return;
+            }
+        }, 2000); // Check every 2 seconds
     });
 }
 
@@ -276,7 +293,6 @@ export function getLambdaRolePolicy() {
     });
 }
 
-
 export async function updateDeployedCodeTTL(agentId: string, componentId: string, ttl: number) {
     const redisCache = ConnectorService.getCacheConnector();
     await redisCache.user(AccessCandidate.agent(agentId)).updateTTL(`${cachePrefix}_${agentId}-${componentId}`, ttl);
@@ -285,18 +301,10 @@ export async function updateDeployedCodeTTL(agentId: string, componentId: string
 export async function invokeLambdaFunction(
     functionName: string,
     inputs: { [key: string]: any },
-    awsCredentials: AWSCredentials & AWSRegionConfig,
+    awsCredentials: AWSCredentials & AWSRegionConfig
 ): Promise<any> {
     try {
-        const client = new LambdaClient({
-            region: awsCredentials.region as string,
-            ...(awsCredentials.accessKeyId && {
-                credentials: {
-                    accessKeyId: awsCredentials.accessKeyId as string,
-                    secretAccessKey: awsCredentials.secretAccessKey as string,
-                },
-            }),
-        });
+        const client = getAWSLambdaClient(awsCredentials.region, awsCredentials.accessKeyId, awsCredentials.secretAccessKey);
 
         const invokeCommand = new InvokeCommand({
             FunctionName: functionName,
@@ -316,13 +324,7 @@ export async function invokeLambdaFunction(
 
 export async function getDeployedFunction(functionName: string, awsConfigs: AWSCredentials & AWSRegionConfig) {
     try {
-        const client = new LambdaClient({
-            region: awsConfigs.region as string,
-            credentials: {
-                accessKeyId: awsConfigs.accessKeyId as string,
-                secretAccessKey: awsConfigs.secretAccessKey as string,
-            },
-        });
+        const client = getAWSLambdaClient(awsConfigs.region as string, awsConfigs.accessKeyId as string, awsConfigs.secretAccessKey as string);
         const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
         const lambdaResponse: GetFunctionCommandOutput = await client.send(getFunctionCommand);
         return {
@@ -361,6 +363,30 @@ export async function getLambdaCredentials(agent: IAgent, config: any): Promise<
     return awsCredentials;
 }
 
+function getAWSLambdaClient(region: string, accessKeyId?: string, secretAccessKey?: string) {
+    return new LambdaClient({
+        region,
+        ...(accessKeyId && secretAccessKey && {
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+        }),
+    });
+}
+
+function getAWSIAMClient(region: string, accessKeyId?: string, secretAccessKey?: string) {
+    return new IAMClient({
+        region,
+        ...(accessKeyId && secretAccessKey && {
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+        }),
+    });
+}
+
 export function calculateExecutionCost(executionTime: number) {
     // executionTime in milliseconds
     const cost = (executionTime / 1000) * Number(PER_SECOND_COST);
@@ -384,11 +410,11 @@ export function reportUsage({ cost, agentId, teamId }: { cost: number; agentId: 
 
 export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; error?: string; parameters?: string[]; dependencies?: string[] } {
     try {
-        const code = replaceVaultKeysTemplateVars(rawCode, {});
+        const code = replaceVaultKeysTemplateVars(rawCode.trim(), {});
         // Parse the code using     acorn
         const ast = acorn.parse(code, {
             ecmaVersion: 'latest',
-            sourceType: 'module'
+            sourceType: 'module',
         });
 
         // Extract library imports
@@ -414,11 +440,13 @@ export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; 
             }
 
             // Handle CallExpression (require() calls)
-            if (node.type === 'CallExpression' &&
+            if (
+                node.type === 'CallExpression' &&
                 node.callee.type === 'Identifier' &&
                 node.callee.name === 'require' &&
                 node.arguments.length > 0 &&
-                node.arguments[0].type === 'Literal') {
+                node.arguments[0].type === 'Literal'
+            ) {
                 const modulePath = node.arguments[0].value;
                 if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
                     libraries.add(extractPackageName(modulePath));
@@ -426,10 +454,12 @@ export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; 
             }
 
             // Handle dynamic import() calls
-            if (node.type === 'CallExpression' &&
+            if (
+                node.type === 'CallExpression' &&
                 node.callee.type === 'Import' &&
                 node.arguments.length > 0 &&
-                node.arguments[0].type === 'Literal') {
+                node.arguments[0].type === 'Literal'
+            ) {
                 const modulePath = node.arguments[0].value;
                 if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
                     libraries.add(extractPackageName(modulePath));
@@ -503,7 +533,7 @@ export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; 
             return {
                 isValid: false,
                 error: 'No main function found at root level',
-                dependencies
+                dependencies,
             };
         }
 
@@ -511,7 +541,7 @@ export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; 
             return {
                 isValid: false,
                 error: 'Main function exists but is not async',
-                dependencies
+                dependencies,
             };
         }
 
@@ -519,7 +549,7 @@ export function validateAsyncMainFunction(rawCode: string): { isValid: boolean; 
     } catch (error) {
         return {
             isValid: false,
-            error: `Failed to parse code: ${error.message}`
+            error: `Failed to parse code: ${error.message}`,
         };
     }
 }
@@ -549,7 +579,7 @@ export function generateCodeFromLegacyComponent(code_body: string, code_imports:
      async function main(${codeInputs.join(', ')}) {
         ${code_body}
     }
-    `
+    `;
     return code;
 }
 
@@ -565,14 +595,12 @@ export function extractAllKeyNamesFromTemplateVars(input: string): string[] {
     return matches;
 }
 
-
-async function fetchVaultSecret(keyName: string, agentTeamId: string): Promise<{ value: string, key: string }> {
+async function fetchVaultSecret(keyName: string, agentTeamId: string): Promise<{ value: string; key: string }> {
     const vaultSecret = await VaultHelper.getAgentKey(keyName, agentTeamId);
     return {
         value: vaultSecret,
         key: keyName,
     };
-
 }
 
 export async function getCurrentEnvironmentVariables(agentTeamId: string, code: string): Promise<Record<string, string>> {

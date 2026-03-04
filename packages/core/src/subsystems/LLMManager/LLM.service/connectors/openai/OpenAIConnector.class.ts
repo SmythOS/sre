@@ -1,35 +1,36 @@
 import EventEmitter from 'events';
-import OpenAI from 'openai';
-import { toFile } from 'openai';
 import { encodeChat } from 'gpt-tokenizer';
+import OpenAI, { toFile } from 'openai';
 
 import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import {
-    TLLMParams,
-    ToolData,
-    TLLMMessageBlock,
-    TLLMToolResultMessageBlock,
-    TLLMMessageRole,
     APIKeySource,
-    ILLMRequestFuncParams,
-    TOpenAIRequestBody,
-    TLLMChatResponse,
-    ILLMRequestContext,
     BasicCredentials,
+    ILLMRequestContext,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMMessageBlock,
+    TLLMMessageRole,
     TLLMPreparedParams,
+    TLLMToolResultMessageBlock,
+    ToolData,
+    TOpenAIRequestBody,
+    TLLMEvent,
+    TLLMFinishReason,
 } from '@sre/types/LLM.types';
 
-import { LLMConnector } from '../../LLMConnector';
-import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { HandlerDependencies, TToolType } from './types';
-import { OpenAIApiInterfaceFactory, OpenAIApiInterface } from './apiInterfaces';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { LLMConnector } from '../../LLMConnector';
+import { OpenAIApiInterface, OpenAIApiInterfaceFactory } from './apiInterfaces';
+import { HandlerDependencies } from './types';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('OpenAIConnector');
 
@@ -71,47 +72,52 @@ export class OpenAIConnector extends LLMConnector {
         return responseInterface;
     }
 
-    protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
-        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
-        const baseURL = params?.modelInfo?.baseURL;
+    protected async getClient(context: ILLMRequestContext): Promise<OpenAI> {
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey || '';
+        const baseURL = context?.modelInfo?.baseURL;
 
-        if (!apiKey) throw new Error('Please provide an API key for OpenAI');
+        try {
+            const openai = new OpenAI({ baseURL, apiKey });
 
-        const openai = new OpenAI({ baseURL, apiKey });
-
-        return openai;
+            return openai;
+        } catch (error) {
+            console.error('Error: on OpenAI client initialization', error);
+            throw error;
+        }
     }
 
-    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+    @hookAsync('LLMConnector.request')
+    protected async request({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const _body = body as OpenAI.ChatCompletionCreateParams;
 
-            // #region Validate token limit
-            const messages = _body?.messages || [];
-            const lastMessage = messages[messages.length - 1];
-            const promptTokens = await this.computePromptTokens(messages, context);
+            // #region Validate the token limit only if it's a legacy model.
+            if (context?.modelEntryName?.startsWith('legacy/')) {
+                const messages = _body?.messages || [];
+                const promptTokens = await this.computePromptTokens(messages, context);
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: _body.max_completion_tokens,
-            });
+                await this.validateTokenLimit({
+                    acRequest,
+                    promptTokens,
+                    context,
+                    maxTokens: _body.max_completion_tokens,
+                });
+            }
             // #endregion Validate token limit
 
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const result = await apiInterface.createRequest(body, context);
+            const result = await apiInterface.createRequest(body, context, abortSignal);
 
             const message = result?.choices?.[0]?.message || { content: result?.output_text };
-            const finishReason = result?.choices?.[0]?.finish_reason || result?.incomplete_details || 'stop';
+            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason || result?.incomplete_details || TLLMFinishReason.Stop);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
 
-            if (finishReason === 'tool_calls') {
+            if (finishReason === TLLMFinishReason.ToolCalls) {
                 toolsData =
                     message?.tool_calls?.map((tool, index) => ({
                         index,
@@ -147,33 +153,76 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+    /**
+     * Stream request implementation.
+     * 
+     * **Error Handling Pattern:**
+     * - Always returns emitters, never throws errors - ensures consistent error handling
+     * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
+     * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
+     * 
+     * **Why setImmediate?**
+     * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
+     * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
+     * listeners are attached. This prevents race conditions where synchronous event emission
+     * would occur before listeners can be registered.
+     * 
+     * @param acRequest - Access request for authorization
+     * @param body - Request body parameters
+     * @param context - LLM request context
+     * @param abortSignal - AbortSignal for cancellation
+     * @returns EventEmitter that emits TLLMEvent events (Data, Content, Error, Abort, End, etc.)
+     */
+    @hookAsync('LLMConnector.streamRequest')
+    protected async streamRequest({ acRequest, body, context, abortSignal }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        let emitter: EventEmitter = new EventEmitter();
+
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            // #region Validate token limit
-            const messages = body?.messages || body?.input || [];
-            const lastMessage = messages[messages.length - 1];
-            const promptTokens = await this.computePromptTokens(messages, context);
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: body.max_completion_tokens,
-            });
+            // #region Validate the token limit only if it's a legacy model.
+            if (context?.modelEntryName?.startsWith('legacy/')) {
+                const messages = body?.messages || body?.input || [];
+                const promptTokens = await this.computePromptTokens(messages, context);
+
+                await this.validateTokenLimit({
+                    acRequest,
+                    promptTokens,
+                    context,
+                    maxTokens: body.max_completion_tokens,
+                });
+            }
             // #endregion Validate token limit
 
             const responseInterface = this.getInterfaceType(context);
             const apiInterface = this.getApiInterface(responseInterface, context);
 
-            const stream = await apiInterface.createStream(body, context);
+            const stream = await apiInterface.createStream(body, context, abortSignal);
 
-            const emitter = apiInterface.handleStream(stream, context);
+            emitter = apiInterface.handleStream(stream, context);
 
             return emitter;
         } catch (error) {
+            const isAbort = (error as any)?.name === 'AbortError' || abortSignal?.aborted;
+
+            if (isAbort) {
+                // Always use DOMException with name 'AbortError' per Web API standards for consistency
+                const abortError = new DOMException('Request aborted', 'AbortError');
+                logger.debug(`streamRequest ${this.name} aborted`, abortError, acRequest.candidate);
+                setImmediate(() => {
+                    emitter.emit(TLLMEvent.Abort, abortError);
+                    emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Abort);
+                });
+                return emitter;
+            }
+
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
-            throw error;
+            setImmediate(() => {
+                emitter.emit(TLLMEvent.Error, error);
+                emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
+            });
+            
+            return emitter;
         }
     }
 

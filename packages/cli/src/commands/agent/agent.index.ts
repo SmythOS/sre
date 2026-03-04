@@ -19,6 +19,7 @@ export default class AgentCmd extends Command {
 
     static override examples = [
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat --mode planner',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --prompt "What is the weather in Tokyo?"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question="who are you"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse',
@@ -76,6 +77,15 @@ export default class AgentCmd extends Command {
             helpLabel: '--vault',
             multiple: false,
         }),
+
+        mode: Flags.string({
+            char: 'm',
+            description: 'Set the agent execution mode\nExample: sre ./myagent.smyth --chat --mode planner\n\n ',
+            helpValue: '<mode>',
+            helpLabel: '--mode',
+            options: ['default', 'planner'],
+            default: 'default',
+        }),
     };
 
     private _logDisabled = true;
@@ -89,7 +99,7 @@ export default class AgentCmd extends Command {
         const { args, flags } = await this.parse(AgentCmd);
 
         // If no arguments and no flags are provided, show help
-        if (!args.path && Object.keys(flags).length === 0) {
+        if (!args.path) {
             this.log('No agent path provided, showing help...');
             const help = new Help(this.config);
             await help.showHelp(['agent']);
@@ -201,6 +211,7 @@ export default class AgentCmd extends Command {
             promptModel,
             vault: vaultPath || null,
             models: modelsPath || null,
+            mode: flags.mode || 'default',
         };
         this.log(chalk.gray(`   Flags: ${JSON.stringify(allFlags, null, 2).replace(/\n/g, '\n          ')}`));
 

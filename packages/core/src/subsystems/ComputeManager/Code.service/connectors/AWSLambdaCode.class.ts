@@ -8,7 +8,6 @@ import { execSync } from 'child_process';
 import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getCurrentEnvironmentVariables, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, getSortedObjectValues, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { Logger } from '@sre/helpers/Log.helper';
-
 const console = Logger('AWSLambda');
 
 export class AWSLambdaCode extends CodeConnector {
@@ -94,7 +93,7 @@ export class AWSLambdaCode extends CodeConnector {
         try {
             const agentId = acRequest.candidate.id;
             const functionName = getLambdaFunctionName(agentId, codeUID);
-
+            
             const lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
             const executionTime = lambdaResponse.executionTime;
             await updateDeployedCodeTTL(agentId, codeUID, cacheTTL);

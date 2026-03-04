@@ -1,3 +1,7 @@
+---
+title: 'connectors/Router'
+---
+
 # Router Connectors
 
 The Router subsystem provides HTTP routing and API endpoint management.

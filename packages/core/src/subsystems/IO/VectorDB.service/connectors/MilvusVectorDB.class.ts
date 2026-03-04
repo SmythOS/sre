@@ -1,4 +1,3 @@
-//==[ SRE: S3Storage ]======================
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -9,14 +8,29 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
-import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
-import { chunkText } from '@sre/utils/string.utils';
+import {
+    DatasourceDto,
+    IStorageVectorDataSource,
+    IVectorDataSourceDto,
+    QueryOptions,
+    VectorDBResult,
+    VectorsResultData,
+} from '@sre/types/VectorDB.types';
+import { calcSizeMb } from '@sre/utils/string.utils';
 import { CreateIndexSimpleReq, DataType, ErrorCode, FieldType, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import crypto from 'crypto';
 import { jsonrepair } from 'jsonrepair';
 import { EmbeddingsFactory } from '../embed';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
+import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
+
+//! Due to current bug (still investigating), any consumer of this connector
+//! needs to install @zilliz/milvus2-sdk-node in the package.json of the project so it can work
+
+//* Note, we are storing Datasources info inside both NKV and Milvus (using some quirks).
+//* The connector favors NKV as storage number 1, and Milvus acting as fallback storage.
+//* This is because Milvus operations are heavy and can be slow the more u add big datasources
 
 const console = Logger('Milvus');
 
@@ -24,12 +38,19 @@ export type IMilvusCredentials = { address: string; token: string } | { address:
 type IndexParams = Omit<CreateIndexSimpleReq, 'collection_name'>[] | Omit<CreateIndexSimpleReq, 'collection_name'>;
 
 export type MilvusConfig = {
+    /**
+     * The Milvus connection credentials
+     */
     credentials: IMilvusCredentials;
-    embeddings: TEmbeddings;
+
+    /**
+     * The embeddings model to use
+     */
+    embeddings?: TEmbeddings;
 };
 
 // Define schema field names as a type for strong typing
-type SchemaFieldNames = 'id' | 'text' | 'namespaceId' | 'datasourceId' | 'datasourceLabel' | 'vector' | 'acl' | 'user_metadata';
+type SchemaFieldNames = 'id' | 'text' | 'namespaceId' | 'datasourceId' | 'datasourceLabel' | 'vector' | 'acl' | 'user_metadata' | 'smyth_metadata';
 
 type SchemaField = FieldType & { name: SchemaFieldNames };
 
@@ -42,6 +63,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     public embedder: BaseEmbedding;
     private SCHEMA_DEFINITION: SchemaField[];
     private INDEX_PARAMS: IndexParams;
+    private nkvConnector: NKVConnector;
 
     constructor(protected _settings: MilvusConfig) {
         super(_settings);
@@ -59,12 +81,22 @@ export class MilvusVectorDB extends VectorDBConnector {
 
         console.log('clientConfig', clientConfig);
 
-        this.client = new MilvusClient(clientConfig);
+        this.client = new MilvusClient(clientConfig, undefined, undefined, undefined, {
+            'grpc.max_receive_message_length': 50 * 1024 * 1024,
+            'grpc.max_send_message_length': 50 * 1024 * 1024,
+            max_receive_message_length: 50 * 1024 * 1024,
+            max_send_message_length: 50 * 1024 * 1024,
+        });
         console.info('Milvus client initialized');
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
-        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
-        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
+        this.nkvConnector = ConnectorService.getNKVConnector();
+
+        if (!_settings.embeddings) {
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 3072 };
+        }
+
+        if (!_settings.embeddings?.dimensions) _settings.embeddings.dimensions = 3072;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
 
@@ -110,6 +142,11 @@ export class MilvusVectorDB extends VectorDBConnector {
                 name: 'acl',
                 data_type: DataType.VarChar,
                 max_length: 2048,
+            },
+            {
+                name: 'smyth_metadata',
+                data_type: DataType.VarChar,
+                max_length: 65535,
             },
         ];
         this.INDEX_PARAMS = {
@@ -175,6 +212,11 @@ export class MilvusVectorDB extends VectorDBConnector {
             throw new Error(`Error dropping collection: ${res}`);
         }
 
+        // delete the linked datasources from nkv
+        await this.nkvConnector
+            .requester(acRequest.candidate as AccessCandidate)
+            .deleteAll(`vectorDB:${this.id}:namespaces:${preparedNs}:datasources`);
+
         await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
     }
 
@@ -194,11 +236,14 @@ export class MilvusVectorDB extends VectorDBConnector {
         }
 
         const result = await this.client.search({
-            vector: _vector as number[],
+            data: _vector as number[],
             collection_name: preparedNs,
-            output_fields: ['id', 'text', this.USER_METADATA_KEY, 'namespaceId', 'datasourceId', 'datasourceLabel', 'vector'],
             limit: options.topK || 10,
         });
+
+        if (result.status.error_code !== ErrorCode.SUCCESS) {
+            throw new Error(`Error searching data: ${result.status.detail}`);
+        }
 
         return result.results.map((match) => {
             let _record = match;
@@ -220,7 +265,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
-    ): Promise<string[]> {
+    ): Promise<VectorDBResult[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -232,17 +277,45 @@ export class MilvusVectorDB extends VectorDBConnector {
 
         const sourceType = this.embedder.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Unsupported source type');
+
         const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType, acRequest.candidate as AccessCandidate);
-        const preparedSource: Record<SchemaFieldNames, any>[] = transformedSource.map((s) => ({
-            id: s.id,
-            text: s.metadata?.text,
-            user_metadata: s.metadata?.[this.USER_METADATA_KEY],
-            namespaceId: preparedNs,
-            datasourceId: s.metadata?.datasourceId,
-            datasourceLabel: s.metadata?.datasourceLabel,
-            vector: s.source,
-            acl: s.metadata?.acl,
-        }));
+
+        const liveSchema = await this.client.describeCollection({
+            collection_name: preparedNs,
+        });
+
+        // only incl the fields that are in the live schema
+
+        const preparedSource: Partial<Record<SchemaFieldNames, any>>[] = transformedSource.map((s) => {
+            function schemaFieldExists(field: SchemaFieldNames) {
+                return liveSchema.schema.fields.some((f) => f.name === field);
+            }
+            return {
+                id: s.id,
+                text: s.metadata?.text,
+                user_metadata: s.metadata?.[this.USER_METADATA_KEY],
+                namespaceId: preparedNs,
+                datasourceId: s.metadata?.datasourceId, // legacy field
+                datasourceLabel: s.metadata?.datasourceLabel, // legacy field
+                vector: s.source,
+                acl: s.metadata?.acl,
+                ...(schemaFieldExists('smyth_metadata')
+                    ? {
+                          smyth_metadata: JSON.stringify({
+                              datasource: {
+                                  id: s.metadata?.datasourceId,
+                                  label: s.metadata?.datasourceLabel,
+                                  chunkSize: s.metadata?.chunkSize,
+                                  chunkOverlap: s.metadata?.chunkOverlap,
+                                  createdAt: s.metadata?.createdAt,
+                                  datasourceSizeMb: s.metadata?.datasourceSizeMb,
+                                  chunkIndex: s.metadata?.chunkIndex,
+                              },
+                          }),
+                      }
+                    : {}),
+            };
+        });
 
         const res = await this.client.insert({
             collection_name: preparedNs,
@@ -253,7 +326,18 @@ export class MilvusVectorDB extends VectorDBConnector {
             throw new Error(`Error inserting data: ${res?.status?.error_code}`);
         }
 
-        return preparedSource.map((s) => s.id);
+        return preparedSource.map((s) => {
+            const { text, acl, user_metadata, ...restMetadata } = s || {};
+            return {
+                id: s.id,
+                values: s.vector as number[],
+                text: text as string,
+                metadata: {
+                    ...restMetadata,
+                    ...((typeof user_metadata === 'string' ? JSON.parse(user_metadata) : user_metadata) as Record<string, any>),
+                },
+            };
+        });
     }
 
     @SecureConnector.AccessControl
@@ -261,7 +345,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
-        const isDeleteByFilter = typeof deleteTarget === 'object';
+        const isDeleteByFilter = typeof deleteTarget === 'object' && !Array.isArray(deleteTarget);
         if (isDeleteByFilter) {
             const supportedFields: SchemaFieldNames[] = ['datasourceId'];
             if (!supportedFields.some((field) => field in deleteTarget)) {
@@ -294,13 +378,17 @@ export class MilvusVectorDB extends VectorDBConnector {
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner);
         const dsId = datasource.id || crypto.randomUUID();
 
+        if (!datasource.chunkSize) datasource.chunkSize = 1000;
+        if (!datasource.chunkOverlap) datasource.chunkOverlap = 200;
+
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const chunkedText = chunkText(datasource.text, {
+        const chunkedText = this.embedder.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });
         const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
         const label = datasource.label || 'Untitled';
+        const totalSizeMb = calcSizeMb(datasource.text);
         const source: IVectorDataSourceDto[] = chunkedText.map<IVectorDataSourceDto>((doc, i) => {
             return {
                 id: ids[i],
@@ -310,6 +398,11 @@ export class MilvusVectorDB extends VectorDBConnector {
                     namespaceId: formattedNs,
                     datasourceId: dsId,
                     datasourceLabel: label,
+                    chunkSize: datasource?.chunkSize?.toString(),
+                    chunkOverlap: datasource?.chunkOverlap?.toString(),
+                    createdAt: new Date().getTime().toString(),
+                    datasourceSizeMb: totalSizeMb.toString(),
+                    chunkIndex: i,
                     user_metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : JSON.stringify({}),
                 },
             };
@@ -317,16 +410,29 @@ export class MilvusVectorDB extends VectorDBConnector {
 
         const _vIds = await this.insert(acRequest, namespace, source);
 
-        return {
+        const dsData: IStorageVectorDataSource = {
             namespaceId: formattedNs,
             candidateId: acRequest.candidate.id,
             candidateRole: acRequest.candidate.role,
             name: label,
             metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds: _vIds.map((v) => v.id),
             id: dsId,
+            chunkSize: datasource.chunkSize,
+            chunkOverlap: datasource.chunkOverlap,
+            createdAt: new Date(),
+            datasourceSizeMb: totalSizeMb,
         };
+
+        await this.nkvConnector
+            .requester(acRequest.candidate as AccessCandidate)
+            .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
+
+        if (datasource.returnFullVectorInfo) {
+            dsData.vectorInfo = _vIds;
+        }
+        return dsData;
     }
 
     @SecureConnector.AccessControl
@@ -335,6 +441,10 @@ export class MilvusVectorDB extends VectorDBConnector {
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         await this.delete(acRequest, namespace, { datasourceId });
+
+        await this.nkvConnector
+            .requester(acRequest.candidate as AccessCandidate)
+            .delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
     }
 
     @SecureConnector.AccessControl
@@ -342,12 +452,26 @@ export class MilvusVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
+        //* [1] Get datasources from NKV
+        try {
+            const nkvDatasources = await this.nkvConnector
+                .requester(acRequest.candidate as AccessCandidate)
+                .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)
+                .then((ds) => ds.map((d) => JSONContentHelper.create(d.data?.toString()).tryParse() as IStorageVectorDataSource));
+
+            return nkvDatasources;
+        } catch (error) {
+            console.error('[NKV] Error listing datasources: ', error);
+        }
+
+        console.info('Trying to get datasources from Milvus');
+        //* [2] Get datasources from Milvus [EXPENSIVE OPERATION] that may exhaust rpc channel
         // Use queryIterator for memory-efficient pagination
         const batchSize = 1000; // Process 1000 records at a time
         const iterator = await this.client.queryIterator({
             collection_name: formattedNs,
             batchSize: batchSize,
-            output_fields: ['id', 'text', this.USER_METADATA_KEY, 'namespaceId', 'datasourceId', 'datasourceLabel', 'vector'],
+            // output_fields: ['id', 'text', this.USER_METADATA_KEY, 'namespaceId', 'datasourceId', 'datasourceLabel', 'vector'],
         });
 
         // Group records by datasourceId using Map for efficient lookups
@@ -363,16 +487,19 @@ export class MilvusVectorDB extends VectorDBConnector {
                             namespaceId: formattedNs,
                             candidateId: acRequest.candidate.id,
                             candidateRole: acRequest.candidate.role,
-                            text: record.text,
+                            // text: record.text,
                             name: record.datasourceLabel,
                             metadata: record[this.USER_METADATA_KEY]
                                 ? JSONContentHelper.create(record[this.USER_METADATA_KEY].toString()).tryParse()
                                 : undefined,
-                            vectorIds: [],
                             id: datasourceId,
+                            vectorIds: [], // to be filled iteratively
+                            text: '', // to be filled iteratively
                         });
                     }
                     datasourceMap.get(datasourceId)!.vectorIds.push(record.id);
+                    // the text here represents the total text of the datasource (not a vector-stored text)
+                    datasourceMap.get(datasourceId)!.text += record.text;
                 }
             }
         } finally {
@@ -386,10 +513,41 @@ export class MilvusVectorDB extends VectorDBConnector {
     protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource | undefined> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
+
+        //* [1] Get datasource from NKV
+        try {
+            const nkvDatasource = await this.nkvConnector
+                .requester(acRequest.candidate as AccessCandidate)
+                .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
+                .then((ds) => JSONContentHelper.create(ds?.toString()).tryParse() as IStorageVectorDataSource);
+
+            if (nkvDatasource) {
+                return nkvDatasource;
+            } else {
+                console.info('Datasource not found in NKV');
+            }
+        } catch (error) {
+            console.error('[NKV] Error getting datasource: ', error);
+        }
+
+        console.info('Trying to get datasource from Milvus');
+
+        //* [2] Get datasource from Milvus
         const res = await this.client.query({
             collection_name: formattedNs,
             expr: `datasourceId == "${datasourceId}"`,
-            output_fields: ['id', 'text', this.USER_METADATA_KEY, 'namespaceId', 'datasourceId', 'datasourceLabel', 'vector'],
+            // output_fields: [
+            //     'id',
+            //     'text',
+            //     this.USER_METADATA_KEY,
+            //     'namespaceId',
+            //     'datasourceId',
+            //     'datasourceLabel',
+            //     'vector',
+            //     'chunkSize',
+            //     'chunkOverlap',
+            //     'createdAt',
+            // ],
         });
         // if 0 results, throw error
         if (res.data.length === 0) {

@@ -44,12 +44,6 @@ const IMAGE_GEN_COST_MAP = {
     },
 };
 
-// Imagen 4 cost map - fixed cost per image
-const IMAGEN_4_COST_MAP = {
-    'imagen-4': 0.04, // Standard Imagen 4
-    'imagen-4-ultra': 0.06, // Imagen 4 Ultra
-};
-
 export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
@@ -132,13 +126,6 @@ export class ImageGenerator extends Component {
 }
 
 // TODO: Create a separate service for image generation, similar to LLM.service.
-
-// TODO: Hopefully we will have the proper type with new OpenAI SDK, then we can use their type
-type TokenUsage = OpenAI.Completions.CompletionUsage & {
-    prompt_tokens_details?: { cached_tokens?: number };
-    input_tokens_details: { image_tokens?: number; text_tokens?: number };
-    output_tokens: number;
-};
 
 enum MODEL_FAMILY {
     GPT = 'gpt',
@@ -319,7 +306,7 @@ const imageGenerator = {
 
             imageGenerator.reportUsage(
                 { cost: firstImage.cost },
-                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId }
+                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId },
             );
 
             return { output };
@@ -344,11 +331,6 @@ const imageGenerator = {
 
             const files: any[] = parseFiles(input, config);
 
-            // Imagen models only support image generation, not image editing
-            if (files.length > 0) {
-                throw new Error('Google AI Image Generation Error: Image editing is not supported. Imagen models only support image generation.');
-            }
-
             let args: GenerateImageConfig & {
                 aspectRatio?: string;
                 numberOfImages?: number;
@@ -360,28 +342,20 @@ const imageGenerator = {
                 personGeneration: config?.data?.personGeneration || 'allow_adult',
             };
 
-            const response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
+            let response;
 
-            // Calculate fixed cost for Imagen 4
-            const modelName = model.replace(BUILT_IN_MODEL_PREFIX, '');
-            const cost = IMAGEN_4_COST_MAP[modelName];
-
-            if (cost && cost > 0) {
-                // Multiply by number of images generated
-                const numberOfImages = args.numberOfImages || 1;
-                const totalCost = cost * numberOfImages;
-
-                // Report fixed cost usage
-                imageGenerator.reportUsage(
-                    { cost: totalCost },
-                    {
-                        modelEntryName: model,
-                        keySource: model.startsWith(BUILT_IN_MODEL_PREFIX) ? APIKeySource.Smyth : APIKeySource.User,
-                        agentId: agent.id,
-                        teamId: agent.teamId,
-                    }
-                );
+            // Check if files are provided for image editing
+            if (files.length > 0) {
+                const validFiles = files.filter((file) => imageGenerator.isValidImageFile('GoogleAI', file.mimetype));
+                if (validFiles.length === 0) {
+                    throw new Error('Supported image file types are: ' + SUPPORTED_MIME_TYPES_MAP.GoogleAI?.image?.join(', '));
+                }
+                response = await llmInference.imageEditRequest({ query: prompt, files: validFiles, params: { ...args, agentId: agent.id } });
+            } else {
+                response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
             }
+
+            // Usage reporting is now handled in the GoogleAI connector
 
             let output = response?.data?.[0]?.b64_json;
 
@@ -399,7 +373,13 @@ const imageGenerator = {
             throw new Error(`Google AI Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         }
     },
-    reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
+    reportTokenUsage(
+        usage: OpenAI.Responses.ResponseUsage & {
+            input_tokens_details: { text_tokens?: number; image_tokens?: number };
+            output_tokens_details: { text_tokens?: number; image_tokens?: number };
+        },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+    ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
@@ -407,10 +387,30 @@ const imageGenerator = {
             sourceId: `api:imagegen.${modelName}`,
             keySource: metadata.keySource,
 
-            input_tokens_txt: usage?.input_tokens_details?.text_tokens || 0,
-            input_tokens_img: usage?.input_tokens_details?.image_tokens || 0,
-            output_tokens: usage?.output_tokens,
-            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            input_tokens_text: usage?.input_tokens_details?.text_tokens || 0,
+            input_tokens_image: usage?.input_tokens_details?.image_tokens || 0,
+            output_tokens_text: usage?.output_tokens_details?.text_tokens || 0,
+            output_tokens_image: usage?.output_tokens_details?.image_tokens || usage?.output_tokens || 0,
+            // TODO: Cached token reporting for GPT Image models needs improvement.
+            //
+            // OpenAI's pricing page lists separate cached-input rates for gpt-image-1 / gpt-image-1.5:
+            // For Example (for gpt-image-1.5):
+            //   Text tokens cached:  $1.25 / 1M  (vs $5.00 standard)
+            //   Image tokens cached: $2.00 / 1M  (vs $8.00 standard)
+            //
+            // However, as of 2025:
+            //   1. OpenAI marks caching as "Not Supported" on the model docs page.
+            //   2. The image-gen usage response does NOT include a `cached_tokens` field in practice —
+            //      it does not appear in `input_tokens_details` even though the type allows it.
+            //   3. There is an open bug report (filed 2025-08-30) with no official response.
+            //
+            // Safest policy until OpenAI clarifies:
+            //   - Read from `input_tokens_details.cached_tokens` (Responses API shape).
+            //   - Attribute ALL cached tokens to text and set image to 0.
+            //     Rationale: the API does not split cached counts by token type, so assigning the
+            //     same value to both fields would double-count cost savings.
+            input_tokens_cache_read_text: usage?.input_tokens_details?.cached_tokens || 0,
+            input_tokens_cache_read_image: 0, // Cannot split cached count by type; see TODO above
 
             agentId: metadata.agentId,
             teamId: metadata.teamId,
