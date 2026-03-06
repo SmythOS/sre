@@ -5,6 +5,48 @@ All notable changes to the SmythOS SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - Unreleased
+
+### New Feature: Worker Mode
+
+- **`TAgentMode.WORKER`**: agents can now dispatch complex, long-running tasks to background "copy" agents while remaining fully interactive. Simple tasks are answered directly; complex tasks are offloaded automatically.
+
+- **How it works**:
+    - The main agent evaluates every user request and decides whether to answer directly or dispatch to a background worker
+    - Each worker is a copy of the main agent — same skills and model, running in its own independent chat session
+    - Up to **3 workers run concurrently**; additional dispatches are queued and start as slots free up
+    - When a worker finishes, its result is **automatically injected** into the main chat session — no polling needed
+
+- **Worker events** on the `Agent` object for real-time visibility:
+
+    | Event                 | Payload                           | When                                                     |
+    | --------------------- | --------------------------------- | -------------------------------------------------------- |
+    | `WorkerDispatched`    | `{ jobId, task }`                 | Task sent to a background worker                         |
+    | `WorkerCompleted`     | `{ jobId, result }`               | Worker finished successfully                             |
+    | `WorkerFailed`        | `{ jobId, error }`                | Worker encountered an error                              |
+    | `WorkerQuestion`      | `{ jobId, questionId, question }` | Worker needs user clarification                          |
+    | `WorkerAnswered`      | `{ jobId, answer }`               | User's answer relayed to the worker                      |
+    | `WorkerCancelled`     | `{ jobId }`                       | Job cancelled on user request                            |
+    | `WorkerStatusChanged` | `{ jobId, status }`               | Any status transition (fires alongside all events above) |
+
+- **`WorkerJob` interface** exported from `@smythos/sdk` — provides full job lifecycle data: `id`, `task`, `status`, `result`, `error`, `interactions`, `partialResult`, `currentStep`, and `pendingQuestion`
+
+- **Multi-mode support**: `mode` now accepts `TAgentMode | TAgentMode[]` — modes can be combined (e.g. `[TAgentMode.PLANNER, TAgentMode.WORKER]` for a planning agent that also offloads heavy subtasks)
+
+- **`chatCreated` event** emitted on the `Agent` when a new `Chat` session is created — useful for attaching listeners before the first prompt
+
+- **New examples**:
+    - `examples/01-agent-code-skill/04.2-chat-worker-mode.ts` — full CLI chat with Worker mode
+    - `examples/01-agent-code-skill/04.3-chat-planner-worker-combined.ts` — combined Planner + Worker mode
+    - `examples/100-webapp-worker-mode/` — complete Express web application showing real-time worker progress in a browser UI
+
+- **New documentation**:
+    - `packages/sdk/docs/agents/04-worker-mode.md` — full Worker mode reference
+    - `packages/sdk/docs/agents/02-agent-modes.md` — all agent modes overview
+    - Agent documentation restructured into dedicated pages under `docs/agents/`
+
+---
+
 ## [1.5.0] 2026-02-23
 
 ### New Features
@@ -43,20 +85,423 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Secrets Manager usage example and documentation added
 
+---
+
+## [1.3.43] 2026-01-22
+
+### LLM
+
+- LLM connectors standardized to never throw — all errors are now emitted as events
+- Fallback proxy pattern implemented for custom LLM connectors
+
+### Conversation
+
+- ConversationHelper: errors from `toolsPromise` now correctly propagated
+- OTel: consolidated error reporting and error handler added
+
+---
+
+## [1.3.42] 2026-01-20
+
+### Agent & Cache
+
+- Agent cache support added — SDK agents can now persist and retrieve cached data across prompts
+- `TLLMEvent.Abort` and `abortSignal` parameter added; all LLM connectors support cancellation
+- `TLLMFinishReason` enum introduced — finish reasons normalized across all connectors
+
+### Observability
+
+- Agent name added to OTel telemetry logs
+- OTel error tracking enhanced at conversation level
+
+---
+
+## [1.3.41] 2026-01-08
+
+### Connectors
+
+- **SQLite Agent Data Connector** now available via `@smythos/sdk/core` — lightweight persistent storage for SDK agents
+
+### LLM — Google AI
+
+- Fixed `functionResponse.response` structure
+- Fixed text part extraction from responses
+- Fixed system instruction propagation
+
+### Observability
+
+- OTel spans now include session and workflow details
+
+---
+
+## [1.3.40] 2025-12-31
+
+### LLM & Model Support
+
+- `modelEntryName` exposed on model connectors for runtime model identification
+- **GPT-5.2**: `xhigh` reasoning effort level added
+- **Gemini**: fixed infinite tool-call loop
+- **Gemini**: tier and OTel org attributes (`orgTier`, `orgSlot`) added to spans
+- Flash model family now detected generically
+
+### Components & Runtime
+
+- **WebScrape**: `country` proxy option added
+- **TemplateString**: correctly parses falsy values (`0`, `false`, `""`)
+- **Sub-Agent**: JSON response mode now supported
+- **Search components**: template variables supported for search location fields
+- Maximum tool call limit per session (`_maxToolCallsPerSession`, default `Infinity`)
+- Legacy namespace IDs resolved correctly
+- OTel: team ID and Agent.Skill propagation via HTTP headers
+
+---
+
+## [1.3.30] 2025-11-26
+
+### Runtime
+
+- Agent variables now resolved before type inference — prevents incorrect type coercion
+- Empty LLM response errors now include the responsible field name
+- Base64 detection: removed unreliable data-length heuristic
+- `SMYTH_PATH`: dot-segments now accepted to watch models from default location
+
+---
+
+## [1.3.20] 2025-11-20
+
+### LLM — Google AI / Gemini
+
+- Google AI: tier and cache handled correctly per-request
+- **Gemini 3**: `reasoningEffort` config support
+- **Gemini 3**: `thoughtSignature` attachment required for function calling — now handled automatically
+
+### Connectors
+
+- **RAG v2**: embeddings credentials resolved from vault or internal config; metadata fix
+- **Pinecone**: constructor params made optional
+- Legacy OpenAI embedder entries hidden from embedder selection UI
+
+---
+
+## [1.3.15] 2025-11-13
+
+### Observability
+
+- **OpenTelemetry (OTel) connector** now accessible via `@smythos/sdk/core`
+- Agent spans, LLM calls, skill invocations, and error events tracked out of the box
+
+### Bug Fixes
+
+- VectorDB: optional params check fixed to prevent initialization errors
+- Embedding model credential passing fixed
+- `HookAsync` fixed; hookable class support added
+
+---
+
 ## [1.3.9] 2025-11-10
 
 - Added support for custom chunkSize and chunkOverlap for VectorDB embeddings
 - Added new Scheduler Connector
 - APIEndpoint now supports custom code process (harmonizing SDK and SRE)
 
-## [1.1.0] - 2025-04-09
+---
+
+## [1.3.7] 2025-11-08
+
+### Bug Fixes
+
+- Hotfix: SRE core initialization race condition with `ConnectorService` global instances
+- VectorDB global instance handling stabilized
+
+---
+
+## [1.3.4] 2025-11-06
+
+### LLM
+
+- Custom models: fixed resolution for SDK-created agents
+- Fallback model: parameters correctly filtered before fallback call
+- `TLLMParams` split into granular types for better readability and type safety
+
+---
+
+## [1.3.2] 2025-11-04
+
+### Agent & Conversation
+
+- `agentData` added to Conversation prompt hooks
+- `BinaryInput`: handle missing MIME type when asset is loaded by URL
+
+### Connectors
+
+- **Pinecone**: fallback to default metadata when retrieving a datasource without metadata
+
+---
+
+## [1.3.1] 2025-10-30
+
+### Scheduler & Triggers
+
+- Scheduler Connector added
+- SDK Scheduler support — agents can schedule jobs and ephemeral runs
+- Trigger infrastructure wired up in the SDK
+
+### Agent & Runtime
+
+- SRE core fully exposed under `@smythos/sdk/core`
+- OAuth2 credentials manager integrated — handles OAuth2 flows for API calls
+- `APIEndpoint` now supports custom code execution
+- Advanced SRE hooks accessible: monitor and intercept internal SRE calls
+- `killReason` message propagated when an agent is forcibly terminated
+- `AgentDataConnector` for ephemeral agent data persistence
+
+### Planner Mode
+
+- Planner mode `set`/`unset` fixed
+- Planner mode system prompt enhanced
+- Hooks for LLM requests added (inspect / modify requests before they are sent)
+
+### Bug Fixes
+
+- Multiple Conversation manager fixes
+- Gemini LLM: fixed infinite tool-call loop
+- Local LLM credentials support
+
+---
+
+## [1.2.5] 2025-10-23
+
+### Agent & SDK
+
+- `@smythos/sdk/core` export — full SRE runtime now accessible from the SDK package
+- SDK: ability to programmatically enable and disable planner mode
+- `.smyth` data import: `id` and `teamId` fields now preserved on import
+- Electron app: enhanced support
+
+### Triggers (experimental)
+
+- SDK scheduler support for triggers
+- Gmail and WhatsApp trigger scaffolding
+
+### Bug Fixes
+
+- Models provider: sanity check for invalid JSON and resolve condition hotfix
+- JSONModelProvider: race condition on model loading fixed
+
+---
+
+## [1.2.0] 2025-09-29
+
+### LLM
+
+- **Ollama**: native connector added (text completion + tool use)
+- Chat Runtime: `baseUrl` parameter supported for custom Ollama/LM Studio endpoints
+
+### Agent
+
+- Default models path support — `SMYTH_PATH` env variable
+- SDK hotfix for local model resolution
+
+### Bug Fixes
+
+- Conversation tools hotfix
+- Agent Tools hotfix
+
+---
+
+## [1.1.12] 2025-09-22
+
+### SDK
+
+- `SMYTH_PATH` environment variable support: define the default `.smyth` directory
+- Default models path resolution added
+- `tasksReset` added to planner mode API + planner mode tweaks
+
+### Bug Fixes
+
+- SDK hotfix for local model connections
+- Models provider: fixed race condition on invalid JSON model loading
+- SDK Chat: fixed race condition leading to undefined agent team
+
+---
+
+## [1.1.2] 2025-09-05
+
+### SDK
+
+- `LLM.prompt()`: custom system message support when prompting without an agent
+- Skill status messages now surfaced in the SDK event stream
+
+### Bug Fixes
+
+- Fixed SDK not reporting token usage
+- `APICall` oAuth hotfix
+- `OpenAI` connector: fixed non-streaming requests via Responses API
+
+---
+
+## [1.1.0] 2025-09-04
 
 ### Added
 
 - **Planner Mode**: SDK Agents can use the Planner Mode, allowing them to plan their actions and tasks.
   This features allows turning any agent into a planner agent.
 
-## [1.0.4] - 2025-19-06
+---
+
+## [1.0.48] 2025-08-29
+
+### Integrations
+
+- New generic OAuth configuration for `APICall` components (supports Bearer, Basic, and custom flows)
+- MCP Client: Streamable HTTP transport support
+
+### Bug Fixes
+
+- AWS Lambda: added 500ms delay after trust policy creation to allow IAM propagation
+
+---
+
+## [1.0.44] 2025-08-20
+
+### LLM
+
+- GPT-5, o3, and o4 model configs properly excluded from parameter validation
+- GPT-5 verbosity parameter support
+
+### Planner Mode (WIP)
+
+- Initial planner mode scaffolding integrated into SDK agent creation
+
+---
+
+## [1.0.42] 2025-08-12
+
+### Runtime
+
+- Node.js minimum engine version bumped to `>=20`
+
+### Components
+
+- `NodeJS` code component: vault keys now accessible inside user code
+
+### Dependencies
+
+- OpenAI SDK upgraded; ESLint errors fixed in Groq and OpenAI connector
+
+---
+
+## [1.0.40] 2025-08-10
+
+### LLM & Model Support
+
+- **GPT-5 family** (via OpenAI Responses API): reasoning capabilities supported
+- **Groq**: reasoning parameter support
+- **Vertex AI**: fixed and now supports tool calling
+- SDK Models adapter fixed
+- Conversation manager token limit handling fixed
+- Redis Cache params fixed; passthrough mode tuned
+- LLMs configured without a vault setting handled gracefully
+
+### Agent
+
+- **Memory Components** added to SDK agents
+- PDFJS console warnings suppressed
+
+---
+
+## [1.0.36] 2025-08-08
+
+### LLM
+
+- GPT-5 verbosity parameter added
+- **Groq**: reasoning support
+- **Vertex AI**: tools support and fixes
+- SDK Models adapter fixed
+- Model token limits hotfixed
+
+### Agent
+
+- Memory Components added
+- Conversation manager: JSON parser removed from response processing
+
+### Telemetry
+
+- Agent throughput evaluation added to logs
+- Enhanced log output for LLM connectors
+
+---
+
+## [1.0.31] 2025-07-11
+
+### LLM & Model Support
+
+- **xAI / Grok 4**: native connector with web search, RSS links, and tool calling
+- **Imagen 4** (Google AI): image generation support
+- Unlisted/custom models supported — SDK auto-resolves the closest known model configuration
+- Custom Anthropic tool calling behavior improved
+
+### Bug Fixes
+
+- SDK Agent: fixed default model loading on initialization
+- Component types hotfix
+- Vault access through SDK: initial support
+
+---
+
+## [1.0.21] 2025-07-07
+
+### Components
+
+- **ECMA Sandbox** component added — run sandboxed JavaScript code
+- **Serverless Code** component added — run code via AWS Lambda or custom serverless backends
+- AWS Lambda code component: `code_imports` and `code_body` unified into single `code` key
+
+### Bug Fixes
+
+- Anthropic finish reason check in serverless code responses
+
+---
+
+## [1.0.12] 2025-06-30
+
+### SDK
+
+- **LocalStorage** set as default NKV (key-value) storage
+- Custom model support added to SDK agents
+- **Serverless Code** component: initial support in SDK
+
+### Connectors
+
+- AWS Lambda code component and connector added
+- S3 Connector: initialization fix
+
+---
+
+## [1.0.11] 2025-06-23
+
+### LLM
+
+- **Attachments**: LLM `prompt()` calls now accept file/image attachments
+- **Agent Skills**: attachment processing supported when invoking skills
+
+---
+
+## [1.0.8] 2025-06-21
+
+### Storage
+
+- Data isolation: Storage connectors now enforce agent and team scopes
+- `scope` parameter added to SDK Storage for explicit data scoping
+- Strong typing and IDE autocomplete improved for Storage
+
+### MCP
+
+- MCP server support added to SDK — agents can expose skills as MCP tools
+
+---
+
+## [1.0.4] 2025-06-19
 
 ### Added
 
@@ -67,7 +512,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **LLM**: Updated the documentation with detailed examples for LLMs
 
-## [1.0.0] - 2025-17-06
+---
+
+## [1.0.0] 2025-06-17
 
 ### Initial Release
 

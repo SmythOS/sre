@@ -77,12 +77,201 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed HookAsync; added support for hookable classes
 - Secrets Manager usage example and documentation added
 
+---
+
+## [1.7.43] 2026-01-22
+
+### LLM
+
+- **Event emitter standardization**: LLM connectors now never throw — all errors are emitted as events instead
+- **Fallback proxy pattern**: initial implementation of a fallback architecture for custom LLM connectors
+
+### Conversation & Agent
+
+- ConversationHelper: errors from `toolsPromise` are now correctly propagated (previously swallowed)
+- OTel: error handler added to OTel class, consolidated error reporting logic
+
+---
+
+## [1.7.42] 2026-01-20
+
+### LLM
+
+- **Abort Controller**: implemented `abortSignal` support and `TLLMEvent.Abort` event across all LLM connectors
+- **Finish reason normalization**: introduced `TLLMFinishReason` enum and standardized finish reason values from all connectors
+
+### Observability
+
+- Agent name added to OTel telemetry logs for improved tracking
+- OTel error tracking enhanced: error events captured at conversation-level spans
+
+### SDK
+
+- Agent cache support added to the Smyth SDK
+
+---
+
+## [1.7.41] 2026-01-08
+
+### Connectors
+
+- **New: SQLite Agent Data Connector** — lightweight persistent storage for ephemeral and SDK agents
+
+### LLM — Google AI
+
+- Fixed `functionResponse.response` structure for Google AI requests
+- Fixed text part extraction from Google AI responses
+- Fixed system instruction propagation for Google AI
+
+### Observability
+
+- OTel spans now include session ID and workflow details for richer tracing
+- Improved debug logging for `ForEach`, `LogicAnd`, and `Async` components
+
+---
+
+## [1.7.40] 2025-12-04
+
+### LLM & Model Support
+
+- **GPT-5.2**: `xhigh` reasoning effort level support
+- **Claude 4**: streaming enabled for Classifier and LLM Assistant components
+- Flash model family (Gemini) now detected via generic pattern — no need for explicit model listing
+- **Gemini**: fixed multiple-tool-call logging; fixed infinite tool call loop
+- Maximum tool call limit per session (`_maxToolCallsPerSession`), defaults to `Infinity`
+
+### Observability
+
+- OTel spans now include `orgTier` and `orgSlot` attributes for multi-tenant tracking
+- OTel: Agent.Skill spans now propagated via HTTP headers across service boundaries
+- Team ID added to OTel spans
+- OTel: graceful handling when no endpoint is configured
+
+### Connectors & Storage
+
+- **Secret Manager**: `smythos` set as default secret prefix
+- **RAG v2** (work-in-progress): namespace parsing fixes for NKV, improved embeddings credentials resolution
+- Legacy namespace IDs resolved correctly
+
+### Components & Runtime
+
+- **TemplateString** parser: correctly handles falsy values (`0`, `false`, `""`)
+- **Sub-Agent component**: JSON response mode now supported
+- **WebScrape**: `country` proxy option added
+- **Search components**: template variables supported for search location fields
+- `modelEntryName` property exposed on LLM connectors for runtime model identification
+- LLM response event handling improved
+
+### Documentation
+
+- Secrets Manager example and documentation added
+
+---
+
+## [1.7.20] 2025-11-26
+
+### Runtime
+
+- Agent variables are now resolved before performing type inference (fixes incorrect type coercion)
+- Empty LLM response errors now include the field name for easier debugging
+- Base64 detection: removed unreliable data-length heuristic
+
+### Configuration
+
+- `SMYTH_PATH` now accepts dot-segments (`.`) to watch models from the default location
+- OTel output logging added for LLM responses
+
+---
+
+## [1.7.18] 2025-11-19
+
+### LLM — Google AI / Gemini
+
+- Google AI: tier and cache now handled correctly per-request
+- **Gemini 3**: `reasoningEffort` config support
+- **Gemini 3**: `thoughtSignature` attachment for function calling (required by the Gemini 3 API)
+
+### Connectors & Storage
+
+- **RAG v2** (WIP): embeddings credentials resolved from either vault or internal config; metadata fix
+- **Pinecone**: constructor parameters made optional
+- Vector embedders: legacy OpenAI embedder entries hidden from the selection UI
+
+---
+
+## [1.7.15] 2025-11-13
+
+### Observability
+
+- **New: Observability Subsystem** — OpenTelemetry (OTel) connector added to `@smythos/sre`
+- OTel spans cover agent execution, LLM calls, skill invocations, and error events
+- OTel connector hotfixes applied shortly after initial rollout
+
+### Connectors
+
+- **Pinecone**: fixed `delete namespace` and `delete datasource` operations
+- **Milvus**: fixed `delete datasource` operation
+- **DataPools v2**: datasource indexer component work-in-progress
+
+### Runtime
+
+- `APIEndpoint` and `ServerlessCode` component: agent variable resolution fixed
+- `HookAsync`: fixed; hookable class support added
+
+---
+
 ## [1.7.9] 2025-11-09
 
 - Fixed edge cases issues with SRE core initialization
 - Add support for custom chunkSize and chunkOverlap for VectorDB embeddings
 - normalized the embeddings parameters for VectorDB connectors
 - JSONVaultConnector now detects missing vault and prompts the user to create it
+
+---
+
+## [1.7.7] 2025-11-08
+
+### Runtime
+
+- Hotfix: SRE core initialization race condition with `ConnectorService` global instances
+- VectorDB connector global instance handling stabilized
+
+---
+
+## [1.7.4] 2025-11-06
+
+### LLM
+
+- Custom models: fixed resolution in the SDK
+- Fallback model: parameters are now correctly filtered before the fallback call
+- `TLLMParams` split into more granular types for improved readability and type safety
+
+### Runtime
+
+- Global variable fixes across multiple components
+
+---
+
+## [1.7.2] 2025-11-04
+
+### Agent & Conversation
+
+- `agentData` added to Conversation prompt hooks for richer hook context
+- `getOpenAPIJSON()` function tweaks
+
+### Components
+
+- `BinaryInput`: handle missing MIME type when asset is loaded from a URL
+
+### Connectors
+
+- **Pinecone**: fallback to default metadata when retrieving a datasource that lacks metadata
+
+### Documentation
+
+- LocalCache connector documentation added
+
+---
 
 ## [1.7.1] 2025-10-30
 
@@ -99,7 +288,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AgentDataConnector handles ephemeral agents data (for SDK agents)
 - Update Milvus data format to match the latest Milvus sdk release
 
-## [1.6.0]
+---
+
+## [1.6.13] 2025-10-17
+
+### LLM & Models
+
+- **Google AI**: fixed content structure for requests to prevent infinite function call loops
+- **GPT-5 family**: PDF attachment support added
+- Custom LLM credential resolution from vault keys
+- Token limit validation now applies to legacy models only (lifted for newer models)
+- `@google/generative-ai` dependency removed; fully migrated to `@google/genai`
+
+### Connectors & Runtime
+
+- **Electron**: enhanced support; fixed incorrect vault search directory display
+- **OAuth**: vault key resolution for OAuth flows
+- SDK: ability to programmatically enable and disable planner mode
+
+### Triggers (experimental)
+
+- Gmail and WhatsApp trigger improvements
+- Trigger processing aligned with normal component execution (no input mapping required)
+- Scheduler: support for suspending job runs in local mode
+
+---
+
+## [1.6.11] 2025-10-11
+
+### Hooks & Configuration
+
+- **Advanced SRE Hooks** introduced (Aspect-Oriented Programming pattern): monitor and intercept internal SRE calls from outside the runtime
+- Hooks added to `Agent` class and `ModelsProviderConnector`
+- JSON vault connector improvements and documentation
+
+### Models
+
+- JSON models provider: sanity checks for invalid JSON paths and automatic path auto-search
+- Default models path support (`SMYTH_PATH` env variable)
+- Models provider hotfix for invalid JSON model resolve conditions
+
+### Triggers (experimental)
+
+- Gmail trigger: experimental email fetch support
+- WhatsApp trigger updates
+- Conversation manager: `addTool` function tool parser fixed
+
+---
+
+## [1.6.6] 2025-10-02
+
+### Connectors
+
+- **AWS Lambda**: retry logic added for IAM role propagation on first run
+- **AWS Lambda**: retry logic added for Lambda function deployment
+- User custom models: fetched and resolved from external source
+
+---
+
+## [1.6.1] 2025-09-30
+
+### LLM
+
+- **Ollama**: native connector added with text completion and tool use support
+- Fallback model execution implemented for user-configured custom LLMs
+- Increased fallback token budget for custom LLM connectors
+
+### Triggers (experimental)
+
+- Initial trigger infrastructure; Gmail trigger experiments
+
+---
+
+## [1.6.0] 2025-09-29
 
 ### Features
 
@@ -115,12 +376,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated dependencies
 - Updated .cursor/rules/sre-ai-rules.mdc to enhance the qualty of AI based contributions
 
+---
+
+## [1.5.79] 2025-09-22
+
+### Runtime & Configuration
+
+- `SMYTH_PATH` environment variable: define the default `.smyth` directory location
+- Default models path support added
+- Memory components fixes
+
+### LLM / Models
+
+- `JSONModelProvider`: fixed race condition on model loading; fixed resolve condition for invalid JSON
+- SDK Chat: fixed race condition leading to undefined agent team
+
+### VectorDB
+
+- Fixed `vectorDBInstance` not returning texts properly
+- Additional embedding models supported for Google Gemini
+- VectorDB documentation added
+
+### MCP
+
+- `MCPClient`: deprecated settings marked as optional
+- Sanity check added for duplicate tool definitions in the Conversation manager
+- MCP logs improved
+
+### Fixes
+
+- `APICall`: oAuth hotfix
+- `OpenAI` LLM: fixed non-streaming requests via Responses API
+- Debug data no longer missing in certain edge cases
+
+---
+
 ## [v1.5.60]
 
 ### Features
 
 - Fixed memory leak in Agent context manager
 - Optimized performances and resolved a rare case causing CPU usage spikes
+
+---
 
 ## [v1.5.50]
 
@@ -129,6 +427,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for OpenAI Responses API
 - Added support for GPT-5 family models with reasoning capabilities .
 - MCP Client component : support for Streamable HTTP transport
+
+---
 
 ## [v1.5.31]
 
@@ -158,6 +458,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized build processes.
 - Improved strong typing and code auto-completion.
 
+---
+
 ## [v1.5.0] SmythOS becomes open source!
 
 ### Features
@@ -165,6 +467,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved to a monorepo structure
 - Implemented an SDK that provides an abstracted interface for all SmythOS components
 - Implemented a CLI to help running agents and scaffolding SDK and SRE projects along
+
+---
 
 ## [v1.4.0]
 
@@ -176,6 +480,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for usage reporting
 - LLM : new models provider connector allows loading custom models including local models
 
+---
+
 ## [v1.2.0]
 
 ### Features
@@ -185,12 +491,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All connectors inherit from SecureConnector using a common security layer
 - LLM : support for anthropic, Groq and Gemini
 
+---
+
 ## [v1.1.0]
 
 ### Features
 
 - New connectors : S3, Pinecone, and local vault
 - LLM : implemented common LLM interface to support more providers
+
+---
 
 ## [v1.0.0]
 
