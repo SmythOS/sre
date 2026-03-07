@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sdk",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "description": "Build intelligent AI agents with TypeScript. The SmythOS SDK provides a powerful, developer-friendly API for creating agents with custom skills, workflows, streaming, vector databases, and state management - all with full type safety.",
     "keywords": [
         "smythos",

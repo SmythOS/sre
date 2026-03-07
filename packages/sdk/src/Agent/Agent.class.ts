@@ -230,6 +230,7 @@ class AgentCommand {
 export enum TAgentMode {
     DEFAULT = 'default',
     PLANNER = 'planner',
+    WORKER = 'worker',
 }
 /**
  * Configuration settings for creating an Agent instance.
@@ -251,7 +252,7 @@ export type TAgentSettings = {
     /** Optional behavior description that guides the agent's responses */
     behavior?: string;
     /** The mode of the agent */
-    mode?: TAgentMode;
+    mode?: TAgentMode | TAgentMode[];
 
     /** Explicitly specifies the agent teamId */
     teamId?: string;
@@ -428,7 +429,11 @@ export class Agent extends SDKObject {
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
 
         if (mode) {
-            this.setMode(mode);
+            if (Array.isArray(mode)) {
+                mode.forEach((m) => this.setMode(m));
+            } else {
+                this.setMode(mode);
+            }
         }
 
         this.sync();
@@ -952,10 +957,12 @@ export class Agent extends SDKObject {
         if (!chatOptions.model) {
             chatOptions.model = this._data.defaultModel;
         }
-        return new Chat(chatOptions, this, {
+        const chat = new Chat(chatOptions, this, {
             agentId: this._data.id,
             baseUrl: chatOptions.baseUrl,
         });
+        this.emit('chatCreated', chat);
+        return chat;
     }
 
     /**

@@ -57,8 +57,20 @@ class ChatCommand {
     private async run(): Promise<string> {
         await this.chat.ready;
         await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
-        const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
-        return result;
+
+        // Acquire the stream lock — ensures only one streamPrompt() runs at a time
+        let releaseLock!: () => void;
+        const lockGate = new Promise<void>((resolve) => { releaseLock = resolve; });
+        const acquired = this.chat._streamLock.then(() => {});
+        this.chat._streamLock = this.chat._streamLock.then(() => lockGate);
+        await acquired;
+
+        try {
+            const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
+            return result;
+        } finally {
+            releaseLock();
+        }
     }
 
     /**
@@ -86,6 +98,15 @@ class ChatCommand {
         await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
 
         const eventEmitter = new EventEmitter();
+
+        // Acquire the stream lock — ensures only one streamPrompt() runs at a time.
+        // We await the previous lock so handler registration + streamPrompt() don't
+        // start until any prior stream has fully completed (including removeHandlers).
+        let releaseLock!: () => void;
+        const lockGate = new Promise<void>((resolve) => { releaseLock = resolve; });
+        const acquired = this.chat._streamLock.then(() => {});
+        this.chat._streamLock = this.chat._streamLock.then(() => lockGate);
+        await acquired;
 
         const toolInfoHandler = (toolInfo: any) => {
             eventEmitter.emit(TLLMEvent.ToolInfo, toolInfo);
@@ -138,6 +159,7 @@ class ChatCommand {
             this._conversation.off(TLLMEvent.ToolInfo, toolInfoHandler);
             this._conversation.off(TLLMEvent.Interrupted, interruptedHandler);
             this._conversation.off(TLLMEvent.Data, dataHandler);
+            releaseLock(); // Release the stream lock so the next queued stream can start
         };
 
         this._conversation.on(TLLMEvent.ToolCall, toolCallHandler);
@@ -161,6 +183,7 @@ class ChatCommand {
 export class Chat extends SDKObject {
     private _id: string;
     public _conversation: Conversation;
+    public _streamLock: Promise<void> = Promise.resolve();
     /**
      * The SRE Conversation Manager instance that is used to handle the current chat conversation.
      */

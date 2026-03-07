@@ -1,0 +1,555 @@
+/* ── Reset & Base ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg:           #0f0f11;
+    --surface:      #1a1a1f;
+    --surface-2:    #232329;
+    --border:       #2e2e36;
+    --text:         #e4e4e7;
+    --text-muted:   #71717a;
+    --accent:       #6366f1;
+    --accent-hover: #818cf8;
+    --green:        #22c55e;
+    --yellow:       #eab308;
+    --red:          #ef4444;
+    --magenta:      #d946ef;
+    --cyan:         #06b6d4;
+    --radius:       8px;
+    --sidebar-w:    340px;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+#app {
+    display: flex;
+    height: 100vh;
+}
+
+#chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+#sidebar {
+    width: var(--sidebar-w);
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ── Chat Header ────────────────────────────────────────────────── */
+#chat-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+#chat-header h1 {
+    font-size: 16px;
+    font-weight: 600;
+}
+#chat-header p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ── Messages ───────────────────────────────────────────────────── */
+#messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.message {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.message.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 2px;
+    white-space: pre-wrap;
+}
+
+.message.assistant {
+    align-self: flex-start;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 2px;
+}
+
+.message.assistant .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-hover);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.message.assistant.surfaced {
+    border-left: 3px solid var(--cyan);
+}
+.message.assistant.surfaced .label {
+    color: var(--cyan);
+}
+
+.message.error {
+    align-self: flex-start;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--red);
+    color: var(--red);
+    white-space: pre-wrap;
+}
+
+/* Surfaced question variant */
+.message.assistant.surfaced-question {
+    border-left: 3px solid var(--magenta);
+}
+.message.assistant.surfaced-question .label {
+    color: var(--magenta);
+}
+
+/* ── Flow Container ────────────────────────────────────────────── */
+.message.assistant .flow {
+    display: block;
+}
+
+/* ── Content Blocks (markdown) ─────────────────────────────────── */
+.message.assistant .content {
+    color: var(--text);
+}
+
+.message.assistant .content p {
+    margin: 0 0 0.6em 0;
+}
+.message.assistant .content p:last-child {
+    margin-bottom: 0;
+}
+
+.message.assistant .content h1,
+.message.assistant .content h2,
+.message.assistant .content h3,
+.message.assistant .content h4 {
+    margin: 0.8em 0 0.4em 0;
+    font-weight: 600;
+    color: var(--text);
+}
+.message.assistant .content h1:first-child,
+.message.assistant .content h2:first-child,
+.message.assistant .content h3:first-child,
+.message.assistant .content h4:first-child {
+    margin-top: 0;
+}
+.message.assistant .content h1 { font-size: 1.3em; }
+.message.assistant .content h2 { font-size: 1.15em; }
+.message.assistant .content h3 { font-size: 1.05em; }
+
+.message.assistant .content strong {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.message.assistant .content em {
+    font-style: italic;
+}
+
+.message.assistant .content ul,
+.message.assistant .content ol {
+    margin: 0.4em 0 0.6em 1.4em;
+}
+.message.assistant .content li {
+    margin-bottom: 0.2em;
+}
+
+.message.assistant .content code {
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.9em;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: var(--accent-hover);
+}
+
+.message.assistant .content pre {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 0.5em 0;
+    overflow-x: auto;
+}
+.message.assistant .content pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 0.85em;
+}
+
+.message.assistant .content blockquote {
+    border-left: 3px solid var(--border);
+    padding: 4px 12px;
+    margin: 0.5em 0;
+    color: var(--text-muted);
+}
+
+.message.assistant .content a {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+.message.assistant .content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.8em 0;
+}
+
+.message.assistant .content table {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    font-size: 0.9em;
+}
+.message.assistant .content th,
+.message.assistant .content td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+}
+.message.assistant .content th {
+    background: rgba(255, 255, 255, 0.04);
+    font-weight: 600;
+}
+
+/* ── Tool Call Pills ────────────────────────────────────────────── */
+.tool-pill {
+    display: block;
+    font-size: 12px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    color: var(--text-muted);
+    background: rgba(255,255,255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 6px 0;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.tool-pill-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.tool-pill-header:hover {
+    background: rgba(255,255,255, 0.04);
+}
+
+.tool-pill .tool-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.tool-pill .tool-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent-hover);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+.tool-pill .tool-check {
+    color: var(--green);
+    font-size: 14px;
+    line-height: 1;
+}
+
+.tool-pill .tool-name {
+    color: var(--accent-hover);
+}
+
+.tool-pill .tool-args-preview {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+}
+
+.tool-pill-chevron {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+/* ── Tool Pill Details (expandable) ─────────────────────────────── */
+.tool-pill-details {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 8px 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tool-pill.open .tool-pill-details {
+    display: block;
+}
+
+.tool-detail-section {
+    margin-bottom: 8px;
+}
+.tool-detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.tool-detail-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.tool-detail-content {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+    padding: 6px 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+}
+
+/* Typing indicator */
+.message.assistant .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--accent-hover);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Input Form ─────────────────────────────────────────────────── */
+#input-form {
+    display: flex;
+    gap: 8px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+#input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+#input:focus {
+    border-color: var(--accent);
+}
+#input:disabled {
+    opacity: 0.5;
+}
+
+#send-btn {
+    padding: 10px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+#send-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+#send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────── */
+#sidebar h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+#jobs-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.empty-state {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 24px 16px;
+    line-height: 1.5;
+}
+
+/* ── Job Card ───────────────────────────────────────────────────── */
+.job-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+
+.job-card.running   { border-left: 3px solid var(--yellow); }
+.job-card.completed { border-left: 3px solid var(--green); }
+.job-card.failed    { border-left: 3px solid var(--red); }
+.job-card.cancelled { border-left: 3px solid var(--text-muted); }
+.job-card.waiting_for_input { border-left: 3px solid var(--magenta); }
+
+.job-card .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.job-card .job-id {
+    font-size: 11px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    color: var(--text-muted);
+}
+
+.job-card .job-status {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.job-status.running   { background: rgba(234, 179, 8, 0.15); color: var(--yellow); display: inline-flex; align-items: center; gap: 5px; }
+.job-status.completed { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+.job-status.failed    { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+.job-status.cancelled { background: rgba(113, 113, 122, 0.15); color: var(--text-muted); }
+.job-status.waiting_for_input { background: rgba(217, 70, 239, 0.15); color: var(--magenta); }
+
+.job-card .job-task {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.job-card .job-updates {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.job-card .job-update {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    line-height: 1.4;
+}
+
+.job-card .job-update.question {
+    color: var(--magenta);
+    background: rgba(217, 70, 239, 0.08);
+}
+
+.job-card .job-update.completed {
+    color: var(--green);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.job-card .job-update.failed {
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+/* Job spinner for running/waiting states */
+.job-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid rgba(234, 179, 8, 0.3);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+.job-card.waiting_for_input .job-spinner {
+    border-color: rgba(217, 70, 239, 0.3);
+    border-top-color: var(--magenta);
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

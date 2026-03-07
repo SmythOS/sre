@@ -7,7 +7,7 @@
                     "setting2": "value2"
                 }
             },
-            "test-user": {
+            "test-user1": {
                 "settings": {
                     "setting1": "value1",
                     "setting2": "value2"
@@ -71,6 +71,9 @@
                     "role": "developer",
                     "access-level": "standard"
                 }
+            },
+            "test-user": {
+                "settings": {}
             }
         },
         "agents": {
@@ -86,6 +89,9 @@
                     "setting1": "test-value",
                     "environment": "testing"
                 }
+            },
+            "data-agent": {
+                "settings": {}
             }
         },
         "settings": {

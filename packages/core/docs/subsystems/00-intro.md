@@ -12,12 +12,12 @@ Each subsystem exposes its functionality through one or more services, which are
 
 Here are the primary subsystems within the SRE:
 
--   **[Agent Manager](./agent-manager.md)**: The heart of agent execution. Responsible for the agent lifecycle, performance monitoring, and component workflow orchestration.
+- **[Agent Manager](./01-agent-manager.md)**: The heart of agent execution. Responsible for the agent lifecycle, performance monitoring, and component workflow orchestration.
 
--   **[Memory Manager](./memory-manager.md)**: Provides intelligent state and context management for agents, including multi-tiered caching and conversation history.
+- **[Memory Manager](./02-memory-manager.md)**: Provides intelligent state and context management for agents, including multi-tiered caching and conversation history.
 
--   **[LLM Manager](./llm-manager.md)**: A powerful abstraction layer for various LLM providers, handling API variations, smart inference, and response caching.
+- **[LLM Manager](./03-llm-manager.md)**: A powerful abstraction layer for various LLM providers, handling API variations, smart inference, and response caching.
 
--   **[IO Subsystem](./io.md)**: The gateway to the outside world. It provides unified connector interfaces for all input/output operations like Storage, VectorDBs, and Logging.
+- **[IO Subsystem](./04-io.md)**: The gateway to the outside world. It provides unified connector interfaces for all input/output operations like Storage, VectorDBs, and Logging.
 
--   **[Security Subsystem](./security.md)**: Manages all security-related primitives, including the Vault service for secret management and the Account service for identity and authentication.
+- **[Security Subsystem](./05-security.md)**: Manages all security-related primitives, including the Vault service for secret management and the Account service for identity and authentication.
