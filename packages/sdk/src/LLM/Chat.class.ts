@@ -30,6 +30,10 @@ class LocalChatStore extends SDKObject implements ILLMContextStore {
             const buffer: Buffer = await this._storage.read(`${this._conversationId}`);
             if (!buffer) return [];
             const messages = JSON.parse(buffer.toString());
+            if (!Array.isArray(messages) || !messages.length) return [];
+            if (count !== undefined && count > 0) {
+                return messages.slice(-count);
+            }
             return messages;
         } catch (error) {
             console.error('Error loading chat messages: ', error);
@@ -282,6 +286,24 @@ export class Chat extends SDKObject {
      * @param prompt - The message or question to send to the chat
      * @returns ChatCommand that can be executed or streamed
      */
+    /**
+     * Load conversation history from the configured context store.
+     *
+     * @param options.count  Maximum number of messages to return (most recent first).
+     *                       Omit or pass undefined to load all stored messages.
+     * @returns Array of stored messages, or empty array if no store is configured.
+     *
+     * @example
+     * const history = await chat.getContextWindow({ count: 10 });
+     * history.forEach(m => console.log(`[${m.role}] ${m.content}`));
+     */
+    async getContextWindow(options?: { count?: number }): Promise<any[]> {
+        await this.ready;
+        const store = this._convOptions?.store as ILLMContextStore | undefined;
+        if (!store) return [];
+        return store.load(options?.count);
+    }
+
     prompt(prompt: string, options?: PromptOptions) {
         if ((this.source as Agent)?.modes) {
             const modes = (this.source as Agent).modes.join('|');
