@@ -850,6 +850,9 @@ export class OTel extends TelemetryConnector {
 
                 OTelContextRegistry.startProcess(agentId, agentProcessId, agentSpan);
 
+                _hookContext.agentSkillSpan = agentSpan;
+                _hookContext.agentSkillProcessId = agentProcessId;
+
                 // Set active span context for log correlation
                 const spanCtx = agentSpan.spanContext();
                 const spanContext = trace.setSpan(context.active(), agentSpan);
@@ -892,116 +895,116 @@ export class OTel extends TelemetryConnector {
             'SREAgent.process',
             async function ({ result, error }) {
                 const agent = this.instance;
-                const agentProcessId = agent.agentRuntime.processID; // nested process has a subID that needs to be removed
-                const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
-                const agentId = agent.id;
                 const _hookContext: any = this.context;
-                const teamId = agent.teamId;
-                const orgTier = 'standard';
-                const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
+                const agentId = agent.id;
 
-                const sessionId = agent.callerSessionId || undefined;
-                const workflowId = agent.agentRuntime?.workflowReqId || undefined;
+                // Prefer the processId captured in the before-hook to avoid
+                // mismatches when the runtime mutates it during execution
+                const agentProcessId = _hookContext.agentSkillProcessId || agent.agentRuntime?.processID;
 
-                const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
-                const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
-                const isTestDomain = agent.usingTestDomain || false;
-                const domain = agent.domain || undefined;
-                const agentName = agent.name || undefined;
-
-                const ctx = OTelContextRegistry.get(agentId, agentProcessId);
-                if (!ctx) return;
-                const agentSpan = ctx.rootSpan;
+                // Retrieve span from hook context first (reliable), fall back to registry
+                const registryCtx = OTelContextRegistry.get(agentId, agentProcessId);
+                const agentSpan = _hookContext.agentSkillSpan || registryCtx?.rootSpan;
 
                 if (!agentSpan) return;
 
-                const accessCandidate = AccessCandidate.agent(agentId);
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process completed', { agentProcessId }, accessCandidate);
+                try {
+                    const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
+                    const teamId = agent.teamId;
+                    const orgTier = 'standard';
+                    const orgSlot = agent.data.planInfo?.flags ? `standard/${agent.data.teamId}` : undefined;
 
-                // Check for error indicators in result (process returned error without throwing)
-                const hasResultError = !error && (!!result?._error || !!result?.error);
-                const resultError = hasResultError ? result._error || result.error : null;
-                const resultErrorMessage = resultError?.message || (typeof resultError === 'string' ? resultError : null);
+                    const sessionId = agent.callerSessionId || undefined;
+                    const workflowId = agent.agentRuntime?.workflowReqId || undefined;
 
-                // Determine if this is an error case (either thrown error or result error)
-                const isError = !!error || hasResultError;
-                const errorMessage = error?.message || resultErrorMessage || 'Process returned error';
+                    const isDebugSession = agent.debugSessionEnabled || agent.agentRuntime?.debug || false;
+                    const logTags = agent.sessionTag || (isDebugSession ? 'DEBUG' : undefined);
+                    const isTestDomain = agent.usingTestDomain || false;
+                    const domain = agent.domain || undefined;
+                    const agentName = agent.name || undefined;
 
-                if (error) {
-                    agentSpan.recordException(error);
-                    agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-                    agentSpan.addEvent('skill.process.error', {
-                        'error.message': error.message,
+                    const accessCandidate = AccessCandidate.agent(agentId);
+                    if (OTEL_DEBUG_LOGS) outputLogger.debug('SREAgent.process completed', { agentProcessId }, accessCandidate);
+
+                    // Check for error indicators in result (process returned error without throwing)
+                    const hasResultError = !error && (!!result?._error || !!result?.error);
+                    const resultError = hasResultError ? result._error || result.error : null;
+                    const resultErrorMessage = resultError?.message || (typeof resultError === 'string' ? resultError : null);
+
+                    // Determine if this is an error case (either thrown error or result error)
+                    const isError = !!error || hasResultError;
+                    const errorMessage = error?.message || resultErrorMessage || 'Process returned error';
+
+                    if (error) {
+                        agentSpan.recordException(error);
+                        agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+                        agentSpan.addEvent('skill.process.error', {
+                            'error.message': error.message,
+                        });
+                    } else if (hasResultError) {
+                        agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
+                        agentSpan.addEvent('skill.process.error', {
+                            'error.message': errorMessage,
+                            'error.type': 'result_error',
+                        });
+                        agentSpan.setAttributes({
+                            'output.size': JSON.stringify(result || {}).length,
+                            'output.has_error': true,
+                        });
+                    } else {
+                        agentSpan.setStatus({ code: SpanStatusCode.OK });
+                        agentSpan.addEvent('skill.process.completed', {
+                            'output.size': JSON.stringify(result || {}).length,
+                        });
+                        agentSpan.setAttributes({
+                            'output.size': JSON.stringify(result || {}).length,
+                        });
+                    }
+
+                    // Emit log BEFORE ending span to ensure context is active
+                    const outputForLog = oTelInstance.formatOutputForLog(result, isError);
+                    const spanCtx = agentSpan.spanContext();
+                    const logAttributes: Record<string, any> = {
+                        trace_id: spanCtx.traceId,
+                        span_id: spanCtx.spanId,
+                        trace_flags: spanCtx.traceFlags,
+
+                        'agent.id': agentId,
+                        'agent.name': agentName,
+                        'process.id': agentProcessId,
+                        hasError: isError,
+                        'error.message': isError ? errorMessage : undefined,
+                        'error.stack': error?.stack,
+                        'error.type': hasResultError ? 'result_error' : undefined,
+                        'team.id': teamId,
+                        'org.slot': orgSlot,
+                        'org.tier': orgTier,
+                        'conv.id': conversationId,
+                        'session.id': sessionId,
+                        'workflow.id': workflowId,
+                        'log.tags': logTags,
+                        'agent.debug': isDebugSession,
+                        'agent.isTest': isTestDomain,
+                        'agent.domain': domain,
+                    };
+
+                    if (outputForLog !== undefined) {
+                        logAttributes['agent.output'] = outputForLog;
+                    }
+
+                    const spanContext = trace.setSpan(context.active(), agentSpan);
+                    context.with(spanContext, () => {
+                        logger.emit({
+                            severityNumber: isError ? SeverityNumber.ERROR : SeverityNumber.INFO,
+                            severityText: isError ? 'ERROR' : 'INFO',
+                            body: `Agent process ${isError ? 'failed' : 'completed'}: ${agentProcessId}`,
+                            attributes: logAttributes,
+                        } as any);
                     });
-                } else if (hasResultError) {
-                    // Handle error in result (no exception thrown)
-                    agentSpan.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
-                    agentSpan.addEvent('skill.process.error', {
-                        'error.message': errorMessage,
-                        'error.type': 'result_error',
-                    });
-                    agentSpan.setAttributes({
-                        'output.size': JSON.stringify(result || {}).length,
-                        'output.has_error': true,
-                    });
-                } else {
-                    agentSpan.setStatus({ code: SpanStatusCode.OK });
-                    agentSpan.addEvent('skill.process.completed', {
-                        'output.size': JSON.stringify(result || {}).length,
-                    });
-                    agentSpan.setAttributes({
-                        'output.size': JSON.stringify(result || {}).length,
-                    });
+                } finally {
+                    agentSpan.end();
+                    OTelContextRegistry.endProcess(agentId, agentProcessId);
                 }
-
-                // Emit log BEFORE ending span to ensure context is active
-                const outputForLog = oTelInstance.formatOutputForLog(result, isError);
-                const spanCtx = agentSpan.spanContext();
-                const logAttributes: Record<string, any> = {
-                    // Explicit trace correlation (some backends need these)
-                    trace_id: spanCtx.traceId,
-                    span_id: spanCtx.spanId,
-                    trace_flags: spanCtx.traceFlags,
-
-                    'agent.id': agentId,
-                    'agent.name': agentName,
-                    'process.id': agentProcessId,
-                    hasError: isError,
-                    'error.message': isError ? errorMessage : undefined,
-                    'error.stack': error?.stack,
-                    'error.type': hasResultError ? 'result_error' : undefined,
-                    'team.id': teamId,
-                    'org.slot': orgSlot,
-                    'org.tier': orgTier,
-                    'conv.id': conversationId,
-                    'session.id': sessionId,
-                    'workflow.id': workflowId,
-                    'log.tags': logTags,
-                    'agent.debug': isDebugSession,
-                    'agent.isTest': isTestDomain,
-                    'agent.domain': domain,
-                };
-
-                // Only include output if formatOutputForLog returns a value
-                if (outputForLog !== undefined) {
-                    logAttributes['agent.output'] = outputForLog;
-                }
-
-                // Set active span context for log correlation
-                const spanContext = trace.setSpan(context.active(), agentSpan);
-                context.with(spanContext, () => {
-                    logger.emit({
-                        severityNumber: isError ? SeverityNumber.ERROR : SeverityNumber.INFO,
-                        severityText: isError ? 'ERROR' : 'INFO',
-                        body: `Agent process ${isError ? 'failed' : 'completed'}: ${agentProcessId}`,
-                        attributes: logAttributes,
-                    } as any);
-                });
-
-                // End span after log is emitted
-                agentSpan.end();
-
-                OTelContextRegistry.endProcess(agentId, agentProcessId);
             },
             THook.NonBlocking,
         );
