@@ -14,7 +14,7 @@ import { HookService, THook } from '@sre/Core/HookService';
 // OpenTelemetry SDK and Exporters
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
+import { NodeTracerProvider, BatchSpanProcessor, AlwaysOnSampler } from '@opentelemetry/sdk-trace-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { LoggerProvider, SimpleLogRecordProcessor, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
@@ -95,9 +95,11 @@ export class OTel extends TelemetryConnector {
             [ATTR_SERVICE_VERSION]: _settings.serviceVersion || '1.0.0',
         });
 
-        // TypeScript definitions are incomplete, but this works at runtime
+        // AlwaysOnSampler ensures SmythOS records its own traces regardless of
+        // incoming traceparent sampling decisions from external callers (e.g. webhooks)
         this.tracerProvider = new NodeTracerProvider({
             resource,
+            sampler: new AlwaysOnSampler(),
             spanProcessors: [spanProcessor],
         } as any);
 
