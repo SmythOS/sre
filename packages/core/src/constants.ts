@@ -123,6 +123,14 @@ export const SUPPORTED_MIME_TYPE_CONVERSIONS = {
             },
         },
     },
+
+    GoogleAI: {
+        document: {
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+                via: ['application/pdf'],
+            },
+        },
+    },
 };
 
 export const DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS = {
