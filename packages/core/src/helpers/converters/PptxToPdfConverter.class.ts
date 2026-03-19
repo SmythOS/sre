@@ -13,7 +13,7 @@ import { fileConverterRegistry } from '../FileConverter.helper';
  * 2. Set sourceMimeType and targetMimeType properties
  * 3. Implement canConvert() and convert() methods
  * 4. Register the converter at the bottom of the file: fileConverterRegistry.register(new YourConverter())
- * 5. Import the converter file in GenAILLM.class.ts to ensure it's registered
+ * 5. Import the converter file in LLM.inference.ts to ensure it's registered
  */
 export class PptxToPdfConverter implements IFileConverter {
     readonly sourceMimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
