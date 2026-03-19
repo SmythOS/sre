@@ -1,22 +1,20 @@
 // prettier-ignore-file
+/**
+ * VectorDB agent scope isolation.
+ * Requires OPENAI_API_KEY or GOOGLE_AI_API_KEY (RAMVec uses embeddings).
+ * TEAM scope test additionally requires OpenAI for text-embedding-3-large.
+ */
 import { describe, it, beforeAll, expect } from 'vitest';
-import { SRE } from '@smythos/sre';
 import { Agent, Model, Scope } from '../../../src/index';
+import { initSRE, unique, HAS_EMBEDDINGS, HAS_OPENAI } from '../_helpers';
 
-function unique(prefix: string) {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-describe('VectorDB - Agent scope isolation vs Team sharing', () => {
-    beforeAll(async () => {
-        SRE.init({});
-        await SRE.ready();
-    });
+describe.skipIf(!HAS_EMBEDDINGS)('VectorDB - Agent scope isolation vs Team sharing', () => {
+    beforeAll(() => initSRE());
 
     it('isolates data between agents by default', async () => {
         const teamId = unique('team');
-        const agentA = new Agent({ id: unique('agentA'), teamId, name: 'A', model: 'gpt-4o' });
-        const agentB = new Agent({ id: unique('agentB'), teamId, name: 'B', model: 'gpt-4o' });
+        const agentA = new Agent({ id: unique('agentA'), teamId, name: 'A', model: Model.Echo('Echo') });
+        const agentB = new Agent({ id: unique('agentB'), teamId, name: 'B', model: Model.Echo('Echo') });
 
         const ns = unique('ns');
         const vecA = agentA.vectorDB.RAMVec(ns);
@@ -32,10 +30,10 @@ describe('VectorDB - Agent scope isolation vs Team sharing', () => {
         expect(bResults.length).toBe(0);
     });
 
-    it('shares data when scope is TEAM', async () => {
+    it.skipIf(!HAS_OPENAI)('shares data when scope is TEAM (requires OpenAI embeddings)', async () => {
         const teamId = unique('team');
-        const agentA = new Agent({ id: unique('agentA'), teamId, name: 'A', model: 'gpt-4o' });
-        const agentB = new Agent({ id: unique('agentB'), teamId, name: 'B', model: 'gpt-4o' });
+        const agentA = new Agent({ id: unique('agentA'), teamId, name: 'A', model: Model.Echo('Echo') });
+        const agentB = new Agent({ id: unique('agentB'), teamId, name: 'B', model: Model.Echo('Echo') });
 
         const ns = unique('ns');
         const embeddings = Model.OpenAI('text-embedding-3-large');

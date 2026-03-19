@@ -1,9 +1,12 @@
 // prettier-ignore-file
+/**
+ * LLM behavior override integration — requires OPENAI_API_KEY.
+ */
 import { describe, it, expect } from 'vitest';
-
 import { LLM } from '../../../src';
+import { HAS_OPENAI } from '../_helpers';
 
-describe('INT LLM - behavior', () => {
+describe.skipIf(!HAS_OPENAI)('INT LLM - behavior', () => {
     it('applies behavior from model settings', async () => {
         const llm = LLM.OpenAI('gpt-4o-mini', {
             behavior: 'You start every answer with this prompt $> ',

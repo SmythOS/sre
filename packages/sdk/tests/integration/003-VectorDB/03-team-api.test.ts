@@ -1,17 +1,14 @@
 // prettier-ignore-file
+/**
+ * VectorDB - Team API.
+ * Requires OPENAI_API_KEY or GOOGLE_AI_API_KEY (RAMVec uses embeddings).
+ */
 import { describe, it, beforeAll, expect } from 'vitest';
-import { SRE } from '@smythos/sre';
 import { Team } from '../../../src/index';
+import { initSRE, unique, HAS_EMBEDDINGS } from '../_helpers';
 
-function unique(prefix: string) {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-describe('VectorDB - Team API', () => {
-    beforeAll(async () => {
-        SRE.init({});
-        await SRE.ready();
-    });
+describe.skipIf(!HAS_EMBEDDINGS)('VectorDB - Team API', () => {
+    beforeAll(() => initSRE());
 
     it('team.vectorDB.RAMVec works and isolates per team', async () => {
         const teamA = new Team(unique('teamA'));

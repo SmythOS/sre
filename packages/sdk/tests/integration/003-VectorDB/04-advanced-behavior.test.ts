@@ -1,24 +1,20 @@
 // prettier-ignore-file
+/**
+ * VectorDB - Advanced behavior.
+ * Requires OPENAI_API_KEY or GOOGLE_AI_API_KEY (RAMVec uses embeddings).
+ */
 import { describe, it, beforeAll, expect } from 'vitest';
-import { SRE } from '@smythos/sre';
-import { Agent, Doc, TParsedDocument } from '../../../src/index';
+import { Agent, Model, TParsedDocument } from '../../../src/index';
+import { initSRE, unique, HAS_EMBEDDINGS } from '../_helpers';
 
-function unique(prefix: string) {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-describe('VectorDB - Advanced behavior', () => {
-    beforeAll(async () => {
-        SRE.init({});
-        await SRE.ready();
-    });
+describe.skipIf(!HAS_EMBEDDINGS)('VectorDB - Advanced behavior', () => {
+    beforeAll(() => initSRE());
 
     it('parses structured doc and indexes multiple pages', async () => {
-        const agent = new Agent({ id: unique('agent'), teamId: unique('team'), name: 'A', model: 'gpt-4o' });
+        const agent = new Agent({ id: unique('agent'), teamId: unique('team'), name: 'A', model: Model.Echo('Echo') });
         const ns = unique('ns');
         const vec = agent.vectorDB.RAMVec(ns);
 
-        // simple synthetic parsed doc with two pages
         const parsed: TParsedDocument = {
             title: 'Sample',
             metadata: { author: 'Tester', uri: '', date: '2021-01-01', tags: [] },
