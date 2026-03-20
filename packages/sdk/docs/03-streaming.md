@@ -2,7 +2,7 @@
 
 For building dynamic, real-time applications, waiting for an agent's full response can lead to a slow user experience. The SmythOS SDK solves this with streaming, allowing you to process the agent's output token-by-token as it's generated. This is perfect for creating "typewriter" effects in UIs and providing immediate feedback to the user.
 
-The script in [`examples/01-agent-code-skill/02-streaming.ts`](../../examples/01-agent-code-skill/02-streaming.ts) provides a complete, runnable example of the concepts below.
+The script in [`examples/01-agent-code-skill/02-streaming.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/02-streaming.ts) provides a complete, runnable example of the concepts below.
 
 ## How Streaming Works
 

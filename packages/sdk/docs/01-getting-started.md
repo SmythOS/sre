@@ -2,7 +2,7 @@
 
 Welcome to the SmythOS SDK! This guide will walk you through creating your very first AI agent. We'll build an agent that can fetch real-time cryptocurrency prices from an API.
 
-The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](../../examples/01-agent-code-skill/01-prompting.ts).
+The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/01-prompting.ts).
 
 ## 1. Installation
 
