@@ -1,5 +1,5 @@
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { INKVRequest, NKVConnector } from '../NKVConnector';
+import { INKVRequest, NKVConnector, NKVPaginationOptions, NKVListResult } from '../NKVConnector';
 import { ACLAccessDeniedError, IAccessCandidate, TAccessLevel, TAccessResult } from '@sre/types/ACL.types';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
@@ -67,34 +67,35 @@ export class NKVRedis extends NKVConnector {
     }
 
     @NKVRedis.NamespaceAccessControl
-    public async list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]> {
+    public async list(acRequest: AccessRequest, namespace: string, pagination?: NKVPaginationOptions): Promise<NKVListResult> {
+        if (pagination) {
+            console.warn('[NKVRedis] Pagination is not supported for NKVRedis provider, returning all items');
+        }
+
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         let keys = await this.fetchKeysByPrefix(this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace));
 
-        // filter out metadata keys & namespace sentinel keys
         keys = keys.filter(
-            (key) => key !== this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace) // if not the namespace sentinel key
+            (key) => key !== this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)
         );
 
-        if (keys.length <= 0) return [];
-        // Start a transaction
-        const pipeline = this.redisCacheConnector.client.pipeline();
+        if (keys.length <= 0) return { items: [], total: 0 };
 
-        // Add get commands for all keys to the transaction
+        const pipeline = this.redisCacheConnector.client.pipeline();
         keys.forEach((key) => {
             pipeline.get(key);
         });
 
-        // Execute the transaction
         const results = await pipeline.exec();
 
-        // Combine the keys and their corresponding values
-        return keys.map((key, index) => {
+        const items = keys.map((key, index) => {
             return {
                 key: key.replace(`${this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)}:`, ''),
                 data: results[index][1] as StorageData,
             };
         });
+
+        return { items, total: items.length };
     }
 
     @NKVRedis.NamespaceAccessControl
