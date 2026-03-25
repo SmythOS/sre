@@ -1,5 +1,5 @@
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { INKVRequest, NKVConnector } from '../NKVConnector';
+import { INKVRequest, NKVConnector, NKVPaginationOptions, NKVListResult } from '../NKVConnector';
 import { ACLAccessDeniedError, IAccessCandidate, TAccessLevel, TAccessResult } from '@sre/types/ACL.types';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
@@ -73,24 +73,26 @@ export class NKVRAM extends NKVConnector {
     }
 
     @NKVRAM.NamespaceAccessControl
-    public async list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]> {
+    public async list(acRequest: AccessRequest, namespace: string, pagination?: NKVPaginationOptions): Promise<NKVListResult> {
+        if (pagination) {
+            console.warn('[NKVRAM] Pagination is not supported for NKVRAM provider, returning all items');
+        }
+
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const prefix = this.key(`team_${teamId}`, namespace);
-        const results: { key: string; data: StorageData }[] = [];
+        const items: { key: string; data: StorageData }[] = [];
 
-        // Find all keys that start with the prefix
         for (const [storageKey, value] of this.storage.entries()) {
             if (storageKey.startsWith(prefix + ':')) {
-                // Extract the actual key (remove prefix and separator)
                 const actualKey = storageKey.substring(prefix.length + 1);
-                results.push({
+                items.push({
                     key: actualKey,
                     data: value as StorageData,
                 });
             }
         }
 
-        return results;
+        return { items, total: items.length };
     }
 
     @NKVRAM.NamespaceAccessControl
