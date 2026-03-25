@@ -303,6 +303,7 @@ export const BuiltinLLMProviders = {
     xAI: 'xAI',
     Perplexity: 'Perplexity',
     Ollama: 'Ollama',
+    MiniMax: 'MiniMax',
 } as const;
 // Base provider type
 export type TBuiltinLLMProvider = (typeof BuiltinLLMProviders)[keyof typeof BuiltinLLMProviders];

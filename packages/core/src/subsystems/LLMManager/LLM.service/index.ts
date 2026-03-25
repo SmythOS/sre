@@ -27,6 +27,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'xAI', xAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Perplexity', PerplexityConnector);
         ConnectorService.register(TConnectorService.LLM, 'Ollama', OllamaConnector);
+        ConnectorService.register(TConnectorService.LLM, 'MiniMax', OpenAIConnector);
     }
 
     public init() {
@@ -43,5 +44,6 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.init(TConnectorService.LLM, 'xAI');
         ConnectorService.init(TConnectorService.LLM, 'Perplexity');
         ConnectorService.init(TConnectorService.LLM, 'Ollama');
+        ConnectorService.init(TConnectorService.LLM, 'MiniMax');
     }
 }
