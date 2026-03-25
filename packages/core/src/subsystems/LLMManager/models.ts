@@ -2235,6 +2235,79 @@ export const models = {
 
     // #endregion Together AI Models ==========================
 
+    // #region MiniMax Models ==========================
+
+    'minimax-m2.7': {
+        llm: 'MiniMax',
+
+        label: 'MiniMax M2.7',
+        modelId: 'MiniMax-M2.7',
+        provider: 'MiniMax',
+        features: ['text', 'tools'],
+        tags: ['New', 'Personal'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 1_000_000, completionTokens: 16_384, enabled: true },
+
+        baseURL: 'https://api.minimax.io/v1',
+
+        credentials: 'vault',
+    },
+    'minimax-m2.7-highspeed': {
+        llm: 'MiniMax',
+
+        label: 'MiniMax M2.7 Highspeed',
+        modelId: 'MiniMax-M2.7-highspeed',
+        provider: 'MiniMax',
+        features: ['text', 'tools'],
+        tags: ['New', 'Personal'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 1_000_000, completionTokens: 16_384, enabled: true },
+
+        baseURL: 'https://api.minimax.io/v1',
+
+        credentials: 'vault',
+    },
+    'minimax-m2.5': {
+        llm: 'MiniMax',
+
+        label: 'MiniMax M2.5',
+        modelId: 'MiniMax-M2.5',
+        provider: 'MiniMax',
+        features: ['text', 'tools'],
+        tags: ['Personal'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 204_000, completionTokens: 16_384, enabled: true },
+
+        baseURL: 'https://api.minimax.io/v1',
+
+        credentials: 'vault',
+    },
+    'minimax-m2.5-highspeed': {
+        llm: 'MiniMax',
+
+        label: 'MiniMax M2.5 Highspeed',
+        modelId: 'MiniMax-M2.5-highspeed',
+        provider: 'MiniMax',
+        features: ['text', 'tools'],
+        tags: ['Personal'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 204_000, completionTokens: 16_384, enabled: true },
+
+        baseURL: 'https://api.minimax.io/v1',
+
+        credentials: 'vault',
+    },
+
+    // #endregion MiniMax Models ==========================
+
     // #region Image Generation Models ============================
 
     // #region OpenAI Models gpt-image-1
