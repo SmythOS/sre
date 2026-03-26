@@ -86,7 +86,8 @@ export class DataSourceComponent extends Component {
         }
 
         // TRY 2) try to get namespace using the legacy id. list all namespaces and find the one that matches the legacy id
-        const namespaces = (await nkvClient.list(`vectorDB:namespaces`))
+        const { items: nkvNamespaces } = await nkvClient.list(`vectorDB:namespaces`);
+        const namespaces = nkvNamespaces
             .map((namespace) => {
                 try {
                     return JSON.parse(namespace.data.toString());

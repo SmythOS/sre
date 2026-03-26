@@ -1,5 +1,5 @@
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { NKVConnector } from '../NKVConnector';
+import { NKVConnector, NKVPaginationOptions, NKVListResult } from '../NKVConnector';
 import { ACLAccessDeniedError, IAccessCandidate, TAccessResult } from '@sre/types/ACL.types';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
@@ -146,13 +146,17 @@ export class NKVLocalStorage extends NKVConnector {
     }
 
     @NKVLocalStorage.NamespaceAccessControl
-    public async list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]> {
+    public async list(acRequest: AccessRequest, namespace: string, pagination?: NKVPaginationOptions): Promise<NKVListResult> {
+        if (pagination) {
+            console.warn('[NKVLocalStorage] Pagination is not supported for NKVLocalStorage provider, returning all items');
+        }
+
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const namespacePath = this.getStoragePath(teamId, namespace);
-        const results: { key: string; data: StorageData }[] = [];
+        const items: { key: string; data: StorageData }[] = [];
 
         if (!fs.existsSync(namespacePath)) {
-            return results;
+            return { items, total: 0 };
         }
 
         const files = fs.readdirSync(namespacePath);
@@ -161,13 +165,13 @@ export class NKVLocalStorage extends NKVConnector {
             const stat = fs.statSync(filePath);
             if (stat.isFile()) {
                 const data = fs.readFileSync(filePath, 'utf-8');
-                results.push({
+                items.push({
                     key: file,
                     data: JSON.parse(data) as StorageData,
                 });
             }
         }
-        return results;
+        return { items, total: items.length };
     }
 
     @NKVLocalStorage.NamespaceAccessControl
