@@ -478,6 +478,7 @@ export interface IConversationSettings {
      * @default 100
      */
     maxToolCalls?: number;
+    conversationId?: string;
 }
 
 export enum APIKeySource {

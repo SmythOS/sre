@@ -19,6 +19,15 @@ export class LLMCache {
     }
 
     /**
+     * Generates a standardized LLM cache ID
+     * @param id - Identifier to use as cache ID (e.g., conversationId, sessionId)
+     * @returns LLM cache ID with 'llm_cache_' prefix
+     */
+    public static generateLLMCacheId(id: string): string {
+        return `llm_cache:${id}`;
+    }
+
+    /**
      * Creates a new LLMCache instace for a smythOS actor, the actor can be an agent, a user or a team
      * This is mainly use with agent to maintain a cache of the current LLM context
      *
@@ -30,7 +39,7 @@ export class LLMCache {
      */
     constructor(candidate: AccessCandidate, cacheId?: string, ttl: number = 1 * 60 * 60) {
         this._cacheConnector = ConnectorService.getCacheConnector();
-        this._cacheId = cacheId || 'llm_cache_' + uid();
+        this._cacheId = cacheId || LLMCache.generateLLMCacheId(uid());
         this._ttl = ttl;
         this._candidate = candidate;
     }

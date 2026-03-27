@@ -1,6 +1,7 @@
 import { Component } from '@sre/Components/Component.class';
 import { Agent } from './Agent.class';
 
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { LLMCache } from '@sre/MemoryManager/LLMCache';
 import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
@@ -22,7 +23,7 @@ const AgentRuntimeUnavailable = new Proxy(
                 };
             }
         },
-    }
+    },
 );
 export class AgentRuntime {
     private static processResults: any = {};
@@ -182,13 +183,95 @@ export class AgentRuntime {
         //if xDebugId is equal to agent session, it means that the debugging features are not active
         this._debugActive = this.xDebugId != agent.sessionId;
 
-        const xCacheId = agent.agentRequest.header('X-CACHE-ID') || '';
-        this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), xCacheId);
-        //this.xCacheId =
+        this.initLLMCache();
+    }
+
+    private getDebugConversationKey(): string {
+        return `debug:${this.xDebugId}:conversationId`;
+    }
+
+    private async initLLMCache() {
+        const xCacheId = this.agent.agentRequest.header('X-CACHE-ID') || '';
+        let conversationId = this.agent.conversationId;
+
+        /**
+         * Retrieve conversationId for workflow runtime using debug session mapping.
+         *
+         * Goal: Track conversation context across different runtime instances (chatbot conversation vs workflow components).
+         *
+         * When debugging chatbot:
+         * - Chatbot conversation runtime HAS conversationId (from chat request)
+         * - Workflow/debugger runtime DOES NOT have conversationId (workflow execution)
+         *
+         * Solution: Retrieve conversationId using xDebugId from the mapping stored by chatbot runtime.
+         */
+        if (!conversationId && this._debugActive && this.xDebugId) {
+            const cacheConnector = ConnectorService.getCacheConnector();
+            const storedConversationId = await cacheConnector
+                .requester(AccessCandidate.agent(this.agent.id))
+                .get(this.getDebugConversationKey())
+                .catch(() => null);
+
+            if (storedConversationId) {
+                conversationId = storedConversationId;
+                this.agent.conversationId = storedConversationId;
+            }
+        }
+
+        /**
+         * Generate cache ID to track conversation context across different runtime instances.
+         *
+         * Priority: xCacheId (explicit override) > conversationId (for context tracking) > undefined
+         *
+         * Why conversationId is needed:
+         * - Enables GenAILLM's "Use Context Window" to maintain conversation history
+         * - When debugging chatbot: conversationId available from chatbot runtime, OR retrieved via
+         *   debug mapping (above) for workflow runtime - both use same cache ID to share context.
+         */
+        const cacheId = xCacheId || (conversationId ? LLMCache.generateLLMCacheId(conversationId) : undefined);
+        this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), cacheId);
+
+        /**
+         * Store conversationId with debug session for workflow runtime to retrieve.
+         *
+         * When debugging chatbot:
+         * - Chatbot runtime HAS conversationId → stores mapping via getDebugConversationKey()
+         * - Workflow runtime retrieves conversationId using xDebugId → both share same LLM context cache
+         *
+         * TTL: 1 hour (sufficient for typical debug workflows)
+         */
+        if (this._debugActive && this.xDebugId && this.agent.conversationId) {
+            const cacheConnector = ConnectorService.getCacheConnector();
+            const DEBUG_SESSION_TTL = 60 * 60; // 1 hour in seconds
+
+            cacheConnector
+                .requester(AccessCandidate.agent(this.agent.id))
+                .set(this.getDebugConversationKey(), this.agent.conversationId, null, null, DEBUG_SESSION_TTL)
+                .catch((err) => {
+                    logger.warn('Failed to store debug-conversation mapping', err);
+                });
+        }
     }
 
     public async ready() {
         return this.agentContext.ready();
+    }
+
+    /**
+     * Retrieves the conversation ID associated with the current debug session
+     * @returns The conversation ID if found, undefined otherwise
+     */
+    public async getConversationId(): Promise<string | undefined> {
+        if (this.agent.conversationId) {
+            return this.agent.conversationId;
+        }
+
+        if (this._debugActive && this.xDebugId) {
+            const conversationId = await this.llmCache.get(this.getDebugConversationKey(), 'text');
+            return conversationId || undefined;
+        }
+
+        return undefined;
     }
 
     public destroy() {
@@ -247,11 +330,11 @@ export class AgentRuntime {
             dbgActiveComponents = dbgAllComponents.filter(
                 (c: any) =>
                     c?.ctx?.active == true ||
-                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
             );
         //find waiting components that was not previously run
         const dbgActiveWaitingComponents: any = dbgAllComponents.filter(
-            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined
+            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined,
         );
 
         const dbgActiveReadyComponents: any = dbgAllComponents.filter((c: any) => c?.ctx?.active == true && !c?.ctx?.status);
@@ -275,10 +358,10 @@ export class AgentRuntime {
         }
 
         const remainingActiveComponents: any = Object.values(ctxData?.components || []).filter(
-            (c: any) => c?.ctx?.active == true && !c?.ctx?.alwaysActive
+            (c: any) => c?.ctx?.active == true && !c?.ctx?.alwaysActive,
         );
         const activeAsyncComponents: any = Object.values(ctxData?.components || []).filter(
-            (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0
+            (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0,
         );
 
         if (remainingActiveComponents.length == 0 && activeAsyncComponents.length == 0 /*&& awaitingInputs.length == 0*/) {
@@ -319,7 +402,7 @@ export class AgentRuntime {
     public async runCycle() {
         logger.debug(
             `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`,
-            AccessCandidate.agent(this.agent.id)
+            AccessCandidate.agent(this.agent.id),
         );
         //this.checkRuntimeContext();
 
@@ -336,16 +419,16 @@ export class AgentRuntime {
             dbgActiveComponents = dbgAllComponents.filter(
                 (c: any) =>
                     c?.ctx?.active == true ||
-                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
             );
         //find waiting components that was not previously run
         const dbgActiveWaitingComponents: any = dbgAllComponents.filter(
-            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined
+            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined,
         );
         const dbgActiveReadyComponents: any = dbgAllComponents.filter(
             (c: any) =>
                 (c?.ctx?.active == true && !c?.ctx?.status) ||
-                (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
         );
         //const dbgActiveReadyComponents: any = dbgActiveComponents.filter((c: any) => c?.ctx?.active == true && !c?.ctx?.status);
 
@@ -387,7 +470,7 @@ export class AgentRuntime {
 
             const remainingActiveComponents: any = Object.values(ctxData?.components || []).filter((c: any) => c?.ctx?.active == true);
             const activeAsyncComponents: any = Object.values(ctxData?.components || []).filter(
-                (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0
+                (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0,
             );
             const dbgActiveWaitingComponents: any = dbgAllComponents.filter((c: any) => c?.ctx?.status && typeof c?.ctx?.output !== undefined);
 
@@ -405,7 +488,7 @@ export class AgentRuntime {
                     !e.result._missing_inputs &&
                     !e.result._in_progress &&
                     //check if the current result is a trigger
-                    triggers.find((t: any) => t.id == e.id)
+                    triggers.find((t: any) => t.id == e.id),
             );
 
             //capture workflow results
@@ -415,7 +498,7 @@ export class AgentRuntime {
                     e.result &&
                     !e.result._missing_inputs &&
                     //check if this is the last component in the chain
-                    !agent.connections.find((c) => c.sourceId == e.id)
+                    !agent.connections.find((c) => c.sourceId == e.id),
             );
 
             sessionResults = sessionResults.concat(triggersResults);
@@ -497,7 +580,7 @@ export class AgentRuntime {
                         }
                         return acc;
                     },
-                    { seen: {}, result: [] }
+                    { seen: {}, result: [] },
                 )
                 .result.filter((e) => !e.result?._exclude);
 
