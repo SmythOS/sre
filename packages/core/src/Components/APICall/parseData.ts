@@ -151,8 +151,54 @@ async function handleBinary(body: any, input: any, config, agent: Agent) {
 }
 
 async function handleNone(body: any, input: any, config, agent: Agent) {
-    //FIXME: try to guess the content type from headers content-type and data
+    // Try to guess the content type from headers content-type and data
+    const configHeaders = config?.headers || {};
+    const contentTypeHeader = configHeaders['content-type'] || configHeaders['Content-Type'];
+    
+    // If content-type is explicitly set in headers, delegate to appropriate handler
+    if (contentTypeHeader) {
+        if (contentTypeHeader.includes('application/json')) {
+            return await handleJson(body, input, config, agent);
+        } else if (contentTypeHeader.includes('application/x-www-form-urlencoded')) {
+            return await handleUrlEncoded(body, input, config, agent);
+        } else if (contentTypeHeader.includes('multipart/form-data')) {
+            return await handleMultipartFormData(body, input, config, agent);
+        } else if (contentTypeHeader.includes('text/')) {
+            return handleText(body, input, config, agent);
+        }
+    }
+    
+    // Attempt to guess content type from data structure
+    if (typeof body === 'string') {
+        const trimmedBody = body.trim();
+        
+        // Check if it looks like JSON
+        if ((trimmedBody.startsWith('{') && trimmedBody.endsWith('}')) || 
+            (trimmedBody.startsWith('[') && trimmedBody.endsWith(']'))) {
+            try {
+                JSON.parse(trimmedBody);
+                return await handleJson(body, input, config, agent);
+            } catch {
+                // Not valid JSON, continue with default handling
+            }
+        }
+        
+        // Check if it looks like URL-encoded data
+        if (trimmedBody.includes('=') && !trimmedBody.includes(' ') && 
+            !trimmedBody.includes('\n') && !trimmedBody.includes('<')) {
+            return await handleUrlEncoded(body, input, config, agent);
+        }
+        
+        // Default to text handling for strings
+        return handleText(body, input, config, agent);
+    }
+    
+    // For objects, try JSON handling
+    if (typeof body === 'object' && body !== null) {
+        return await handleJson(JSON.stringify(body), input, config, agent);
+    }
 
+    // Fallback to original behavior
     return { data: typeof body === 'string' ? body : JSON.stringify(body), headers: {} };
 }
 function handleText(body: any, input: any, config: any, agent: Agent) {
