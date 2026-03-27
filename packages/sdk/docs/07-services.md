@@ -43,7 +43,7 @@ An agent provides access to its configured storage providers.
 
 ```typescript
 // 'agent' is an existing Agent instance
-const storage = agent.storage.LocalStorage(); // Or agent.storage.S3() etc.
+const storage = agent.storage.LocalStorage(); // Or agent.storage.S3(), agent.storage.AzureBlobStorage() 
 const fileUri = await storage.write('my-file.txt', 'This is some important data.');
 console.log(`File written to: ${fileUri}`);
 const content = await storage.read(fileUri);
