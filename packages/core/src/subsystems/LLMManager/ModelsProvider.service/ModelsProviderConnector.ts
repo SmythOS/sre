@@ -352,7 +352,6 @@ export abstract class ModelsProviderConnector extends SecureConnector {
 
                     id: entryId,
                     name: entry.name,
-                    alias: foundationModel,
                     llm: entry.provider,
                     components: customModelData?.components ?? [],
                     isCustomLLM: true,
