@@ -18,12 +18,20 @@ export default defineConfig({
             exclude: ['node_modules', 'packages/*/dist/**', 'packages/*/tests/**', 'packages/cli/**'],
         },
         testTimeout: 30000,
+        // `poolOptions` was removed in Vitest 4 — https://vitest.dev/guide/migration#pool-rework
+        // Its sub-keys are now flat top-level `test` options:
+        //   poolOptions.forks.execArgv        → test.execArgv
+        //   poolOptions.forks.isolate         → test.isolate
+        //   poolOptions.forks.singleFork:true → test.maxWorkers: 1  (false = default, no replacement needed)
+        //   poolOptions.vmThreads.memoryLimit → test.vmMemoryLimit
+        //
+        // Previous config kept for reference:
+        // poolOptions: {
+        //     forks: {
+        //         singleFork: false, // false = one fork per test file (default); true → maxWorkers: 1
+        //     },
+        // },
         pool: 'forks',
-        poolOptions: {
-            forks: {
-                singleFork: false, // Each test file gets its own process for isolation
-            },
-        },
         // sequence: {
         //     concurrent: false, // run test files sequentially
         // },
