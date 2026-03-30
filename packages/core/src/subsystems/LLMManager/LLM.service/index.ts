@@ -12,6 +12,7 @@ import { VertexAIConnector } from './connectors/VertexAI.class';
 import { PerplexityConnector } from './connectors/Perplexity.class';
 import { xAIConnector } from './connectors/xAI.class';
 import { OllamaConnector } from './connectors/Ollama.class';
+import { OpenRouterConnector } from './connectors/OpenRouter.class';
 
 export class LLMService extends ConnectorServiceProvider {
     public register() {
@@ -27,6 +28,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'xAI', xAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Perplexity', PerplexityConnector);
         ConnectorService.register(TConnectorService.LLM, 'Ollama', OllamaConnector);
+        ConnectorService.register(TConnectorService.LLM, 'OpenRouter', OpenRouterConnector);
     }
 
     public init() {
@@ -43,5 +45,6 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.init(TConnectorService.LLM, 'xAI');
         ConnectorService.init(TConnectorService.LLM, 'Perplexity');
         ConnectorService.init(TConnectorService.LLM, 'Ollama');
+        ConnectorService.init(TConnectorService.LLM, 'OpenRouter');
     }
 }

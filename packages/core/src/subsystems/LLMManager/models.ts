@@ -2530,6 +2530,104 @@ export const models = {
         credentials: 'vault',
     },
 
+    // #region OpenRouter ==========================
+    // OpenRouter provides a unified gateway to 100+ models via one API key.
+    // All entries use tokens: 0 / completionTokens: 0 (disabled for SmythOS-managed keys)
+    // and are enabled only when the user supplies their own OpenRouter API key via keyOptions.
+
+    'openrouter/mistral-large': {
+        provider: 'OpenRouter',
+        label: 'Mistral Large (OpenRouter)',
+        modelId: 'mistralai/mistral-large',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 128_000, completionTokens: 8_192, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/meta-llama/llama-3.3-70b': {
+        provider: 'OpenRouter',
+        label: 'Llama 3.3 70B Instruct (OpenRouter)',
+        modelId: 'meta-llama/llama-3.3-70b-instruct',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 128_000, completionTokens: 4_096, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/qwen/qwen-2.5-72b': {
+        provider: 'OpenRouter',
+        label: 'Qwen 2.5 72B Instruct (OpenRouter)',
+        modelId: 'qwen/qwen-2.5-72b-instruct',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 131_072, completionTokens: 8_192, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/google/gemma-3-27b': {
+        provider: 'OpenRouter',
+        label: 'Gemma 3 27B (OpenRouter)',
+        modelId: 'google/gemma-3-27b-it',
+        features: ['text'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 131_072, completionTokens: 8_192, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/deepseek/deepseek-r1': {
+        provider: 'OpenRouter',
+        label: 'DeepSeek R1 (OpenRouter)',
+        modelId: 'deepseek/deepseek-r1',
+        features: ['text', 'reasoning'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 163_840, completionTokens: 32_768, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/microsoft/phi-4': {
+        provider: 'OpenRouter',
+        label: 'Phi-4 (OpenRouter)',
+        modelId: 'microsoft/phi-4',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 16_384, completionTokens: 4_096, enabled: true },
+        credentials: 'vault',
+    },
+
+    'openrouter/cohere/command-r-plus': {
+        provider: 'OpenRouter',
+        label: 'Command R+ (OpenRouter)',
+        modelId: 'cohere/command-r-plus',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'OpenRouter'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 128_000, completionTokens: 4_096, enabled: true },
+        credentials: 'vault',
+    },
+
+    // #endregion OpenRouter ==========================
+
     // #endregion [User Models] ==============================================================
 };
 
