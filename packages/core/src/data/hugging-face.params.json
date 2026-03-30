@@ -200,63 +200,46 @@
     },
     "conversational": {
         "inputs": {
-            "Text": {
-                "type": "string",
-                "desc": "(required) The last input from the user in the conversation.",
-                "request_parameter_name": "text",
-                "request_parameter_type": "string"
-            },
-            "Generated_responses": {
-                "type": "string[]",
-                "desc": "A list of strings corresponding to the earlier replies from the model.",
-                "request_parameter_name": "generated_responses",
-                "request_parameter_type": "string[]"
-            },
-            "Past_user_inputs": {
-                "type": "string[]",
-                "desc": "A list of strings corresponding to the earlier replies from the user. Should be of the same length of generated_responses.",
-                "request_parameter_name": "past_user_inputs",
-                "request_parameter_type": "string[]"
+            "Messages": {
+                "type": "object[]",
+                "desc": "(required) A list of messages comprising the conversation so far. Each message is an object with 'role' (e.g. 'user', 'assistant', 'system') and 'content' (string).",
+                "request_parameter_name": "messages",
+                "request_parameter_type": "object[]"
             }
         },
         "parameters": {
-            "min_length": {
+            "max_tokens": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Integer to define the minimum length in tokens of the output summary."
-            },
-            "max_length": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Integer to define the maximum length in tokens of the output summary."
-            },
-            "top_k": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
-            },
-            "top_p": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+                "desc": "(Default: None). The maximum number of tokens that can be generated in the chat completion."
             },
             "temperature": {
                 "type": "number",
                 "default": 1,
-                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+                "desc": "(Default: 1.0). Float (0.0-2.0). Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic."
             },
-            "repetition_penalty": {
+            "top_p": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+                "desc": "(Default: None). Float. An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass."
             },
-            "max_time": {
+            "frequency_penalty": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+                "desc": "(Default: None). Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far."
+            },
+            "presence_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far."
+            },
+            "stop": {
+                "type": "string[]",
+                "default": "None",
+                "desc": "(Default: None). Up to 4 sequences where the API will stop generating further tokens."
             }
         },
-        "formatRequest": "inputs: \"{{text}}\", past_user_inputs: [{{past_user_inputs}}], generated_responses: [{{generated_responses}}] }"
+        "formatRequest": "messages: [{{messages}}]"
     },
     "text-generation": {
         "inputs": {
