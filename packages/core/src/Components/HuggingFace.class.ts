@@ -8,15 +8,14 @@ import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, keba
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-// HF text-generation params that map to OpenAI chatCompletion equivalents
-const HF_TO_CHAT_PARAM_MAP: Record<string, string> = {
+// HF-specific param names that map to their OpenAI-compatible equivalents
+const HF_TO_OPENAI_PARAM_MAP: Record<string, string> = {
     max_new_tokens: 'max_tokens',
     max_length: 'max_tokens',
-    repetition_penalty: 'frequency_penalty',
 };
 
 // Parameters that are HF-specific and invalid for the OpenAI chat completions API
-const HF_ONLY_PARAMS = new Set(['do_sample', 'return_full_text', 'num_return_sequences', 'truncate', 'max_time', 'min_length']);
+const HF_ONLY_PARAMS = new Set(['do_sample', 'return_full_text', 'num_return_sequences', 'truncate', 'max_time', 'min_length', 'repetition_penalty']);
 
 export class HuggingFace extends Component {
     protected configSchema = Joi.object({
@@ -226,12 +225,13 @@ export class HuggingFace extends Component {
         let args = { model: modelName, ...structuredInputs };
 
         if (Object.keys(parameters)?.length > 0) {
-            if (hfFunc === 'chatCompletion') {
-                // chatCompletion uses the OpenAI-compatible /v1/chat/completions endpoint.
-                // Remap HF-specific param names and drop invalid ones.
+            const useOpenAIParams = hfFunc === 'chatCompletion' || hfFunc === 'textGeneration';
+            if (useOpenAIParams) {
+                // Remap HF param names to OpenAI equivalents (e.g. max_new_tokens → max_tokens).
+                // chatCompletion drops HF-only params; textGeneration still accepts them.
                 for (const [key, value] of Object.entries(parameters)) {
-                    if (HF_ONLY_PARAMS.has(key)) continue;
-                    const mappedKey = HF_TO_CHAT_PARAM_MAP[key] ?? key;
+                    if (hfFunc === 'chatCompletion' && HF_ONLY_PARAMS.has(key)) continue;
+                    const mappedKey = HF_TO_OPENAI_PARAM_MAP[key] ?? key;
                     if (!(mappedKey in args)) {
                         args[mappedKey] = value;
                     }
@@ -241,6 +241,11 @@ export class HuggingFace extends Component {
             }
 
             logger.debug('Parameters: \n', parameters);
+        }
+
+        // textGeneration requires max_tokens — provide a sensible default if not set
+        if (hfFunc === 'textGeneration' && !('max_tokens' in args)) {
+            args['max_tokens'] = 256;
         }
 
         const modelCallWithRetry = async ({ retryCount = 0, retryLimit = 2, retryDelay = 1000 }) => {
