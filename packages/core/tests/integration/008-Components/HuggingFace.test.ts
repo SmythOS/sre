@@ -128,7 +128,10 @@ describe('HuggingFace Component — Integration', () => {
         async () => {
             const output = await hfComp.process(
                 { Text: 'This is a wonderful day' },
-                makeConfig('distilbert/distilbert-base-uncased-finetuned-sst-2-english', 'text-classification'),
+                makeConfig('distilbert/distilbert-base-uncased-finetuned-sst-2-english', 'text-classification', {
+                    top_k: 2,
+                    function_to_apply: 'softmax',
+                }),
                 mockAgent,
             );
 
@@ -175,6 +178,8 @@ describe('HuggingFace Component — Integration', () => {
                 { Text: 'My name is John and I live in London' },
                 makeConfig('dslim/bert-base-NER', 'token-classification', {
                     aggregation_strategy: 'simple',
+                    ignore_labels: ['O'],
+                    stride: 0,
                 }),
                 mockAgent,
             );
@@ -192,7 +197,13 @@ describe('HuggingFace Component — Integration', () => {
     it(
         'translation — should return translated text string',
         async () => {
-            const output = await hfComp.process({ Text: 'Hello world' }, makeConfig('Helsinki-NLP/opus-mt-en-fr', 'translation'), mockAgent);
+            const output = await hfComp.process(
+                { Text: 'Hello world' },
+                makeConfig('Helsinki-NLP/opus-mt-en-fr', 'translation', {
+                    clean_up_tokenization_spaces: true,
+                }),
+                mockAgent,
+            );
 
             expect(output._error).toBeUndefined();
             expect(typeof output.Output).toBe('string');
@@ -221,6 +232,7 @@ describe('HuggingFace Component — Integration', () => {
                     temperature: 0.7,
                     repetition_penalty: 1.2,
                     max_time: 60,
+                    clean_up_tokenization_spaces: true,
                 }),
                 mockAgent,
             );
@@ -241,7 +253,12 @@ describe('HuggingFace Component — Integration', () => {
                     Question: 'What is the capital of France?',
                     Context: 'France is a country in Europe. The capital of France is Paris. Paris is known for the Eiffel Tower.',
                 },
-                makeConfig('deepset/roberta-base-squad2', 'question-answering'),
+                makeConfig('deepset/roberta-base-squad2', 'question-answering', {
+                    top_k: 1,
+                    max_answer_len: 50,
+                    handle_impossible_answer: false,
+                    align_to_words: true,
+                }),
                 mockAgent,
             );
 
@@ -264,7 +281,10 @@ describe('HuggingFace Component — Integration', () => {
                         Contributors: ['10', '400', '150'],
                     }),
                 },
-                makeConfig('google/tapas-base-finetuned-wtq', 'table-question-answering'),
+                makeConfig('google/tapas-base-finetuned-wtq', 'table-question-answering', {
+                    sequential: false,
+                    truncation: true,
+                }),
                 mockAgent,
             );
 
@@ -280,7 +300,9 @@ describe('HuggingFace Component — Integration', () => {
         async () => {
             const output = await hfComp.process(
                 { Text: 'The capital of France is [MASK].' },
-                makeConfig('bert-base-uncased', 'fill-mask'),
+                makeConfig('bert-base-uncased', 'fill-mask', {
+                    top_k: 3,
+                }),
                 mockAgent,
             );
 
@@ -322,6 +344,7 @@ describe('HuggingFace Component — Integration', () => {
                 makeConfig('facebook/bart-large-mnli', 'zero-shot-classification', {
                     candidate_labels: ['positive', 'negative', 'neutral'],
                     multi_label: false,
+                    hypothesis_template: 'This text expresses a {} sentiment.',
                 }),
                 mockAgent,
             );
@@ -338,7 +361,15 @@ describe('HuggingFace Component — Integration', () => {
     it(
         'featureExtraction — should return embeddings array',
         async () => {
-            const output = await hfComp.process({ Text: 'Hello world' }, makeConfig('facebook/bart-base', 'feature-extraction'), mockAgent);
+            const output = await hfComp.process(
+                { Text: 'Hello world' },
+                makeConfig('facebook/bart-base', 'feature-extraction', {
+                    normalize: true,
+                    truncate: true,
+                    truncation_direction: 'right',
+                }),
+                mockAgent,
+            );
 
             expect(output._error).toBeUndefined();
             // Feature extraction returns nested arrays of numbers (embeddings)
@@ -354,7 +385,9 @@ describe('HuggingFace Component — Integration', () => {
         async () => {
             const output = await hfComp.process(
                 { Image: imageBase64Url },
-                makeConfig('google/vit-base-patch16-224', 'image-classification'),
+                makeConfig('google/vit-base-patch16-224', 'image-classification', {
+                    top_k: 5,
+                }),
                 mockAgent,
             );
 
@@ -370,7 +403,13 @@ describe('HuggingFace Component — Integration', () => {
     it(
         'objectDetection — should return detections array',
         async () => {
-            const output = await hfComp.process({ Image: imageBase64Url }, makeConfig('facebook/detr-resnet-50', 'object-detection'), mockAgent);
+            const output = await hfComp.process(
+                { Image: imageBase64Url },
+                makeConfig('facebook/detr-resnet-50', 'object-detection', {
+                    threshold: 0.8,
+                }),
+                mockAgent,
+            );
 
             expect(output._error).toBeUndefined();
             expect(Array.isArray(output.Output)).toBe(true);
@@ -389,7 +428,11 @@ describe('HuggingFace Component — Integration', () => {
             const cocoImageUrl = 'http://images.cocodataset.org/val2017/000000039769.jpg';
             const output = await hfComp.process(
                 { Image: cocoImageUrl },
-                makeConfig('facebook/detr-resnet-50-panoptic', 'image-segmentation'),
+                makeConfig('facebook/detr-resnet-50-panoptic', 'image-segmentation', {
+                    subtask: 'panoptic',
+                    threshold: 0.9,
+                    overlap_mask_area_threshold: 0.5,
+                }),
                 mockAgent,
             );
 
@@ -407,7 +450,12 @@ describe('HuggingFace Component — Integration', () => {
         async () => {
             const output = await hfComp.process(
                 { Text: 'A simple red circle on a white background' },
-                makeConfig('stabilityai/stable-diffusion-xl-base-1.0', 'text-to-image'),
+                makeConfig('stabilityai/stable-diffusion-xl-base-1.0', 'text-to-image', {
+                    num_inference_steps: 20,
+                    guidance_scale: 7.5,
+                    width: 512,
+                    height: 512,
+                }),
                 mockAgent,
             );
 
@@ -559,6 +607,151 @@ describe('HuggingFace Component — Integration', () => {
         const output = await hfComp.process({}, makeConfig('bert-base-uncased', 'text-classification'), mockAgent);
         expect(output._error).toBeDefined();
     }, 10_000);
+
+    // ==================== New Parameter Tests (v4 SDK) ====================
+
+    it(
+        'chatCompletion (conversational) — new v4 params (seed, logprobs, response_format)',
+        async () => {
+            const output = await hfComp.process(
+                { Messages: [{ role: 'user', content: 'What is 2+2? Answer with just the number.' }] },
+                makeConfig('Qwen/Qwen3-32B', 'conversational', {
+                    max_tokens: 50,
+                    temperature: 0.1,
+                    top_p: 0.9,
+                    seed: 42,
+                    logprobs: false,
+                    frequency_penalty: 0,
+                    presence_penalty: 0,
+                    stop: ['\n'],
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'text-generation — new v4 TGI params (seed, watermark, typical_p, grammar)',
+        async () => {
+            const output = await hfComp.process(
+                { Text: 'The meaning of life is' },
+                makeConfig('meta-llama/Meta-Llama-3-8B', 'text-generation', {
+                    max_new_tokens: 30,
+                    temperature: 0.7,
+                    top_p: 0.9,
+                    top_k: 50,
+                    frequency_penalty: 0,
+                    repetition_penalty: 1.1,
+                    do_sample: true,
+                    seed: 42,
+                    return_full_text: false,
+                    watermark: false,
+                    details: false,
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'summarization — new v4 params (truncation enum, generate_parameters)',
+        async () => {
+            const longText =
+                'The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, ' +
+                'and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. ' +
+                'During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest ' +
+                'man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York ' +
+                'City was finished in 1930.';
+
+            const output = await hfComp.process(
+                { Text: longText },
+                makeConfig('facebook/bart-large-cnn', 'summarization', {
+                    clean_up_tokenization_spaces: true,
+                    truncation: 'longest_first',
+                    generate_parameters: {
+                        max_new_tokens: 60,
+                        temperature: 0.7,
+                    },
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+            expect(output.Output.length).toBeLessThan(longText.length);
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'translation — new v4 params (truncation enum, generate_parameters)',
+        async () => {
+            const output = await hfComp.process(
+                { Text: 'Hello world' },
+                makeConfig('Helsinki-NLP/opus-mt-en-fr', 'translation', {
+                    clean_up_tokenization_spaces: true,
+                    truncation: 'do_not_truncate',
+                    generate_parameters: {
+                        max_new_tokens: 50,
+                    },
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'imageToImage — new v4 params (target_size)',
+        async () => {
+            const output = await hfComp.process(
+                { Image: imageBase64Url },
+                makeConfig('PixelSmile/PixelSmile', 'image-to-image', {
+                    prompt: 'pixel art style',
+                    target_size: { width: 256, height: 256 },
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(output.Output).toBeDefined();
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'textToVideo — should return a video output',
+        async () => {
+            const output = await hfComp.process(
+                { Text: 'A cat walking on grass' },
+                makeConfig('Lightricks/LTX-Video', 'text-to-video', {
+                    num_inference_steps: 10,
+                    guidance_scale: 7.5,
+                    seed: 42,
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(output.Output).toBeDefined();
+        },
+        TIMEOUT,
+    );
 
     // ==================== Skipped Tests ====================
 

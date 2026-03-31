@@ -8,7 +8,7 @@ import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, keba
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-// Per-method param handling: params to drop and remap, keyed by resolved SDK method.
+// Per-method param handling: params to drop, remap, and flatten, keyed by resolved SDK method.
 // chatCompletion uses OpenAI-style params; legacy HF params are dropped or remapped.
 // textGeneration uses HF-native params; OpenAI-only params are dropped.
 const METHOD_DROP_PARAMS: Record<string, Set<string>> = {
@@ -18,6 +18,9 @@ const METHOD_REMAP_PARAMS: Record<string, Record<string, string>> = {
     chatCompletion: { max_new_tokens: 'max_tokens', max_length: 'max_tokens', repetition_penalty: 'frequency_penalty' },
     textGeneration: { max_new_tokens: 'max_tokens', max_length: 'max_tokens' },
 };
+// Methods where params should be spread at the top level of args instead of nested under "parameters".
+// Most HF SDK methods expect { inputs, parameters: { ... } }, but these expect top-level params.
+const METHOD_FLATTEN_PARAMS = new Set(['chatCompletion', 'textGeneration', 'featureExtraction', 'sentenceSimilarity']);
 
 export class HuggingFace extends Component {
     protected configSchema = Joi.object({
@@ -239,7 +242,8 @@ export class HuggingFace extends Component {
         if (Object.keys(parameters)?.length > 0) {
             const dropParams = METHOD_DROP_PARAMS[hfFunc];
             const remapParams = METHOD_REMAP_PARAMS[hfFunc];
-            if (dropParams || remapParams) {
+            if (METHOD_FLATTEN_PARAMS.has(hfFunc)) {
+                // These methods expect params at the top level of args
                 for (const [key, value] of Object.entries(parameters)) {
                     if (dropParams?.has(key)) continue;
                     const mappedKey = remapParams?.[key] ?? key;
@@ -248,6 +252,7 @@ export class HuggingFace extends Component {
                     }
                 }
             } else {
+                // Most HF SDK methods expect params nested under "parameters"
                 args['parameters'] = parameters;
             }
 
