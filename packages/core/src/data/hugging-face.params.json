@@ -8,6 +8,32 @@
                 "request_parameter_type": "string"
             }
         },
+        "parameters": {
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). When specified, limits the output to the top K most probable labels."
+            },
+            "function_to_apply": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). The function to apply to the model outputs to retrieve the scores.",
+                "supportedValues": [
+                    {
+                        "value": "sigmoid",
+                        "desc": "Applies the Sigmoid function to the output."
+                    },
+                    {
+                        "value": "softmax",
+                        "desc": "Applies the Softmax function to the output."
+                    },
+                    {
+                        "value": "none",
+                        "desc": "Does not apply any function to the output."
+                    }
+                ]
+            }
+        },
         "formatRequest": "inputs: \"{{text}}\""
     },
     "token-classification": {
@@ -46,6 +72,16 @@
                         "desc": "Same as the simple strategy except words cannot end up with different tags. Word entity will be the token with the maximum score."
                     }
                 ]
+            },
+            "ignore_labels": {
+                "type": "string[]",
+                "default": [],
+                "desc": "(Default: []). A list of labels to ignore in the results."
+            },
+            "stride": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The number of overlapping tokens between chunks when splitting the input text."
             }
         },
         "formatRequest": "inputs: \"{{text}}\""
@@ -80,6 +116,43 @@
                 "request_parameter_type": "string"
             }
         },
+        "parameters": {
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The number of answers to return (will be sorted by likelihood). Note that we return less than topk answers if there are not enough options available within the context."
+            },
+            "doc_stride": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). If the context is too long to fit with the question for the model, it will be split into overlapping chunks. This argument controls the size of that overlap."
+            },
+            "max_answer_len": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The maximum length of the predicted answer."
+            },
+            "max_seq_len": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The maximum length of the total sentence (context + question) after tokenization."
+            },
+            "max_question_len": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The maximum length of the question after tokenization."
+            },
+            "handle_impossible_answer": {
+                "type": "boolean",
+                "default": false,
+                "desc": "(Default: false). Whether to accept impossible as an answer."
+            },
+            "align_to_words": {
+                "type": "boolean",
+                "default": "None",
+                "desc": "(Default: None). Attempts to align the answer to real words. Improves quality on space separated languages."
+            }
+        },
         "formatRequest": "inputs: { context: \"{{context}}\", question: \"{{question}}\" }"
     },
     "document-question-answering": {
@@ -95,6 +168,33 @@
                 "desc": "(required) Question about document image.",
                 "request_parameter_name": "question",
                 "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "doc_stride": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). If the words in the document are too long to fit with the question for the model, it will be split into overlapping chunks. This argument controls the size of that overlap."
+            },
+            "handle_impossible_answer": {
+                "type": "boolean",
+                "default": false,
+                "desc": "(Default: false). Whether to accept impossible as an answer."
+            },
+            "lang": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). Language of the document (e.g. 'en', 'fr'). Used for OCR preprocessing of the image."
+            },
+            "max_answer_len": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The maximum length of the predicted answer."
+            },
+            "word_boxes": {
+                "type": "object[]",
+                "default": "None",
+                "desc": "(Default: None). A list of word boxes and their associated words. If provided, the image is not used for OCR."
             }
         },
         "formatRequest": "inputs: { image: {{image}}, question: \"{{question}}\" }"
@@ -146,6 +246,28 @@
                 "desc": "(required) a string to be translated in the original languages",
                 "request_parameter_name": "inputs",
                 "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "src_lang": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). Source language code (e.g. 'en'). Required for multilingual translation models."
+            },
+            "tgt_lang": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). Target language code (e.g. 'fr'). Required for multilingual translation models."
+            },
+            "clean_up_tokenization_spaces": {
+                "type": "boolean",
+                "default": "None",
+                "desc": "(Default: None). Whether to clean up the potential extra spaces in the text output."
+            },
+            "truncation": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). The truncation strategy to use."
             }
         },
         "formatRequest": "inputs: \"{{text}}\""
@@ -251,55 +373,35 @@
             }
         },
         "parameters": {
-            "do_sample": {
-                "type": "boolean",
-                "default": true,
-                "desc": "(Optional: true). Bool. Whether or not to use sampling, use greedy decoding otherwise."
-            },
-            "max_time": {
+            "max_tokens": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
-            },
-            "num_return_sequences": {
-                "type": "number",
-                "default": 1,
-                "desc": "(Default: 1). Integer. The number of proposition you want to be returned."
-            },
-            "repetition_penalty": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
-            },
-            "return_full_text": {
-                "type": "boolean",
-                "default": true,
-                "desc": "(Default: true). Bool. If set to False, the return results will not contain the original query making it easier for prompting."
+                "desc": "(Default: None). The maximum number of tokens that can be generated in the completion."
             },
             "temperature": {
                 "type": "number",
                 "default": 1,
-                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
-            },
-            "max_new_tokens": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Int (0-250). The amount of new tokens to be generated, this does not include the input length it is a estimate of the size of generated text you want. Each new tokens slows down the request, so look for balance between response times and length of text generated."
-            },
-            "top_k": {
-                "type": "number",
-                "default": "None",
-                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+                "desc": "(Default: 1.0). Float (0.0-2.0). Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic."
             },
             "top_p": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+                "desc": "(Default: None). Float. An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass."
             },
-            "truncate": {
+            "frequency_penalty": {
                 "type": "number",
                 "default": "None",
-                "desc": "(Default: None). Integer. The maximum number of tokens from the input."
+                "desc": "(Default: None). Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far."
+            },
+            "presence_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far."
+            },
+            "stop": {
+                "type": "string[]",
+                "default": "None",
+                "desc": "(Default: None). Up to 4 sequences where the API will stop generating further tokens."
             }
         },
         "formatRequest": "inputs: \"{{text}}\""
@@ -389,6 +491,38 @@
                 "request_parameter_type": "string"
             }
         },
+        "parameters": {
+            "negative_prompt": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). A text specifying what the model should NOT generate."
+            },
+            "height": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The height in pixels of the generated image."
+            },
+            "width": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The width in pixels of the generated image."
+            },
+            "num_inference_steps": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference."
+            },
+            "guidance_scale": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Higher guidance scale encourages to generate images that are closely linked to the text prompt, usually at the expense of lower image quality."
+            },
+            "seed": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). A random seed for reproducibility. Using the same seed with the same parameters will produce the same image."
+            }
+        },
         "formatRequest": "inputs: \"{{text}}\""
     },
     "image-to-text": {
@@ -429,11 +563,11 @@
             "Image": {
                 "type": "URL | base64 | file | SmythFileObject",
                 "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
-                "request_parameter_name": "data",
+                "request_parameter_name": "inputs",
                 "request_parameter_type": "Blob | ArrayBuffer"
             }
         },
-        "formatRequest": "data: {{image}}"
+        "formatRequest": "inputs: {{image}}"
     },
     "zero-shot-image-classification": {
         "inputs": {
@@ -556,6 +690,28 @@
                 "desc": "(required) a string or a list of strings to get the features from.",
                 "request_parameter_name": "inputs",
                 "request_parameter_type": "string | string[]"
+            }
+        },
+        "parameters": {
+            "normalize": {
+                "type": "boolean",
+                "default": "None",
+                "desc": "(Default: None). Whether to normalize the output embeddings to unit length."
+            },
+            "prompt_name": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Default: None). The name of the prompt that should be used by for encoding (e.g. 'query', 'passage'). If not set, no prompt is applied."
+            },
+            "truncate": {
+                "type": "boolean",
+                "default": "None",
+                "desc": "(Default: None). Whether to truncate inputs longer than the model's maximum context length."
+            },
+            "truncation_direction": {
+                "type": "string",
+                "default": "Right",
+                "desc": "(Default: Right). The truncation direction: 'Left' or 'Right'."
             }
         },
         "formatRequest": "inputs: \"{{text}}\""
