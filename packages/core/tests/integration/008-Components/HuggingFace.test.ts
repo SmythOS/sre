@@ -417,10 +417,6 @@ describe('HuggingFace Component — Integration', () => {
         TIMEOUT,
     );
 
-    // ==================== Skipped Tests ====================
-
-    // No inference provider available for these models in @huggingface/inference v4
-    it.skip('documentQuestionAnswering — no inference provider available', async () => {});
     it(
         'imageToImage — should return a transformed image output',
         async () => {
@@ -437,16 +433,37 @@ describe('HuggingFace Component — Integration', () => {
         },
         TIMEOUT,
     );
-    it.skip('text2textGeneration — no inference provider available', async () => {});
-    it.skip('visualQuestionAnswering — no inference provider available', async () => {});
-    it.skip('imageToText — no inference provider available', async () => {});
-    it.skip('zeroShotImageClassification — no inference provider available', async () => {});
-    it.skip('textToSpeech — no inference provider available', async () => {});
 
-    // No audio test fixture available
-    it.skip('automaticSpeechRecognition — no audio test fixture', async () => {});
-    it.skip('audioToAudio — no audio test fixture', async () => {});
-    it.skip('audioClassification — no audio test fixture', async () => {});
+    it(
+        'imageToText — should return a text description of the image',
+        async () => {
+            const output = await hfComp.process(
+                { Image: imageBase64Url },
+                makeConfig('zai-org/GLM-OCR', 'image-to-text'),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'textToSpeech — should return an audio output',
+        async () => {
+            const output = await hfComp.process(
+                { Text: 'Hello, this is a test of text to speech.' },
+                makeConfig('hexgrad/Kokoro-82M', 'text-to-speech'),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(output.Output).toBeDefined();
+        },
+        TIMEOUT,
+    );
 
     // ==================== Parameter Handling ====================
 
@@ -542,4 +559,19 @@ describe('HuggingFace Component — Integration', () => {
         const output = await hfComp.process({}, makeConfig('bert-base-uncased', 'text-classification'), mockAgent);
         expect(output._error).toBeDefined();
     }, 10_000);
+
+    // ==================== Skipped Tests ====================
+
+    // No inference provider available for these models in @huggingface/inference v4
+    it.skip('documentQuestionAnswering — no inference provider available', async () => {});
+    it.skip('text2textGeneration — no inference provider available', async () => {});
+    it.skip('visualQuestionAnswering — no inference provider available', async () => {});
+    it.skip('zeroShotImageClassification — no inference provider available', async () => {});
+
+    // openai/whisper-large-v3 routes to fal-ai provider, which rejects base64 data URLs
+    // in its audio_url field (SDK bug). Workaround requires passing `provider: "hf-inference"`
+    // as a top-level arg, which the component doesn't currently support.
+    it.skip('automaticSpeechRecognition — fal-ai provider rejects base64 data URLs', async () => {});
+    it.skip('audioToAudio — no audio test fixture', async () => {});
+    it.skip('audioClassification — no audio test fixture', async () => {});
 });
