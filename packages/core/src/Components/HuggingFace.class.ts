@@ -8,14 +8,16 @@ import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, keba
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-// HF-specific param names that map to their OpenAI-compatible equivalents
-const HF_TO_OPENAI_PARAM_MAP: Record<string, string> = {
-    max_new_tokens: 'max_tokens',
-    max_length: 'max_tokens',
+// Per-method param handling: params to drop and remap, keyed by resolved SDK method.
+// chatCompletion uses OpenAI-style params; legacy HF params are dropped or remapped.
+// textGeneration uses HF-native params; OpenAI-only params are dropped.
+const METHOD_DROP_PARAMS: Record<string, Set<string>> = {
+    chatCompletion: new Set(['do_sample', 'return_full_text', 'num_return_sequences', 'truncate', 'max_time', 'min_length', 'top_k']),
 };
-
-// Parameters that are HF-specific and invalid for the OpenAI chat completions API
-const HF_ONLY_PARAMS = new Set(['do_sample', 'return_full_text', 'num_return_sequences', 'truncate', 'max_time', 'min_length', 'repetition_penalty']);
+const METHOD_REMAP_PARAMS: Record<string, Record<string, string>> = {
+    chatCompletion: { max_new_tokens: 'max_tokens', max_length: 'max_tokens', repetition_penalty: 'frequency_penalty' },
+    textGeneration: { max_new_tokens: 'max_tokens', max_length: 'max_tokens' },
+};
 
 export class HuggingFace extends Component {
     protected configSchema = Joi.object({
@@ -159,7 +161,17 @@ export class HuggingFace extends Component {
                             return { _error: error?.message || JSON.stringify(error), _debug: logger.output };
                         }
                     } else {
-                        inputs[name] = value;
+                        // If the expected type is not a plain string and the value is a JSON string,
+                        // parse it so the API receives a structured object (e.g. table data for tableQuestionAnswering).
+                        if (type && type !== 'string' && typeof value === 'string') {
+                            try {
+                                inputs[name] = JSON.parse(value);
+                            } catch {
+                                inputs[name] = value;
+                            }
+                        } else {
+                            inputs[name] = value;
+                        }
                     }
                 }
             }
@@ -225,13 +237,12 @@ export class HuggingFace extends Component {
         let args = { model: modelName, ...structuredInputs };
 
         if (Object.keys(parameters)?.length > 0) {
-            const useOpenAIParams = hfFunc === 'chatCompletion' || hfFunc === 'textGeneration';
-            if (useOpenAIParams) {
-                // Remap HF param names to OpenAI equivalents (e.g. max_new_tokens → max_tokens).
-                // chatCompletion drops HF-only params; textGeneration still accepts them.
+            const dropParams = METHOD_DROP_PARAMS[hfFunc];
+            const remapParams = METHOD_REMAP_PARAMS[hfFunc];
+            if (dropParams || remapParams) {
                 for (const [key, value] of Object.entries(parameters)) {
-                    if (hfFunc === 'chatCompletion' && HF_ONLY_PARAMS.has(key)) continue;
-                    const mappedKey = HF_TO_OPENAI_PARAM_MAP[key] ?? key;
+                    if (dropParams?.has(key)) continue;
+                    const mappedKey = remapParams?.[key] ?? key;
                     if (!(mappedKey in args)) {
                         args[mappedKey] = value;
                     }
