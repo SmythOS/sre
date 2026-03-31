@@ -3,7 +3,13 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenAI, FunctionCallingConfigMode, FileState, type GenerateContentResponseUsageMetadata } from '@google/genai/node';
+import {
+    GoogleGenAI,
+    FunctionCallingConfigMode,
+    FileState,
+    type GenerateContentResponseUsageMetadata,
+    GenerateImagesConfig,
+} from '@google/genai/node';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -335,10 +341,9 @@ export class GoogleAIConnector extends LLMConnector {
         const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         // Use traditional Imagen models
-        const config = {
+        const config: GenerateImagesConfig = {
             numberOfImages: body.n || 1,
-            aspectRatio: body.aspect_ratio || body.size || '1:1',
-            personGeneration: body.person_generation || 'allow_adult',
+            aspectRatio: body?.aspectRatio || body?.size || '1:1',
         };
 
         const ai = new GoogleGenAI({ apiKey });
@@ -349,10 +354,16 @@ export class GoogleAIConnector extends LLMConnector {
         let response: any;
 
         if (modelInterface === LLMInterface.GenerateContent) {
+            // set resolution
+            config.imageSize = body.resolution || '1K';
+
             // Use Gemini image generation API
             response = await ai.models.generateContent({
                 model,
                 contents: body.prompt,
+                config: {
+                    imageConfig: { ...config },
+                },
             });
 
             // Extract image data from Gemini response format
@@ -391,6 +402,9 @@ export class GoogleAIConnector extends LLMConnector {
                 data: imageData,
             };
         } else if (modelInterface === LLMInterface.GenerateImages) {
+            // set person generation
+            config.personGeneration = body.personGeneration || 'dont_allow';
+
             response = await ai.models.generateImages({
                 model,
                 prompt: body.prompt,
@@ -1245,8 +1259,9 @@ export class GoogleAIConnector extends LLMConnector {
         return {
             prompt: params.prompt,
             model: params.model,
-            aspectRatio: (params as any).aspectRatio,
-            personGeneration: (params as any).personGeneration,
+            aspectRatio: params.aspectRatio,
+            personGeneration: params.personGeneration,
+            resolution: params.resolution,
         };
     }
 
@@ -1299,12 +1314,12 @@ export class GoogleAIConnector extends LLMConnector {
         return {
             model,
             contents,
+            aspectRatio: params.aspectRatio || params.size || '1:1',
+            personGeneration: params.personGeneration || 'dont_allow',
+            resolution: params.resolution,
             // Additional metadata for usage reporting
             _metadata: {
                 prompt: editPrompt,
-                numberOfImages: (params as any).n || 1,
-                aspectRatio: (params as any).aspect_ratio || (params as any).size || '1:1',
-                personGeneration: (params as any).person_generation || 'allow_adult',
             },
         };
     }

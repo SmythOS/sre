@@ -1,6 +1,8 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { isValidString } from './string.utils';
-import { MAX_FILE_SIZE } from '@sre/constants';
+
+// Inlined here to preserve utils purity (utils must not depend on code outside utils)
+const MAX_BASE64_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 /**
  * This function converts a text string to a base64 URL.
@@ -265,11 +267,20 @@ export function makeBase64Url(data: string, mimetype: string = 'application/octe
  * @returns {string} The input string with all newline characters and escaped newline strings removed.
  */
 const _cleanUpBase64Data = (str: string): string => {
-    // Check if the input is a string and is not excessively large
-    if (typeof str !== 'string' || str.length > MAX_FILE_SIZE) {
-        throw new Error('Invalid input');
+    if (typeof str !== 'string') {
+        throw new Error('Invalid file detected during base64 processing. Please try again.');
     }
 
     // Remove all whitespace characters and literal \n and \s sequences
-    return str.replace(/\s|\\n|\\s/g, '');
+    const cleaned = str.replace(/\s|\\n|\\s/g, '');
+
+    // Estimate the decoded binary size from the base64 string length (avoids allocating a buffer just for the check)
+    const estimatedBytes = Math.ceil((cleaned.length * 3) / 4);
+    if (estimatedBytes > MAX_BASE64_FILE_SIZE) {
+        const actualMB = (estimatedBytes / (1024 * 1024)).toFixed(2);
+        const limitMB = (MAX_BASE64_FILE_SIZE / (1024 * 1024)).toFixed(0);
+        throw new Error(`Invalid file detected during base64 processing: file size (~${actualMB}MB) exceeds the ${limitMB}MB limit.`);
+    }
+
+    return cleaned;
 };
