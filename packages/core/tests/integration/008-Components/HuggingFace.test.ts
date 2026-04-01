@@ -172,6 +172,34 @@ describe('HuggingFace Component — Integration', () => {
     );
 
     it(
+        'text-generation — new v4 TGI params (seed, watermark, typical_p, grammar)',
+        async () => {
+            const output = await hfComp.process(
+                { Text: 'The meaning of life is' },
+                makeConfig('meta-llama/Meta-Llama-3-8B', 'text-generation', {
+                    max_new_tokens: 30,
+                    temperature: 0.7,
+                    top_p: 0.9,
+                    top_k: 50,
+                    frequency_penalty: 0,
+                    repetition_penalty: 1.1,
+                    do_sample: true,
+                    seed: 42,
+                    return_full_text: false,
+                    watermark: false,
+                    details: false,
+                }),
+                mockAgent,
+            );
+
+            expect(output._error).toBeUndefined();
+            expect(typeof output.Output).toBe('string');
+            expect(output.Output.length).toBeGreaterThan(0);
+        },
+        TIMEOUT,
+    );
+
+    it(
         'tokenClassification — should return entity array with words',
         async () => {
             const output = await hfComp.process(
@@ -485,11 +513,7 @@ describe('HuggingFace Component — Integration', () => {
     it(
         'imageToText — should return a text description of the image',
         async () => {
-            const output = await hfComp.process(
-                { Image: imageBase64Url },
-                makeConfig('zai-org/GLM-OCR', 'image-to-text'),
-                mockAgent,
-            );
+            const output = await hfComp.process({ Image: imageBase64Url }, makeConfig('zai-org/GLM-OCR', 'image-to-text'), mockAgent);
 
             expect(output._error).toBeUndefined();
             expect(typeof output.Output).toBe('string');
@@ -624,34 +648,6 @@ describe('HuggingFace Component — Integration', () => {
                     frequency_penalty: 0,
                     presence_penalty: 0,
                     stop: ['\n'],
-                }),
-                mockAgent,
-            );
-
-            expect(output._error).toBeUndefined();
-            expect(typeof output.Output).toBe('string');
-            expect(output.Output.length).toBeGreaterThan(0);
-        },
-        TIMEOUT,
-    );
-
-    it(
-        'text-generation — new v4 TGI params (seed, watermark, typical_p, grammar)',
-        async () => {
-            const output = await hfComp.process(
-                { Text: 'The meaning of life is' },
-                makeConfig('meta-llama/Meta-Llama-3-8B', 'text-generation', {
-                    max_new_tokens: 30,
-                    temperature: 0.7,
-                    top_p: 0.9,
-                    top_k: 50,
-                    frequency_penalty: 0,
-                    repetition_penalty: 1.1,
-                    do_sample: true,
-                    seed: 42,
-                    return_full_text: false,
-                    watermark: false,
-                    details: false,
                 }),
                 mockAgent,
             );
