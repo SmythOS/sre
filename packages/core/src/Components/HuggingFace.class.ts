@@ -8,11 +8,23 @@ import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, keba
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-// Per-method param handling: params to drop, remap, and flatten, keyed by resolved SDK method.
-// chatCompletion uses OpenAI-style params; legacy HF params are dropped or remapped.
-// textGeneration uses HF-native params; OpenAI-only params are dropped.
+// Per-method param handling: drop, remap, and flatten, keyed by resolved SDK method.
+// For backward compatibility: in the UI, the component may have been saved with text-generation parameters (e.g., do_sample, top_k).
+// but the model now resolves to chatCompletion via effectiveTask. These HF-native params are invalid for
+// the OpenAI-style chatCompletion endpoint, so we drop them to avoid API errors.
 const METHOD_DROP_PARAMS: Record<string, Set<string>> = {
-    chatCompletion: new Set(['do_sample', 'return_full_text', 'num_return_sequences', 'truncate', 'max_time', 'min_length', 'top_k']),
+    chatCompletion: new Set([
+        'do_sample',
+        'return_full_text',
+        'num_return_sequences',
+        'truncate',
+        'max_time',
+        'min_length',
+        'top_k',
+        'watermark',
+        'details',
+        'decoder_input_details',
+    ]),
 };
 const METHOD_REMAP_PARAMS: Record<string, Record<string, string>> = {
     chatCompletion: { max_new_tokens: 'max_tokens', max_length: 'max_tokens', repetition_penalty: 'frequency_penalty' },
@@ -118,18 +130,25 @@ export class HuggingFace extends Component {
 
         //const inputConfig = JSON.parse(config?.data?.inputConfig || '{}');
 
-        // Always load input params from the user's configured task so that input mapping
-        // matches what the user designed in their agent (e.g. "Text" → "inputs" for text-generation).
         let inputConfig: any = {};
-        const formatRequest = hfParams?.[task]?.formatRequest;
-        const _hfParams = hfParams?.[task]?.inputs;
-        if (_hfParams && Object.keys(_hfParams).length > 0) {
-            for (const key in _hfParams) {
-                const config = _hfParams[key];
-                inputConfig[key] = config;
-            }
-            if (typeof inputConfig === 'object' && inputConfig !== null) {
-                inputConfig = { ...inputConfig, formatRequest };
+        // Try effectiveTask first; if it yields no matched input keys, fall back to the
+        // original user-configured task. This handles backward compatibility when the UI
+        // saved the component as text-generation (input key "Text" → "inputs") but the
+        // model now resolves to conversational (input key "Messages" → "messages").
+        for (const taskKey of effectiveTask !== task ? [effectiveTask, task] : [effectiveTask]) {
+            const formatRequest = hfParams?.[taskKey]?.formatRequest;
+            const _hfParams = hfParams?.[taskKey]?.inputs;
+            if (_hfParams && Object.keys(_hfParams).length > 0) {
+                inputConfig = {};
+                for (const key in _hfParams) {
+                    inputConfig[key] = _hfParams[key];
+                }
+                if (typeof inputConfig === 'object' && inputConfig !== null) {
+                    inputConfig = { ...inputConfig, formatRequest };
+                }
+                // Check if any of the user's input keys match this task's input config
+                const hasMatchingInput = input && typeof input === 'object' && Object.keys(input).some((key) => inputConfig?.[key]);
+                if (hasMatchingInput) break;
             }
         }
 
