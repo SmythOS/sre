@@ -1,44 +1,50 @@
-import { HfInference } from '@huggingface/inference';
-import { Component } from './Component.class';
-import { IAgent as Agent } from '@sre/types/Agent.types';
-import hfParams from '../data/hugging-face.params.json';
 import Joi from 'joi';
-import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
-import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, kebabToCamel } from '../utils';
+import { Agent as UndiciAgent, setGlobalDispatcher } from 'undici';
+import { InferenceClient } from '@huggingface/inference';
+
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
+import { IAgent as Agent } from '@sre/types/Agent.types';
+
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-function shouldNestInputs(formatRequestPattern) {
-    const trimmedPattern = formatRequestPattern?.trim();
-    return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
-}
+import { Component } from './Component.class';
+import hfParams from '../data/hugging-face.params.json';
+import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, kebabToCamel } from '../utils';
 
-function validateAndParseJson(value, helpers) {
-    let parsedJson: any = null;
+// Hugging Face API requests fail with "TypeError: fetch failed" / ETIMEDOUT because
+// Node.js's built-in fetch (undici) uses the Happy Eyeballs algorithm (RFC 6555) with
+// a 250ms timeout — too short for dual-stack networks where IPv6 is advertised but
+// unreachable. Increasing the timeout to 300ms gives IPv6 enough time to connect on
+// slower networks while keeping the dual-stack fallback mechanism intact.
+// See: https://nodejs.org/api/net.html#netcreateconnectionoptions-connectlistener
+setGlobalDispatcher(new UndiciAgent({ connect: { autoSelectFamilyAttemptTimeout: 300 } }));
 
-    // Try parsing the JSON string
-    try {
-        parsedJson = JSON.parse(value);
-    } catch (error) {
-        // If parsing fails, return an error
-        return helpers.error('string.invalidJson', { value });
-    }
-
-    // Check if the result is an object
-    if (typeof parsedJson !== 'object' || parsedJson === null) {
-        return helpers.error('string.notJsonObject', { value });
-    }
-
-    // Check for empty keys
-    for (const key in parsedJson) {
-        if (key.trim() === '') {
-            return helpers.error('object.emptyKey', { value });
-        }
-    }
-
-    // Return the parsed JSON if all validations pass
-    return parsedJson;
-}
+// Per-method param handling: drop, remap, and flatten, keyed by resolved SDK method.
+// For backward compatibility: in the UI, the component may have been saved with text-generation parameters (e.g., do_sample, top_k).
+// but the model now resolves to chatCompletion via effectiveTask. These HF-native params are invalid for
+// the OpenAI-style chatCompletion endpoint, so we drop them to avoid API errors.
+const METHOD_DROP_PARAMS: Record<string, Set<string>> = {
+    chatCompletion: new Set([
+        'do_sample',
+        'return_full_text',
+        'num_return_sequences',
+        'truncate',
+        'max_time',
+        'min_length',
+        'top_k',
+        'watermark',
+        'details',
+        'decoder_input_details',
+    ]),
+};
+const METHOD_REMAP_PARAMS: Record<string, Record<string, string>> = {
+    chatCompletion: { max_new_tokens: 'max_tokens', max_length: 'max_tokens', repetition_penalty: 'frequency_penalty' },
+    textGeneration: { max_new_tokens: 'max_tokens', max_length: 'max_tokens' },
+};
+// Methods where params should be spread at the top level of args instead of nested under "parameters".
+// Most HF SDK methods expect { inputs, parameters: { ... } }, but these expect top-level params.
+const METHOD_FLATTEN_PARAMS = new Set(['chatCompletion', 'textGeneration', 'featureExtraction', 'sentenceSimilarity']);
 
 export class HuggingFace extends Component {
     protected configSchema = Joi.object({
@@ -76,26 +82,12 @@ export class HuggingFace extends Component {
             return { _error: 'Please provide a valid Hugging Face Access Token', _debug: logger.output };
         }
 
-        const hf = new HfInference(accessToken);
+        const hf = new InferenceClient(accessToken);
 
         const task = config?.data?.modelTask;
 
         if (!task) {
             return { _error: 'Hugging Face Task is required!', _debug: logger.output };
-        }
-
-        logger.debug(`Task: ${kebabToCapitalize(task)}`);
-
-        let hfFunc = kebabToCamel(task);
-
-        // * Right now 'text2textGeneration' function is not available, so we are using 'textGeneration' for it.
-        // Reference - https://huggingface.co/docs/api-inference/en/detailed_parameters#text2text-generation-task
-        if (hfFunc === 'text2textGeneration') {
-            hfFunc = 'textGeneration';
-        }
-
-        if (!hf?.[hfFunc]) {
-            return { _error: `Inference API does not support for this task - ${kebabToCapitalize(task)}`, _debug: logger.output };
         }
 
         const modelName = config?.data?.modelName;
@@ -106,18 +98,69 @@ export class HuggingFace extends Component {
 
         logger.debug(`Model Name: ${modelName}`);
 
+        // Query the HF Hub API to resolve the provider's actual supported task for this model.
+        // Most modern LLMs (Llama, Qwen, DeepSeek, etc.) only support "conversational" (chatCompletion)
+        // even when configured as "text-generation". This detects the correct method to use.
+        let effectiveTask = task;
+        try {
+            const mappingRes = await fetch(`https://huggingface.co/api/models/${modelName}?expand[]=inferenceProviderMapping`, {
+                headers: accessToken?.startsWith('hf_') ? { Authorization: `Bearer ${accessToken}` } : {},
+            });
+            if (mappingRes.ok) {
+                const payload = await mappingRes.json();
+                const mappings = payload?.inferenceProviderMapping;
+                if (mappings) {
+                    const mappingArray = Array.isArray(mappings)
+                        ? mappings
+                        : Object.entries(mappings).map(([provider, mapping]: [string, any]) => ({ provider, task: mapping.task }));
+                    const exactMatch = mappingArray.find((m) => m.task === task);
+                    if (!exactMatch && mappingArray.length > 0) {
+                        effectiveTask = mappingArray[0].task;
+                        logger.debug(`Task "${task}" not available for model, using provider task: "${effectiveTask}"`);
+                    }
+                }
+            }
+        } catch {
+            // If the Hub API call fails, proceed with the original task
+        }
+
+        logger.debug(`Task: ${kebabToCapitalize(effectiveTask)}`);
+
+        // Map HF task slugs to InferenceClient method names.
+        // Most tasks follow kebabToCamel (e.g. "text-classification" → "textClassification"),
+        // but some diverge in the new SDK and need explicit overrides.
+        const taskToMethod: Record<string, string> = {
+            conversational: 'chatCompletion',
+            text2textGeneration: 'textGeneration',
+        };
+
+        let hfFunc = taskToMethod[kebabToCamel(effectiveTask)] ?? kebabToCamel(effectiveTask);
+
+        if (!hf?.[hfFunc]) {
+            return { _error: `Inference API does not support for this task - ${kebabToCapitalize(effectiveTask)}`, _debug: logger.output };
+        }
+
         //const inputConfig = JSON.parse(config?.data?.inputConfig || '{}');
 
         let inputConfig: any = {};
-        const formatRequest = hfParams?.[task]?.formatRequest;
-        const _hfParams = hfParams?.[task]?.inputs;
-        if (_hfParams && Object.keys(_hfParams).length > 0) {
-            for (const key in _hfParams) {
-                const config = _hfParams[key];
-                inputConfig[key] = config;
-            }
-            if (typeof inputConfig === 'object' && inputConfig !== null) {
-                inputConfig = { ...inputConfig, formatRequest };
+        // Try effectiveTask first; if it yields no matched input keys, fall back to the
+        // original user-configured task. This handles backward compatibility when the UI
+        // saved the component as text-generation (input key "Text" → "inputs") but the
+        // model now resolves to conversational (input key "Messages" → "messages").
+        for (const taskKey of effectiveTask !== task ? [effectiveTask, task] : [effectiveTask]) {
+            const formatRequest = hfParams?.[taskKey]?.formatRequest;
+            const _hfParams = hfParams?.[taskKey]?.inputs;
+            if (_hfParams && Object.keys(_hfParams).length > 0) {
+                inputConfig = {};
+                for (const key in _hfParams) {
+                    inputConfig[key] = _hfParams[key];
+                }
+                if (typeof inputConfig === 'object' && inputConfig !== null) {
+                    inputConfig = { ...inputConfig, formatRequest };
+                }
+                // Check if any of the user's input keys match this task's input config
+                const hasMatchingInput = input && typeof input === 'object' && Object.keys(input).some((key) => inputConfig?.[key]);
+                if (hasMatchingInput) break;
             }
         }
 
@@ -144,19 +187,25 @@ export class HuggingFace extends Component {
 
                     if (type && type?.includes('Blob')) {
                         try {
-                            // const file = new SmythFile(value);
-                            // const blob = await file.toBlob(); // Converts to Blob for file inputs
-                            // inputs[name] = blob;
                             const binaryFile = BinaryInput.from(value, undefined, undefined, AccessCandidate.agent(agentId));
-                            // const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
                             const buffer = await binaryFile.getBuffer();
-                            const blob = new Blob([buffer as any]);
+                            const blob = new Blob([buffer as any], binaryFile.mimetype ? { type: binaryFile.mimetype } : undefined);
                             inputs[name] = blob;
                         } catch (error: any) {
                             return { _error: error?.message || JSON.stringify(error), _debug: logger.output };
                         }
                     } else {
-                        inputs[name] = value;
+                        // If the expected type is not a plain string and the value is a JSON string,
+                        // parse it so the API receives a structured object (e.g. table data for tableQuestionAnswering).
+                        if (type && type !== 'string' && typeof value === 'string') {
+                            try {
+                                inputs[name] = JSON.parse(value);
+                            } catch {
+                                inputs[name] = value;
+                            }
+                        } else {
+                            inputs[name] = value;
+                        }
                     }
                 }
             }
@@ -164,10 +213,26 @@ export class HuggingFace extends Component {
         // Determine if inputs should be nested based on formatRequest
         const nestInputs = shouldNestInputs(inputConfig.formatRequest);
         // Apply the determined structure to newInputs
-        const structuredInputs = nestInputs ? { inputs } : inputs;
+        let structuredInputs = nestInputs ? { inputs } : inputs;
+
+        // When the effective task resolved to chatCompletion but the user configured a non-chat task
+        // (e.g. text-generation), the inputs will be in the old format ({ inputs: "text" }).
+        // Convert them to the OpenAI messages format that chatCompletion expects.
+        if (hfFunc === 'chatCompletion' && !structuredInputs['messages']) {
+            const textInput = structuredInputs['inputs'] ?? (structuredInputs as any)?.inputs;
+            if (typeof textInput === 'string') {
+                structuredInputs = { messages: [{ role: 'user', content: textInput }] };
+            } else if (typeof textInput === 'object' && textInput !== null && !Array.isArray(textInput)) {
+                // Nested inputs like { question, context } — join into a single user message
+                const content = Object.values(textInput)
+                    .filter((v) => typeof v === 'string')
+                    .join('\n');
+                structuredInputs = { messages: [{ role: 'user', content }] };
+            }
+        }
 
         // Blob data will be converted to an empty object '{}', when stringified during logging. We need log something so that user can understand that it is a Blob
-        let inputsLog;
+        let inputsLog: any;
 
         if (structuredInputs['inputs'] && typeof structuredInputs['inputs'] === 'object') {
             inputsLog = { ...structuredInputs['inputs'] };
@@ -203,80 +268,72 @@ export class HuggingFace extends Component {
             }
         }
 
-        let args = { model: modelName, ...structuredInputs };
-
-        const options = {};
-
-        // default value of use_cache is true, make it false if disableCache is true
-        if (config?.data?.disableCache) {
-            options['use_cache'] = false;
+        // The HF SDK type definitions nest generation params under `generate_parameters`,
+        // but the Inference API expects them flat inside `parameters`. Flatten before sending.
+        if (parameters['generate_parameters'] && typeof parameters['generate_parameters'] === 'object') {
+            const nested = parameters['generate_parameters'];
+            delete parameters['generate_parameters'];
+            Object.assign(parameters, nested);
         }
 
+        let args = { model: modelName, ...structuredInputs };
+
         if (Object.keys(parameters)?.length > 0) {
-            args['parameters'] = parameters;
+            const dropParams = METHOD_DROP_PARAMS[hfFunc];
+            const remapParams = METHOD_REMAP_PARAMS[hfFunc];
+            if (METHOD_FLATTEN_PARAMS.has(hfFunc)) {
+                // These methods expect params at the top level of args
+                for (const [key, value] of Object.entries(parameters)) {
+                    if (dropParams?.has(key)) continue;
+                    const mappedKey = remapParams?.[key] ?? key;
+                    if (!(mappedKey in args)) {
+                        args[mappedKey] = value;
+                    }
+                }
+            } else {
+                // Most HF SDK methods expect params nested under "parameters"
+                args['parameters'] = parameters;
+            }
 
             logger.debug('Parameters: \n', parameters);
         }
 
+        // textGeneration requires max_tokens — provide a sensible default if not set
+        if (hfFunc === 'textGeneration' && !('max_tokens' in args)) {
+            args['max_tokens'] = 256;
+        }
+
         const modelCallWithRetry = async ({ retryCount = 0, retryLimit = 2, retryDelay = 1000 }) => {
             try {
-                /*
-                Provide the 'request' method when the method is not found and as a fallback for the following error:
-                InferenceOutputError: Invalid inference output: Expected Array<{summary_text: string}>. Use the 'request' method with the same parameters to do a custom call with no type checking.
-                */
                 if (typeof hf[hfFunc] !== 'function' || retryCount === retryLimit) {
                     hfFunc = 'request';
                 }
-                const result = await hf[hfFunc](args, options);
+                // Named SDK methods (chatCompletion, textGeneration, etc.) hardcode their own task,
+                // but the generic `request` fallback needs the task passed via options.
+                const result = hfFunc === 'request' ? await hf[hfFunc](args, { task: effectiveTask }) : await hf[hfFunc](args);
+
                 let output;
 
                 if (result instanceof Blob) {
-                    // Handle case where result is directly a Blob
-                    // const file = new SmythFile(result);
-                    // const fileObj = await file.toSmythFileObject({
-                    //     metadata: {
-                    //         teamid: teamId,
-                    //         agentid: agentId,
-                    //     },
-                    //     baseUrl: agent?.baseUrl,
-                    // });
-                    // output = fileObj;
-                    // convert blob to base64
-
                     const obj = await BinaryInput.from(result).getJsonData(AccessCandidate.agent(agent.id));
                     output = obj;
                 } else if (Array.isArray(result)) {
-                    // Handle case where result is an array of objects containing Blobs or base64 strings
                     output = await Promise.all(
                         result.map(async (item) => {
                             if (item.blob instanceof Blob || (typeof item.blob === 'string' && isBase64(item.blob))) {
-                                let binaryInput: BinaryInput;
-
-                                if (item.blob instanceof Blob) {
-                                    // file = new SmythFile(item.blob);
-
-                                    binaryInput = BinaryInput.from(item.blob);
-                                } else {
-                                    // file = new SmythFile(item.blob, item['content-type']);
-                                    binaryInput = BinaryInput.from(item.blob, undefined, item['content-type']);
-                                }
-                                // const fileObj = await file.toSmythFileObject({
-                                //     metadata: {
-                                //         teamid: teamId,
-                                //         agentid: agentId,
-                                //     },
-                                //     baseUrl: agent?.baseUrl,
-                                // });
+                                const binaryInput =
+                                    item.blob instanceof Blob
+                                        ? BinaryInput.from(item.blob)
+                                        : BinaryInput.from(item.blob, undefined, item['content-type']);
                                 const fileObj = await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
                                 return { ...item, blob: fileObj };
-                            } else {
-                                return item;
                             }
+                            return item;
                         }),
                     );
                 } else {
-                    // Handle case where result is neither a Blob nor an array of Blob-containing objects
-                    output = result;
+                    // Extract the primary content from known SDK response shapes
+                    output = extractTaskOutput(hfFunc, result);
                 }
                 return output;
             } catch (error) {
@@ -306,9 +363,92 @@ export class HuggingFace extends Component {
             return { Output: output, _debug: logger.output };
         } catch (error: any) {
             console.log(`Error on running Hugging Face Model!`, error);
-            console.log('Error: args, options ', args, options);
+            console.log('Error: args ', args);
 
             return { _error: `Error from Hugging Face: \n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
+    }
+}
+
+// --- Helper functions ---
+
+function shouldNestInputs(formatRequestPattern) {
+    const trimmedPattern = formatRequestPattern?.trim();
+    return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
+}
+
+function validateAndParseJson(value, helpers) {
+    let parsedJson: any = null;
+
+    // Try parsing the JSON string
+    try {
+        parsedJson = JSON.parse(value);
+    } catch (error) {
+        // If parsing fails, return an error
+        return helpers.error('string.invalidJson', { value });
+    }
+
+    // Check if the result is an object
+    if (typeof parsedJson !== 'object' || parsedJson === null) {
+        return helpers.error('string.notJsonObject', { value });
+    }
+
+    // Check for empty keys
+    for (const key in parsedJson) {
+        if (key.trim() === '') {
+            return helpers.error('object.emptyKey', { value });
+        }
+    }
+
+    // Return the parsed JSON if all validations pass
+    return parsedJson;
+}
+
+/**
+ * Extracts the primary content from HF SDK response objects based on the method used.
+ * Each SDK method returns a different shape — this normalizes them to their useful payload.
+ */
+function extractTaskOutput(hfFunc: string, result: any): any {
+    if (result == null) return result;
+
+    switch (hfFunc) {
+        // OpenAI-compatible chat completions: { choices: [{ message: { content } }] }
+        case 'chatCompletion':
+            return result?.choices?.[0]?.message?.content ?? result;
+
+        // Text generation: { generated_text: "..." }
+        case 'textGeneration':
+            return result?.generated_text ?? result;
+
+        // Translation: { translation_text: "..." }
+        case 'translation':
+            return result?.translation_text ?? result;
+
+        // Summarization: { summary_text: "..." }
+        case 'summarization':
+            return result?.summary_text ?? result;
+
+        // Image-to-text / captioning: { generated_text: "..." }
+        case 'imageToText':
+            return result?.generated_text ?? result;
+
+        // Speech recognition: { text: "...", chunks?: [...] }
+        case 'automaticSpeechRecognition':
+            return result?.text ?? result;
+
+        // Question answering: { answer: "...", score, start, end }
+        case 'questionAnswering':
+        case 'documentQuestionAnswering':
+        case 'visualQuestionAnswering':
+            return result?.answer ?? result;
+
+        // Table QA: { answer: "...", cells, coordinates, aggregator }
+        case 'tableQuestionAnswering':
+            return result?.answer ?? result;
+
+        // All other tasks (classification arrays, detection, segmentation, feature-extraction, etc.)
+        // already handled by the Array.isArray/Blob branches, or are fine as-is.
+        default:
+            return result;
     }
 }
