@@ -4,6 +4,7 @@ import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 
 import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { hookAsync } from '@sre/Core/HookService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -73,6 +74,7 @@ export class LLMInference {
         return this._llmConnector;
     }
 
+    @hookAsync('LLMInference.prompt')
     public async prompt({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
@@ -133,6 +135,7 @@ export class LLMInference {
         }
     }
 
+    @hookAsync('LLMInference.promptStream')
     public async promptStream({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 

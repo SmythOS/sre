@@ -517,6 +517,8 @@ export class GenAILLM extends Component {
                         params: {
                             ...resolvedConfigData,
                             agentId: agent.id,
+                            processId: agent.agentRuntime?.processID,
+                            teamId: agent.teamId,
                         },
                         onFallback: (fallbackInfo) => {
                             logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);

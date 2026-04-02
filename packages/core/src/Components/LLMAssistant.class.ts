@@ -163,7 +163,7 @@ export class LLMAssistant extends Component {
                     const eventEmitter: any = await llmInference
                         .promptStream({
                             contextWindow: messages,
-                            params: { ...config, model, agentId: agent.id },
+                            params: { ...config, model, agentId: agent.id, processId: agent.agentRuntime?.processID, teamId: agent.teamId },
                             onFallback: (fallbackInfo) => {
                                 logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);
                             },

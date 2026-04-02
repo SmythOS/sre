@@ -179,6 +179,7 @@ type TLLMRuntimeContext = {
     cache?: boolean;
     agentId?: string;
     teamId?: string;
+    processId?: string;
 };
 
 type TLLMImageGenConfig = {
