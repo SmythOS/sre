@@ -23,9 +23,11 @@ export interface TImageGeneratorSettings {
     /** Size */
     size?: string;
     /** Aspect Ratio */
-    aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+    aspectRatio?: '1:1' | '1:4' | '1:8' | '2:3' | '3:2' | '3:4' | '4:1' | '4:3' | '4:5' | '5:4' | '8:1' | '9:16' | '16:9' | '21:9';
     /** Person Generation */
     personGeneration?: 'dont_allow' | 'allow_adult' | 'allow_all';
+    /** Resolution */
+    resolution?: '0.5K' | '1K' | '2K' | '4K';
 }
 
 export type TImageGeneratorInputs = {

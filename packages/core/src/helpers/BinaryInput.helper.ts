@@ -18,6 +18,8 @@ export class BinaryInput {
     private _readyPromise;
     private _source: Buffer;
     private _uploading: boolean = false;
+    // Stores load() errors so ready() can reject immediately instead of waiting for the full timeout
+    private _loadError: Error | null = null;
 
     constructor(
         data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>,
@@ -29,23 +31,32 @@ export class BinaryInput {
         this._name = _name;
         //this._source = data;
 
-        this.load(data, _name, mimetype, candidate);
+        // Capture load() failures so ready() can surface them immediately rather than hanging until timeout
+        this.load(data, _name, mimetype, candidate).catch((err) => {
+            this._loadError = err instanceof Error ? err : new Error(String(err));
+        });
     }
 
     public async ready() {
         if (this._ready) return true;
 
         if (!this._readyPromise) {
-            this._readyPromise = new Promise((resolve) => {
-                const maxWait = 10000;
+            this._readyPromise = new Promise((resolve, reject) => {
+                let maxWait = 10000;
                 const interval = setInterval(() => {
                     if (this._ready) {
                         clearInterval(interval);
-                        resolve(true);
+                        return resolve(true);
                     }
+                    // Reject as soon as a load error is known — avoids waiting the full 10s timeout
+                    if (this._loadError) {
+                        clearInterval(interval);
+                        return reject(this._loadError);
+                    }
+                    maxWait -= 100;
                     if (maxWait <= 0) {
                         clearInterval(interval);
-                        resolve(false);
+                        return reject(new Error('BinaryInput: timed out waiting for data to load'));
                     }
                 }, 100);
             });
@@ -208,6 +219,10 @@ export class BinaryInput {
             this._ready = true;
             return;
         }
+
+        // Ensure load() never exits silently — without this, unrecognized data leaves _ready unset
+        // and ready() would poll for 10s before timing out with a generic error
+        throw new Error('BinaryInput: unsupported or invalid data format');
     }
 
     private async getUrlInfo(url) {

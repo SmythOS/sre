@@ -37,13 +37,15 @@ describe('NKVRedis - integration (actual connector)', () => {
         expect(v1).toBe('1');
 
         const list = await client.list(ns);
-        expect(list.map((e) => e.key).sort()).toEqual(['k1', 'k2']);
+        expect(list.items.map((e) => e.key).sort()).toEqual(['k1', 'k2']);
+        expect(list.total).toBe(2);
 
         await client.delete(ns, 'k1');
         await expect(client.exists(ns, 'k1')).resolves.toBe(false);
 
         await client.deleteAll(ns);
         const listAfter = await client.list(ns);
-        expect(listAfter.length).toBe(0);
+        expect(listAfter.items.length).toBe(0);
+        expect(listAfter.total).toBe(0);
     });
 });

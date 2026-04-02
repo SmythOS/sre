@@ -2,7 +2,7 @@
 
 Welcome to the SmythOS SDK! This guide will walk you through creating your very first AI agent. We'll build an agent that can fetch real-time cryptocurrency prices from an API.
 
-The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](../../examples/01-agent-code-skill/01-prompting.ts).
+The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/01-prompting.ts).
 
 ## 1. Installation
 
@@ -33,10 +33,12 @@ npm install
 
 Available templates:
 
--   `empty-sdk-template` - Blank SDK project
--   `minimal-sdk-agent` - Basic agent implementation
--   `interactive-book-assistant` - Fully functional agent with interactive chat
--   `interactive-chat-two-agents` - Two different agent implementations
+-   `sdk-empty` - Blank SDK project
+-   `code-agent-minimal` - Basic agent implementation
+-   `code-agent-book-assistant` - Fully functional agent with interactive chat
+-   `interactive-chat-agent-select` - Interactive chat with agent selection
+-   `smythos-electron-starter-project` - Desktop App (Electron)
+-   `android-mobile-agent` - Android Mobile App (React Native)
 
 Alternatively, you can install the SDK directly in an existing project:
 

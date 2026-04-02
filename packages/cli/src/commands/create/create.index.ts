@@ -33,6 +33,47 @@ const vaultTemplate = {
     },
 };
 
+/** Short aliases mapped to the GitHub branch names used by sre-project-templates */
+const TEMPLATE_ALIASES: Record<string, string> = {
+    'empty': 'sdk-empty',
+    'minimal': 'code-agent-minimal',
+    'interactive': 'code-agent-book-assistant',
+    'chat-select': 'interactive-chat-agent-select',
+    'desktop': 'smythos-electron-starter-project',
+    'android': 'android-mobile-agent',
+};
+
+const VALID_TEMPLATE_VALUES = [
+    ...Object.keys(TEMPLATE_ALIASES),
+    ...Object.values(TEMPLATE_ALIASES),
+];
+
+const VALID_RES_FOLDER_VALUES = ['home', 'project'] as const;
+type TResFolder = typeof VALID_RES_FOLDER_VALUES[number];
+
+interface ICreateProjectConfig {
+    projectName: string;
+    targetFolder: string;
+    templateType: string;
+    smythResources: string;
+    vault: Record<string, string>;
+    useSharedVault: boolean;
+}
+
+/**
+ * Resolves a template value (alias or full branch name) to the GitHub branch name.
+ * @returns The resolved branch name, or undefined if the value is invalid.
+ */
+function resolveTemplateName(value: string): string | undefined {
+    if (TEMPLATE_ALIASES[value]) {
+        return TEMPLATE_ALIASES[value];
+    }
+    if (Object.values(TEMPLATE_ALIASES).includes(value)) {
+        return value;
+    }
+    return undefined;
+}
+
 const detectApiKeys = () => {
     const keys: { [key: string]: string | undefined } = {
         openai: process.env.OPENAI_API_KEY ? '$env(OPENAI_API_KEY)' : undefined,
@@ -102,10 +143,29 @@ function copyDirectoryRecursiveSync(source: string, target: string) {
 export default class CreateCmd extends Command {
     static override description = 'Create a new SmythOS project';
 
-    static override examples = ['<%= config.bin %> <%= command.id %>', '<%= config.bin %> <%= command.id %> "My Awesome Project"'];
+    static override examples = [
+        '<%= config.bin %> <%= command.id %>',
+        '<%= config.bin %> <%= command.id %> "My Awesome Project"',
+        '<%= config.bin %> <%= command.id %> "My Agent" --template=empty --res-folder=home',
+        '<%= config.bin %> <%= command.id %> "My Agent" -t minimal -r project --dir ./my-agent',
+    ];
 
     static override flags = {
         help: Flags.help({ char: 'h' }),
+        template: Flags.string({
+            char: 't',
+            description: 'Project template (empty, minimal, interactive, chat-select, desktop). Enables batch mode when combined with --res-folder.',
+            options: VALID_TEMPLATE_VALUES,
+        }),
+        'res-folder': Flags.string({
+            char: 'r',
+            description: 'Resources folder location: "home" (~/.smyth) or "project" (./<project>/.smyth). Enables batch mode when combined with --template.',
+            options: [...VALID_RES_FOLDER_VALUES],
+        }),
+        dir: Flags.string({
+            char: 'd',
+            description: 'Target directory for the project (defaults to ./<project-name>)',
+        }),
     };
 
     static override args = {
@@ -117,8 +177,122 @@ export default class CreateCmd extends Command {
     };
 
     async run(): Promise<void> {
-        const { args } = await this.parse(CreateCmd);
-        await RunProject(args.projectName);
+        const { args, flags } = await this.parse(CreateCmd);
+        const isBatchMode = !!(flags.template && flags['res-folder']);
+
+        if (isBatchMode) {
+            await runBatch(args.projectName, {
+                template: flags.template,
+                resFolder: flags['res-folder'] as TResFolder,
+                dir: flags.dir,
+            });
+        } else {
+            await RunProject(args.projectName);
+        }
+    }
+}
+
+interface IBatchFlags {
+    template: string | undefined;
+    resFolder: TResFolder;
+    dir: string | undefined;
+}
+
+/**
+ * Non-interactive project creation for LLM and CI usage.
+ * Skips banners, colored prompts, and API key questions.
+ * Env-var API keys are auto-detected silently.
+ */
+async function runBatch(projectNameArg: string | undefined, flags: IBatchFlags): Promise<void> {
+    if (!projectNameArg || projectNameArg.trim().length === 0) {
+        console.error('Error: Project name is required in batch mode. Usage: sre create "my-project" --template=empty --res-folder=home');
+        process.exit(1);
+    }
+
+    const templateBranch = resolveTemplateName(flags.template ?? '');
+    if (!templateBranch) {
+        const validNames = Object.keys(TEMPLATE_ALIASES).join(', ');
+        console.error(`Error: Invalid template "${flags.template}". Valid templates: ${validNames}`);
+        process.exit(1);
+    }
+
+    const projectName = projectNameArg;
+    const normalizedName = normalizeProjectName(projectName);
+    const targetFolder = flags.dir
+        ? path.resolve(flags.dir)
+        : path.join(process.cwd(), normalizedName);
+
+    const isSharedResources = flags.resFolder === 'home';
+    const smythResources = isSharedResources
+        ? path.join(os.homedir(), '.smyth')
+        : path.join(targetFolder, '.smyth');
+
+    // Only prepare the shared home directory upfront.
+    // For project-local resources, createProject handles directory creation
+    // after cloning -- doing it here would make the target folder non-empty.
+    if (isSharedResources) {
+        prepareSmythDirectory(os.homedir());
+    }
+
+    const detectedKeys = detectApiKeys();
+
+    let vault: Record<string, string> = {};
+
+    if (isSharedResources) {
+        const sharedVaultPath = path.join(os.homedir(), '.smyth', '.sre', 'vault.json');
+        if (fs.existsSync(sharedVaultPath)) {
+            try {
+                const existingVault = JSON.parse(fs.readFileSync(sharedVaultPath, 'utf8'));
+                vault = { ...(existingVault?.default || {}) };
+            } catch {
+                // Vault file is corrupted, start fresh
+            }
+        }
+    }
+
+    for (const [provider, envRef] of Object.entries(detectedKeys)) {
+        if (!vault[provider] || vault[provider] === '#' || vault[provider] === '') {
+            vault[provider] = envRef;
+        }
+    }
+
+    const config: ICreateProjectConfig = {
+        projectName,
+        targetFolder,
+        templateType: templateBranch,
+        smythResources,
+        vault,
+        useSharedVault: isSharedResources,
+    };
+
+    console.log(`Creating project "${projectName}" with template "${flags.template}" ...`);
+
+    try {
+        const success = await createProject(config);
+        if (!success) {
+            console.error('Error: Failed to create project.');
+            process.exit(1);
+        }
+
+        const vaultLocation = config.useSharedVault
+            ? path.join(os.homedir(), '.smyth', '.sre', 'vault.json')
+            : path.join(config.smythResources, '.sre', 'vault.json');
+
+        console.log('Project created successfully.');
+        console.log(`  Path: ${config.targetFolder}`);
+        console.log(`  Template: ${flags.template} (${templateBranch})`);
+        console.log(`  Resources: ${config.smythResources}`);
+        console.log(`  Vault: ${vaultLocation}`);
+        console.log('');
+        console.log('Next steps:');
+        console.log(`  cd ${config.targetFolder}`);
+        console.log('  npm install');
+        console.log('  npm run build');
+        console.log('  npm start');
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Error: ${message}`);
+        process.exit(1);
     }
 }
 
@@ -201,6 +375,7 @@ async function RunProject(projectNameArg?: string) {
                     value: 'interactive-chat-agent-select',
                 },
                 { name: 'Desktop App (Electron)', value: 'smythos-electron-starter-project' },
+                { name: 'Android Mobile App (React Native)', value: 'android-mobile-agent' },
             ],
         },
     ]);
@@ -335,10 +510,9 @@ async function RunProject(projectNameArg?: string) {
 
     answers = { ...answers, ...resourcesAnswers };
 
-    const finalConfig = {
+    const finalConfig: ICreateProjectConfig = {
         projectName: answers.projectName,
         targetFolder: answers.targetFolder,
-        projectType: answers.projectType,
         templateType: answers.templateType,
         smythResources: answers.smythResources,
         vault,
@@ -346,7 +520,7 @@ async function RunProject(projectNameArg?: string) {
     };
 
     try {
-        const success = createProject(finalConfig);
+        const success = await createProject(finalConfig);
         if (!success) {
             console.log(chalk.red('🚨 Error creating project.'));
             return;
@@ -374,7 +548,7 @@ async function RunProject(projectNameArg?: string) {
     }
 }
 
-async function createProject(config: any) {
+async function createProject(config: ICreateProjectConfig) {
     let folderCreated = false;
     let projectFolder = '';
     try {

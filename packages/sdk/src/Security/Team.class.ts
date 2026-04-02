@@ -8,6 +8,7 @@ import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/genera
 import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
 import { TCacheProvider, TCacheProviderInstances } from '../types/generated/Cache.types';
 import { CacheInstance } from '../Cache/CacheInstance.class';
+import { VaultInstance } from '../Vault/VaultInstance.class';
 
 export class Team {
     constructor(public id: string) {}
@@ -104,5 +105,28 @@ export class Team {
             }
         }
         return this._schedulerProviders;
+    }
+
+    private _vault: VaultInstance;
+
+    /**
+     * Access to the team's vault for secrets management.
+     *
+     * Secrets are scoped to the team id. All agents belonging to this team
+     * share the same vault namespace.
+     *
+     * @example
+     * ```typescript
+     * const apiKey = await team.vault.get('openai');
+     * const keys = await team.vault.listKeys();
+     * ```
+     *
+     * @returns The vault instance
+     */
+    public get vault() {
+        if (!this._vault) {
+            this._vault = new VaultInstance(AccessCandidate.team(this.id));
+        }
+        return this._vault;
     }
 }

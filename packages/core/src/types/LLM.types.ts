@@ -186,6 +186,9 @@ type TLLMImageGenConfig = {
     quality?: 'standard' | 'hd'; // for image generation
     n?: number; // for image generation
     style?: 'vivid' | 'natural'; // for image generation
+    aspectRatio?: string; // for image generation
+    personGeneration?: string; // for image generation
+    resolution?: string; // for image generation
 };
 
 export type TLLMParams = TLLMTextGenConfig & TLLMSearchConfig & TLLMImageGenConfig & TLLMMiscConfig & TLLMRuntimeContext;

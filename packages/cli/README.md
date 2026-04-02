@@ -10,9 +10,9 @@ pnpm install -g @smythos/cli
 
 The SRE CLI provides three main commands:
 
--   `sre agent` - Run SmythOS agent files with various execution modes
--   `sre create` - Create new SmythOS projects
--   `sre update` - Update the CLI and check for updates
+- `sre agent` - Run SmythOS agent files with various execution modes
+- `sre create` - Create new SmythOS projects
+- `sre update` - Update the CLI and check for updates
 
 ---
 
@@ -40,8 +40,8 @@ sre agent ./myagent.smyth --chat gpt-4o
 
 **Options:**
 
--   `--chat` - Start chat with default model (gpt-4o)
--   `--chat <model>` - Start chat with specified model
+- `--chat` - Start chat with default model (gpt-4o)
+- `--chat <model>` - Start chat with specified model
 
 #### 2. Prompt Mode (`--prompt`)
 
@@ -54,8 +54,8 @@ sre agent ./myagent.smyth --prompt "Analyze this data" claude-3.7-sonnet
 
 **Options:**
 
--   `--prompt <text>` - Send a prompt to the agent
--   `--prompt <text> <model>` - Send a prompt using specific model
+- `--prompt <text>` - Send a prompt to the agent
+- `--prompt <text> <model>` - Send a prompt using specific model
 
 #### 3. Skill Execution (`--skill`)
 
@@ -69,8 +69,8 @@ sre agent ./myagent.smyth --skill ask question="who are you"
 
 **Options:**
 
--   `--skill <skillname>` - Execute a skill without parameters
--   `--skill <skillname> key1="value1" key2="value2"` - Execute skill with parameters
+- `--skill <skillname>` - Execute a skill without parameters
+- `--skill <skillname> key1="value1" key2="value2"` - Execute skill with parameters
 
 #### 4. Agent Execution Modes (`--mode`)
 
@@ -86,14 +86,15 @@ sre agent ./myagent.smyth --chat --mode planner
 
 **Available Modes:**
 
--   `--mode default` - Standard agent execution with regular output
--   `--mode planner` - Enhanced execution featuring:
-    -   🎯 **Visual Task Panel**: Real-time task tracking on the right side
-    -   📋 **Status Icons**: ✅ completed, ⏳ ongoing, 📝 planned, ❌ failed  
-    -   🔄 **Live Updates**: Tasks update as the agent works
-    -   🎨 **Enhanced Streaming**: Special formatting for thinking/planning/code tags
+- `--mode default` - Standard agent execution with regular output
+- `--mode planner` - Enhanced execution featuring:
+    - 🎯 **Visual Task Panel**: Real-time task tracking on the right side
+    - 📋 **Status Icons**: ✅ completed, ⏳ ongoing, 📝 planned, ❌ failed
+    - 🔄 **Live Updates**: Tasks update as the agent works
+    - 🎨 **Enhanced Streaming**: Special formatting for thinking/planning/code tags
 
 **Planner Mode Example:**
+
 ```bash
 sre agent ./myagent.smyth --chat --mode planner
 ```
@@ -112,10 +113,10 @@ sre agent ./myagent.smyth --mcp sse 3388
 
 **Options:**
 
--   `--mcp` - Start MCP server with default settings (stdio)
--   `--mcp stdio` - Start MCP server using stdio transport
--   `--mcp sse` - Start MCP server using SSE transport (default port 3388)
--   `--mcp sse <port>` - Start MCP server using SSE transport on specified port
+- `--mcp` - Start MCP server with default settings (stdio)
+- `--mcp stdio` - Start MCP server using stdio transport
+- `--mcp sse` - Start MCP server using SSE transport (default port 3388)
+- `--mcp sse <port>` - Start MCP server using SSE transport on specified port
 
 ### Global Options
 
@@ -162,32 +163,69 @@ sre agent ./agent.smyth --chat gpt-4o --vault ./vault.json --models ./models.jso
 
 ## Create Command
 
-Create a new SmythOS project with interactive setup:
+Create a new SmythOS project. Supports both interactive and non-interactive (batch) modes.
+
+### Interactive Mode
+
+Run without `--template` and `--res-folder` to use the interactive wizard:
 
 ```bash
 sre create
 sre create "My AI Project"
 ```
 
-**Features:**
+The wizard walks through project name, template selection, resources folder location, and API key configuration.
 
--   Interactive project setup wizard
--   Multiple project templates:
-    -   Empty Project
-    -   Minimal: Just the basics to get started
-    -   Interactive: Chat with one agent
-    -   Interactive chat with agent selection
--   Automatic vault setup with API key detection
--   Smart resource folder configuration
+### Batch Mode (Non-Interactive)
 
-**Examples:**
+Provide both `--template` and `--res-folder` to skip all interactive prompts. This is suitable for LLM-driven workflows (e.g. Claude Code) and CI pipelines.
+
+```bash
+sre create "My Agent" --template=empty --res-folder=home
+sre create "My Agent" -t minimal -r project --dir ./my-agent
+```
+
+In batch mode API key prompts are skipped. Environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`) are detected automatically and written to the vault. You can edit the vault file afterwards to add or change keys.
+
+### Options
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--template <name>` | `-t` | Project template. Enables batch mode when combined with `--res-folder`. |
+| `--res-folder <location>` | `-r` | Resources folder: `home` (~/.smyth) or `project` (./<project>/.smyth). Enables batch mode when combined with `--template`. |
+| `--dir <path>` | `-d` | Target directory for the project. Defaults to `./<project-name>`. |
+| `--help` | `-h` | Show help. |
+
+### Available Templates
+
+| Alias | Branch | Description |
+|-------|--------|-------------|
+| `empty` | `sdk-empty` | Empty project |
+| `minimal` | `code-agent-minimal` | Just the basics to get started |
+| `interactive` | `code-agent-book-assistant` | Chat with one agent |
+| `chat-select` | `interactive-chat-agent-select` | Interactive chat with agent selection |
+| `desktop` | `smythos-electron-starter-project` | Desktop App (Electron) |
+| `android` | `android-mobile-agent` | Android Mobile App (React Native) |
+
+Both short aliases and full branch names are accepted.
+
+### Examples
 
 ```bash
 # Interactive project creation
 sre create
 
-# Create project with specific name
+# Create project with specific name (interactive)
 sre create "Customer Support Bot"
+
+# Batch mode: empty project with shared resources
+sre create "My Agent" --template=empty --res-folder=home
+
+# Batch mode: minimal template with project-local resources
+sre create "My Agent" --template=minimal --res-folder=project
+
+# Batch mode: specify target directory explicitly
+sre create "My Agent" -t empty -r home --dir /tmp/my-agent
 ```
 
 ---
@@ -205,9 +243,9 @@ sre update --package pnpm
 
 **Options:**
 
--   `--check, -c` - Only check for updates without installing
--   `--force, -f` - Force update check and installation
--   `--package, -p <manager>` - Specify package manager (npm, pnpm, yarn)
+- `--check, -c` - Only check for updates without installing
+- `--force, -f` - Force update check and installation
+- `--package, -p <manager>` - Specify package manager (npm, pnpm, yarn)
 
 **Examples:**
 
@@ -229,21 +267,21 @@ sre update --check --package yarn
 
 ## Global Options
 
--   `--help, -h` - Show help for any command
--   `--version` - Show CLI version
+- `--help, -h` - Show help for any command
+- `--version` - Show CLI version
 
 ## File Formats
 
--   **Agent Files**: `.smyth` files containing agent configuration and workflows
--   **Vault Files**: `.json` or `.vault` files for secure credential storage
--   **Models Files**: `.json` files defining available LLM models
+- **Agent Files**: `.smyth` files containing agent configuration and workflows
+- **Vault Files**: `.json` or `.vault` files for secure credential storage
+- **Models Files**: `.json` files defining available LLM models
 
 ## Models Configuration
 
 The `--models` flag allows you to specify custom model configurations for your agents. You can provide either:
 
--   **Single JSON file**: A single `.json` file containing model definitions
--   **Directory**: A directory containing multiple `.json` files (all will be merged)
+- **Single JSON file**: A single `.json` file containing model definitions
+- **Directory**: A directory containing multiple `.json` files (all will be merged)
 
 ### Usage Examples
 
@@ -291,15 +329,15 @@ Each model configuration file should be a JSON object where keys are model names
 
 ### Model Configuration Properties
 
--   **`provider`**: The LLM provider (e.g., "OpenAI", "Anthropic", "Google")
--   **`label`**: Display name for the model
--   **`modelId`**: The actual model identifier used by the provider
--   **`features`**: Array of supported features (`["text", "tools"]`)
--   **`tokens`**: Maximum input tokens supported
--   **`completionTokens`**: Maximum completion tokens
--   **`enabled`**: Whether the model is available for use
--   **`baseURL`**: Custom API endpoint (optional)
--   **`credentials`**: Array specifying how to retrieve credentials (`["vault"]`)
+- **`provider`**: The LLM provider (e.g., "OpenAI", "Anthropic", "Google")
+- **`label`**: Display name for the model
+- **`modelId`**: The actual model identifier used by the provider
+- **`features`**: Array of supported features (`["text", "tools"]`)
+- **`tokens`**: Maximum input tokens supported
+- **`completionTokens`**: Maximum completion tokens
+- **`enabled`**: Whether the model is available for use
+- **`baseURL`**: Custom API endpoint (optional)
+- **`credentials`**: Array specifying how to retrieve credentials (`["vault"]`)
 
 ### Directory Structure Example
 
@@ -319,14 +357,14 @@ All JSON files in the directory will be automatically merged, allowing you to or
 
 The CLI supports various configuration options through:
 
--   Command-line flags
--   Environment variables
--   Configuration files
--   Interactive prompts during project creation
+- Command-line flags
+- Environment variables
+- Configuration files
+- Interactive prompts during project creation
 
 For detailed configuration options and advanced usage, see the [SmythOS documentation](https://github.com/smythos/sre).
 
 ### Reporting Issues
 
 If you face any issues with the CLI or the code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
-You can request help on our [Discord](https://discord.gg/smythos) or by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)
+You can request help by creating an issue on [GitHub](https://github.com/SmythOS/smythos/issues)

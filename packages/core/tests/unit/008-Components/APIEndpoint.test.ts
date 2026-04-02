@@ -155,7 +155,7 @@ describe('APIEndpoint Component', () => {
             expect(outputBody.boolean).toBe(true);
             expect(outputBody.array).toEqual(['a', 'b', 'c', 'd']);
             expect(outputBody.object).toEqual({ message: 'hello world' });
-            expect(outputBody.binary.size).toEqual(9);
+            expect(outputBody.binary.size).toEqual(6);
             expect(outputBody.date).toEqual('2024-01-19T23:00:00.000Z');
         } catch (e) {
             error = e;

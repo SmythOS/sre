@@ -3,6 +3,21 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
 let SDK: any;
 
+// Mock StorageInstance so LocalChatStore doesn't require a real storage connector
+vi.mock('../../../src/Storage/StorageInstance.class', () => {
+    class StorageInstanceMock {
+        store = new Map<string, string>();
+        async write(key: string, value: string) {
+            this.store.set(key, value);
+        }
+        async read(key: string) {
+            const val = this.store.get(key);
+            return val !== undefined ? Buffer.from(val) : Buffer.from('');
+        }
+    }
+    return { StorageInstance: StorageInstanceMock };
+});
+
 // Mock Conversation and storage to test persistence and event wiring
 vi.mock('@smythos/sre', async () => {
     const { EventEmitter } = await import('events');
@@ -103,6 +118,68 @@ describe('LLM - chat session', () => {
         expect(r1).toBe('R:Hello');
         const r2 = await chat.prompt('World');
         expect(r2).toBe('R:World');
+    });
+
+    it('getContextWindow returns empty array for non-persistent chat', async () => {
+        const llm = SDK.LLM.OpenAI({ model: 'gpt-4o' });
+        const chat = llm.chat();
+        const history = await chat.getContextWindow();
+        expect(history).toEqual([]);
+    });
+
+    it('getContextWindow returns all messages for persistent chat', async () => {
+        const llm = SDK.LLM.OpenAI({ model: 'gpt-4o' });
+        await llm.ready;
+        const chat = llm.chat({ id: 'test-chat-001', persist: true });
+
+        const fakeMessages = [
+            { role: 'user', content: 'Hello' },
+            { role: 'assistant', content: 'Hi there!' },
+            { role: 'user', content: 'How are you?' },
+        ];
+        await chat._convOptions.store.save(fakeMessages);
+
+        const history = await chat.getContextWindow();
+        expect(history).toEqual(fakeMessages);
+    });
+
+    it('getContextWindow respects count and returns last N messages', async () => {
+        const llm = SDK.LLM.OpenAI({ model: 'gpt-4o' });
+        await llm.ready;
+        const chat = llm.chat({ id: 'test-chat-002', persist: true });
+
+        const fakeMessages = [
+            { role: 'user', content: 'msg1' },
+            { role: 'assistant', content: 'msg2' },
+            { role: 'user', content: 'msg3' },
+            { role: 'assistant', content: 'msg4' },
+            { role: 'user', content: 'msg5' },
+        ];
+        await chat._convOptions.store.save(fakeMessages);
+
+        const history = await chat.getContextWindow({ count: 2 });
+        expect(history).toHaveLength(2);
+        expect(history).toEqual(fakeMessages.slice(-2));
+    });
+
+    it('getContextWindow works with a custom store', async () => {
+        const storedMessages = [
+            { role: 'user', content: 'custom msg1' },
+            { role: 'assistant', content: 'custom reply' },
+        ];
+        const customStore = {
+            load: vi.fn().mockResolvedValue(storedMessages),
+            save: vi.fn().mockResolvedValue(undefined),
+            getMessage: vi.fn().mockResolvedValue(undefined),
+        };
+
+        const llm = SDK.LLM.OpenAI({ model: 'gpt-4o' });
+        await llm.ready;
+        const chat = llm.chat({ id: 'test-chat-003', persist: customStore });
+
+        const history = await chat.getContextWindow({ count: 5 });
+        expect(customStore.load).toHaveBeenCalledWith(5);
+        expect(history).toEqual(storedMessages);
     });
 
     it('streams events to consumer and to chat object', async () => {
