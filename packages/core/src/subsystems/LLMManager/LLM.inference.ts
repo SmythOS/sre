@@ -5,7 +5,9 @@ import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { fileConverterRegistry } from '@sre/helpers/FileConverter.helper';
 import { Logger } from '@sre/helpers/Log.helper';
+import { SUPPORTED_MIME_TYPE_CONVERSIONS } from '@sre/constants';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
 import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TLLMFinishReason } from '@sre/types/LLM.types';
@@ -13,6 +15,9 @@ import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams, TLLMEvent, TL
 import { LLMHelper } from './LLM.helper';
 import { LLMConnector } from './LLM.service/LLMConnector';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
+
+// Register file converters so they're available for all inference paths
+import '@sre/helpers/converters/PptxToPdfConverter.class';
 
 const logger = Logger('LLMInference');
 
@@ -85,7 +90,7 @@ export class LLMInference {
         params.model = this._model;
 
         params.messages = messages;
-        params.files = files;
+        params.files = files?.length > 0 ? await this.prepareFiles(files, AccessCandidate.agent(params.agentId)) : files;
 
         // If a fallback model is used, trigger the onFallback callback to notify the caller.
         if (isInFallback && typeof onFallback === 'function') {
@@ -145,7 +150,7 @@ export class LLMInference {
         params.model = this._model;
 
         params.messages = messages;
-        params.files = files;
+        params.files = files?.length > 0 ? await this.prepareFiles(files, AccessCandidate.agent(params.agentId)) : files;
 
         // If a fallback model is used, trigger the onFallback callback to notify the caller.
         if (isInFallback && typeof onFallback === 'function') {
@@ -447,6 +452,53 @@ export class LLMInference {
     //         return messages; // if something went wrong then we return the original messages
     //     }
     // }
+
+    /**
+     * Prepares files for the current provider by converting indirectly-supported formats
+     * into natively-supported ones (e.g. PPTX → PDF for OpenAI).
+     *
+     * Uses SUPPORTED_MIME_TYPE_CONVERSIONS to determine which files need conversion and what
+     * target format to use. Files that don't need conversion are passed through unchanged.
+     * If conversion fails, the original file is kept as-is.
+     */
+    private async prepareFiles(files: any[], candidate: AccessCandidate): Promise<any[]> {
+        const providerConversions = SUPPORTED_MIME_TYPE_CONVERSIONS?.[this._llmProviderName];
+        if (!providerConversions) return files;
+
+        // Build flat lookup: sourceMimeType -> target MIME types to convert via
+        const conversionMap = new Map<string, string[]>();
+        for (const category of Object.values(providerConversions)) {
+            for (const [sourceMime, config] of Object.entries(category as Record<string, { via: string[] }>)) {
+                conversionMap.set(sourceMime, config.via);
+            }
+        }
+
+        if (conversionMap.size === 0) return files;
+
+        return Promise.all(
+            files.map(async (file) => {
+                const mimeType = file?.mimetype;
+                if (!mimeType) return file;
+
+                const viaTargets = conversionMap.get(mimeType);
+                if (!viaTargets) return file;
+
+                const converter = fileConverterRegistry.findConverter(mimeType, viaTargets);
+                if (!converter) return file;
+
+                try {
+                    logger.debug(`Converting file from ${mimeType} to ${converter.targetMimeType}`);
+                    const binaryFile = BinaryInput.from(file, undefined, undefined, candidate);
+                    const convertedFile = await converter.convert(binaryFile, candidate);
+                    logger.debug(`Successfully converted file to ${converter.targetMimeType}`);
+                    return convertedFile;
+                } catch (error) {
+                    logger.warn(`Failed to convert file from ${mimeType}: ${error instanceof Error ? error.message : String(error)}`);
+                    return file;
+                }
+            }),
+        );
+    }
 
     /**
      * Get the context window for the given messages

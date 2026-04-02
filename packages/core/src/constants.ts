@@ -66,7 +66,7 @@ export const SUPPORTED_MIME_TYPES_MAP = {
     OpenAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
         imageGen: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-        document: ['application/pdf', 'text/plain'],
+        document: ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
     },
     TogetherAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'], // Same as OpenAI
@@ -107,10 +107,29 @@ export const SUPPORTED_MIME_TYPES_MAP = {
             'text/x-python',
             'text/xml',
             'text/rtf',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         ],
     },
     Groq: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+    },
+};
+
+export const SUPPORTED_MIME_TYPE_CONVERSIONS = {
+    OpenAI: {
+        document: {
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+                via: ['application/pdf'],
+            },
+        },
+    },
+
+    GoogleAI: {
+        document: {
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+                via: ['application/pdf'],
+            },
+        },
     },
 };
 
