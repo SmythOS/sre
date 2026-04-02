@@ -75,7 +75,7 @@ export class VisionLLM extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.prompt({ query: prompt, files, params: { ...config, agentId: agent.id } });
+                response = await llmInference.prompt({ query: prompt, files, params: { ...config, agentId: agent.id, processId: agent.agentRuntime?.processID, teamId: agent.teamId } });
             }
 
             // in case we have the response but it's empty string, undefined or null

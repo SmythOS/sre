@@ -133,6 +133,8 @@ ${JSON.stringify(categories, null, 2)}`;
                             params: {
                                 ...config.data,
                                 agentId: agent.id,
+                                processId: agent.agentRuntime?.processID,
+                                teamId: agent.teamId,
                                 responseFormat: 'json',
                             },
                             onFallback: (fallbackInfo) => {

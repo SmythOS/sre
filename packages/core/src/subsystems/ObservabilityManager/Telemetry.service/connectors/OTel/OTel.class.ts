@@ -333,80 +333,6 @@ export class OTel extends TelemetryConnector {
             };
         };
 
-        const createDataHandler = function (hookContext) {
-            return function (data: any, reqInfo: any) {
-                if (!hookContext.convSpan) return;
-                if (hookContext.curLLMGenSpan) return;
-                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler started', reqInfo?.requestId, accessCandidate);
-
-                const modelId = reqInfo.model;
-                const contextWindow = reqInfo.contextWindow;
-
-                // End TTFB span when first data arrives
-                if (hookContext?.latencySpans?.[reqInfo.requestId]) {
-                    const ttfbSpan = hookContext.latencySpans[reqInfo.requestId];
-
-                    // Calculate actual TTFB duration and add as attribute
-                    ttfbSpan.addEvent('llm.first.byte.received', {
-                        'request.id': reqInfo.requestId,
-                        'data.size': JSON.stringify(data || {}).length,
-                        'llm.model': modelId || '',
-                    });
-
-                    ttfbSpan.setStatus({ code: SpanStatusCode.OK });
-                    ttfbSpan.end();
-
-                    delete hookContext.latencySpans[reqInfo.requestId];
-                }
-
-                const llmGenSpan = tracer.startSpan(
-                    'Conv.GenAI',
-                    {
-                        attributes: {
-                            'agent.id': hookContext.agentId,
-                            'conv.id': hookContext.processId,
-                            'team.id': hookContext.teamId,
-                            'llm.model': modelId || '',
-                        },
-                    },
-                    trace.setSpan(context.active(), hookContext.convSpan),
-                );
-                llmGenSpan.addEvent('llm.gen.started', {
-                    'request.id': reqInfo.requestId,
-                    timestamp: Date.now(),
-                    'llm.model': modelId || '',
-                    'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
-                });
-
-                const llmGenSpanCtx = llmGenSpan.spanContext();
-                const llmGenSpanContext = trace.setSpan(context.active(), llmGenSpan);
-                context.with(llmGenSpanContext, () => {
-                    logger.emit({
-                        severityNumber: SeverityNumber.INFO,
-                        severityText: 'INFO',
-                        body: `LLM generation started: ${hookContext.processId}`,
-                        attributes: {
-                            // Explicit trace correlation (some backends need these)
-                            trace_id: llmGenSpanCtx.traceId,
-                            span_id: llmGenSpanCtx.spanId,
-                            trace_flags: llmGenSpanCtx.traceFlags,
-
-                            'agent.id': hookContext.agentId,
-                            'conv.id': hookContext.processId,
-                            'team.id': hookContext.teamId,
-                            'llm.model': modelId || '',
-                            'request.id': reqInfo.requestId,
-                            'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow)),
-                        },
-                    });
-                });
-
-                hookContext.curLLMGenSpan = llmGenSpan;
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('createDataHandler completed', reqInfo?.requestId, accessCandidate);
-            };
-        };
-
         const createErrorHandler = function (hookContext: any) {
             return function (error: Error, metadata?: { requestId?: string }) {
                 if (!hookContext.convSpan) return;
@@ -459,38 +385,6 @@ export class OTel extends TelemetryConnector {
             };
         };
 
-        const createRequestedHandler = function (hookContext) {
-            return function (reqInfo: any) {
-                if (!hookContext.convSpan) return;
-                const accessCandidate = AccessCandidate.agent(hookContext?.agentId);
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler started', reqInfo?.requestId, accessCandidate);
-                if (!hookContext.latencySpans) hookContext.latencySpans = {};
-                const contextWindow = reqInfo.contextWindow;
-
-                const modelId = reqInfo.model;
-                const llmGenLatencySpan = tracer.startSpan(
-                    'Conv.GenAI.TTFB',
-                    {
-                        attributes: {
-                            'agent.id': hookContext.agentId,
-                            'conv.id': hookContext.processId,
-                            'team.id': hookContext.teamId,
-                            'request.id': reqInfo.requestId,
-                            'llm.model': modelId || '',
-                            'metric.type': 'ttfb',
-                        },
-                    },
-                    trace.setSpan(context.active(), hookContext.convSpan),
-                );
-                llmGenLatencySpan.addEvent('llm.requested', {
-                    'request.id': reqInfo.requestId,
-                    timestamp: Date.now(),
-                    'context.preview': oTelInstance.redactString(oTelInstance.prepareContext(contextWindow).substring(0, 200)),
-                });
-                hookContext.latencySpans[reqInfo.requestId] = llmGenLatencySpan;
-                if (OTEL_DEBUG_LOGS) outputLogger.debug('createRequestedHandler completed', reqInfo?.requestId, accessCandidate);
-            };
-        };
         HookService.register(
             'Conversation.streamPrompt',
             async function (additionalContext, args) {
@@ -560,12 +454,6 @@ export class OTel extends TelemetryConnector {
                 if (OTEL_DEBUG_LOGS) {
                     outputLogger.debug('Injected trace headers into conversation', { processId, headers });
                 }
-
-                hookContext.dataHandler = createDataHandler(hookContext);
-                conversation.on(TLLMEvent.Data, hookContext.dataHandler);
-
-                hookContext.requestedHandler = createRequestedHandler(hookContext);
-                conversation.on(TLLMEvent.Requested, hookContext.requestedHandler);
 
                 hookContext.toolInfoHandler = createToolInfoHandler(hookContext);
                 conversation.on(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
@@ -647,24 +535,7 @@ export class OTel extends TelemetryConnector {
                 const accessCandidate = AccessCandidate.agent(agentId);
                 if (OTEL_DEBUG_LOGS) outputLogger.debug('Conversation.streamPrompt completed', { processId }, accessCandidate);
 
-                // Handle curLLMGenSpan with error awareness
-                if (hookContext.curLLMGenSpan) {
-                    if (error) {
-                        hookContext.curLLMGenSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-                    }
-                    hookContext.curLLMGenSpan.addEvent('llm.gen.content', {
-                        'content.size': JSON.stringify(result || {}).length,
-                        'content.preview': oTelInstance.redactString(
-                            typeof result === 'string' ? result.substring(0, 200) : JSON.stringify(result || {}).substring(0, 200),
-                        ),
-                    });
-                    hookContext.curLLMGenSpan.end();
-
-                    if (hookContext.toolInfoHandler) conversation.off(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
-                    if (hookContext.dataHandler) conversation.off(TLLMEvent.Data, hookContext.dataHandler);
-                    if (hookContext.requestedHandler) conversation.off(TLLMEvent.Requested, hookContext.requestedHandler);
-                }
-
+                if (hookContext.toolInfoHandler) conversation.off(TLLMEvent.ToolInfo, hookContext.toolInfoHandler);
                 if (hookContext.errorHandler) conversation.off(TLLMEvent.Error, hookContext.errorHandler);
 
                 const { rootSpan: convSpan } = ctx;
@@ -1007,6 +878,223 @@ export class OTel extends TelemetryConnector {
                     agentSpan.end();
                     OTelContextRegistry.endProcess(agentId, agentProcessId);
                 }
+            },
+            THook.NonBlocking,
+        );
+
+        // LLMInference.promptStream hook — creates Conv.GenAI.TTFB and Conv.GenAI spans
+        // for ALL LLM streaming calls regardless of whether they originate from
+        // Conversation.streamPrompt or from components like GenAILLM.
+        HookService.register(
+            'LLMInference.promptStream',
+            async function (promptParams) {
+                const params = promptParams?.params;
+                if (!params) return;
+
+                const llmInference = this.instance;
+                const agentId = params.agentId;
+                const teamId = params.teamId || llmInference?.teamId;
+                const processId = params.processId;
+                const modelId = llmInference?.modelId || '';
+
+                if (!agentId || !teamId) return;
+
+                const hookContext: any = this.context;
+                hookContext.agentId = agentId;
+                hookContext.teamId = teamId;
+                hookContext.processId = processId;
+                hookContext.modelId = modelId;
+
+                const parentCtx = processId ? OTelContextRegistry.get(agentId, processId) : undefined;
+                const parentSpan = parentCtx?.rootSpan;
+
+                const ttfbSpan = tracer.startSpan(
+                    'Conv.GenAI.TTFB',
+                    {
+                        attributes: {
+                            'agent.id': agentId,
+                            'conv.id': processId || '',
+                            'team.id': teamId,
+                            'llm.model': modelId,
+                            'metric.type': 'ttfb',
+                        },
+                    },
+                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
+                );
+
+                hookContext.ttfbSpan = ttfbSpan;
+                hookContext.ttfbEnded = false;
+                hookContext.genSpanEnded = false;
+            },
+            THook.NonBlocking,
+        );
+
+        HookService.registerAfter(
+            'LLMInference.promptStream',
+            async function ({ result: emitter, error }) {
+                const hookContext: any = this.context;
+                const ttfbSpan = hookContext?.ttfbSpan;
+                if (!ttfbSpan) return;
+
+                if (error || !emitter || typeof emitter.on !== 'function') {
+                    if (error) {
+                        ttfbSpan.recordException(error);
+                        ttfbSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message || 'LLM request failed' });
+                    }
+                    ttfbSpan.end();
+                    hookContext.ttfbEnded = true;
+                    return;
+                }
+
+                const agentId = hookContext.agentId;
+                const teamId = hookContext.teamId;
+                const processId = hookContext.processId;
+                const modelId = hookContext.modelId;
+
+                const parentCtx = processId ? OTelContextRegistry.get(agentId, processId) : undefined;
+                const parentSpan = parentCtx?.rootSpan;
+
+                let firstByte = true;
+
+                emitter.on(TLLMEvent.Content, () => {
+                    if (!firstByte) return;
+                    firstByte = false;
+
+                    if (!hookContext.ttfbEnded) {
+                        ttfbSpan.setStatus({ code: SpanStatusCode.OK });
+                        ttfbSpan.end();
+                        hookContext.ttfbEnded = true;
+                    }
+
+                    const genSpan = tracer.startSpan(
+                        'Conv.GenAI',
+                        {
+                            attributes: {
+                                'agent.id': agentId,
+                                'conv.id': processId || '',
+                                'team.id': teamId,
+                                'llm.model': modelId,
+                            },
+                        },
+                        parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
+                    );
+                    hookContext.genSpan = genSpan;
+                });
+
+                emitter.on(TLLMEvent.End, () => {
+                    if (!hookContext.ttfbEnded) {
+                        ttfbSpan.setStatus({ code: SpanStatusCode.OK });
+                        ttfbSpan.end();
+                        hookContext.ttfbEnded = true;
+                    }
+                    if (hookContext.genSpan && !hookContext.genSpanEnded) {
+                        hookContext.genSpan.setStatus({ code: SpanStatusCode.OK });
+                        hookContext.genSpan.end();
+                        hookContext.genSpanEnded = true;
+                    }
+                });
+
+                emitter.on(TLLMEvent.Error, (err: Error) => {
+                    if (!hookContext.ttfbEnded) {
+                        ttfbSpan.recordException(err);
+                        ttfbSpan.setStatus({ code: SpanStatusCode.ERROR, message: err?.message || 'LLM error' });
+                        ttfbSpan.end();
+                        hookContext.ttfbEnded = true;
+                    }
+                    if (hookContext.genSpan && !hookContext.genSpanEnded) {
+                        hookContext.genSpan.recordException(err);
+                        hookContext.genSpan.setStatus({ code: SpanStatusCode.ERROR, message: err?.message || 'LLM error' });
+                        hookContext.genSpan.end();
+                        hookContext.genSpanEnded = true;
+                    }
+                });
+            },
+            THook.NonBlocking,
+        );
+
+        // LLMInference.prompt hook — creates Conv.GenAI.TTFB and Conv.GenAI spans
+        // for non-streaming LLM calls (e.g. VisionLLM, MultimodalLLM).
+        HookService.register(
+            'LLMInference.prompt',
+            async function (promptParams) {
+                const params = promptParams?.params;
+                if (!params) return;
+
+                const llmInference = this.instance;
+                const agentId = params.agentId;
+                const teamId = params.teamId || llmInference?.teamId;
+                const processId = params.processId;
+                const modelId = llmInference?.modelId || '';
+
+                if (!agentId || !teamId) return;
+
+                const hookContext: any = this.context;
+                hookContext.agentId = agentId;
+                hookContext.teamId = teamId;
+                hookContext.processId = processId;
+                hookContext.modelId = modelId;
+
+                const parentCtx = processId ? OTelContextRegistry.get(agentId, processId) : undefined;
+                const parentSpan = parentCtx?.rootSpan;
+
+                const ttfbSpan = tracer.startSpan(
+                    'Conv.GenAI.TTFB',
+                    {
+                        attributes: {
+                            'agent.id': agentId,
+                            'conv.id': processId || '',
+                            'team.id': teamId,
+                            'llm.model': modelId,
+                            'metric.type': 'ttfb',
+                        },
+                    },
+                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
+                );
+
+                hookContext.ttfbSpan = ttfbSpan;
+            },
+            THook.NonBlocking,
+        );
+
+        HookService.registerAfter(
+            'LLMInference.prompt',
+            async function ({ result, error }) {
+                const hookContext: any = this.context;
+                const ttfbSpan = hookContext?.ttfbSpan;
+                if (!ttfbSpan) return;
+
+                const agentId = hookContext.agentId;
+                const teamId = hookContext.teamId;
+                const processId = hookContext.processId;
+                const modelId = hookContext.modelId;
+
+                const parentCtx = processId ? OTelContextRegistry.get(agentId, processId) : undefined;
+                const parentSpan = parentCtx?.rootSpan;
+
+                if (error) {
+                    ttfbSpan.recordException(error);
+                    ttfbSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message || 'LLM request failed' });
+                    ttfbSpan.end();
+                    return;
+                }
+
+                ttfbSpan.setStatus({ code: SpanStatusCode.OK });
+                ttfbSpan.end();
+
+                const genSpan = tracer.startSpan(
+                    'Conv.GenAI',
+                    {
+                        attributes: {
+                            'agent.id': agentId,
+                            'conv.id': processId || '',
+                            'team.id': teamId,
+                            'llm.model': modelId,
+                        },
+                    },
+                    parentSpan ? trace.setSpan(context.active(), parentSpan) : undefined,
+                );
+                genSpan.setStatus({ code: SpanStatusCode.OK });
+                genSpan.end();
             },
             THook.NonBlocking,
         );

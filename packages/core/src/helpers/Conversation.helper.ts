@@ -353,6 +353,8 @@ export class Conversation extends EventEmitter {
                     maxTokens,
                     cache: this._settings?.experimentalCache,
                     agentId: this._agentId,
+                    processId: this.storeId || this.id,
+                    teamId: this.agentData?.teamId,
                     abortSignal,
                 },
             })

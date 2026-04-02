@@ -65,7 +65,7 @@ export class PromptGenerator extends Component {
                     const eventEmitter: any = await llmInference
                         .promptStream({
                             query: prompt,
-                            params: { ...config, model, agentId: agent.id },
+                            params: { ...config, model, agentId: agent.id, processId: agent.agentRuntime?.processID, teamId: agent.teamId },
                         })
                         .catch((error) => {
                             console.error('Error on promptStream: ', error);
@@ -92,7 +92,7 @@ export class PromptGenerator extends Component {
                 response = await contentPromise;
             } else {
                 response = await llmInference
-                    .prompt({ query: prompt, params: { ...config, agentId: agent.id } })
+                    .prompt({ query: prompt, params: { ...config, agentId: agent.id, processId: agent.agentRuntime?.processID, teamId: agent.teamId } })
                     .catch((error) => ({ error: error }));
             }
 
