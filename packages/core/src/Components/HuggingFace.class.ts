@@ -1,12 +1,24 @@
-import { InferenceClient } from '@huggingface/inference';
-import { Component } from './Component.class';
-import { IAgent as Agent } from '@sre/types/Agent.types';
-import hfParams from '../data/hugging-face.params.json';
 import Joi from 'joi';
-import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
-import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, kebabToCamel } from '../utils';
+import { Agent as UndiciAgent, setGlobalDispatcher } from 'undici';
+import { InferenceClient } from '@huggingface/inference';
+
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
+import { IAgent as Agent } from '@sre/types/Agent.types';
+
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+
+import { Component } from './Component.class';
+import hfParams from '../data/hugging-face.params.json';
+import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, kebabToCamel } from '../utils';
+
+// Hugging Face API requests fail with "TypeError: fetch failed" / ETIMEDOUT because
+// Node.js's built-in fetch (undici) uses the Happy Eyeballs algorithm (RFC 6555) with
+// a 250ms timeout — too short for dual-stack networks where IPv6 is advertised but
+// unreachable. Increasing the timeout to 300ms gives IPv6 enough time to connect on
+// slower networks while keeping the dual-stack fallback mechanism intact.
+// See: https://nodejs.org/api/net.html#netcreateconnectionoptions-connectlistener
+setGlobalDispatcher(new UndiciAgent({ connect: { autoSelectFamilyAttemptTimeout: 300 } }));
 
 // Per-method param handling: drop, remap, and flatten, keyed by resolved SDK method.
 // For backward compatibility: in the UI, the component may have been saved with text-generation parameters (e.g., do_sample, top_k).
@@ -254,6 +266,14 @@ export class HuggingFace extends Component {
                     parameters[key] = value;
                 }
             }
+        }
+
+        // The HF SDK type definitions nest generation params under `generate_parameters`,
+        // but the Inference API expects them flat inside `parameters`. Flatten before sending.
+        if (parameters['generate_parameters'] && typeof parameters['generate_parameters'] === 'object') {
+            const nested = parameters['generate_parameters'];
+            delete parameters['generate_parameters'];
+            Object.assign(parameters, nested);
         }
 
         let args = { model: modelName, ...structuredInputs };

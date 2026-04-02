@@ -112,6 +112,7 @@
         "readline-sync": "^1.4.10",
         "ses": "^1.14.0",
         "socks-proxy-agent": "^8.0.4",
+        "undici": "^7.24.7",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0",
         "ws": "^8.18.3",

@@ -1,4 +1,3 @@
-import { setDefaultAutoSelectFamily } from 'net';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
@@ -8,9 +7,6 @@ import path from 'path';
 import util from 'util';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { TestAccountConnector } from '../../utils/TestConnectors';
-
-// HF inference endpoints can be slow to resolve under IPv6 auto-selection
-setDefaultAutoSelectFamily(false);
 
 const imagePath = path.resolve(__dirname, '../../data/smythos.png');
 const imageBlob = await util.promisify(fs.readFile)(imagePath);
