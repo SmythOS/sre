@@ -41,11 +41,13 @@ describe('NKVLocalStorage - unit (temp fs)', () => {
         const v1 = await client.get(ns, 'k1');
         expect(String(v1)).toBe(JSON.stringify({ a: 1 }));
         const list = await client.list(ns);
-        expect(list.map((e) => e.key).sort()).toEqual(['k1', 'k2']);
+        expect(list.items.map((e) => e.key).sort()).toEqual(['k1', 'k2']);
+        expect(list.total).toBe(2);
         await client.delete(ns, 'k1');
         await expect(client.exists(ns, 'k1')).resolves.toBe(false);
         await client.deleteAll(ns);
         const after = await client.list(ns);
-        expect(after.length).toBe(0);
+        expect(after.items.length).toBe(0);
+        expect(after.total).toBe(0);
     });
 });

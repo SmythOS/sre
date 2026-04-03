@@ -1,0 +1,371 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>agents\04-worker-mode | SmythOS SDK</title><meta name="description" content="Documentation for SmythOS SDK"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body>
+        <script>
+          // Function to force the theme to light.
+          const forceLightTheme = () => {
+            if (document.documentElement.dataset.theme !== 'light') {
+              document.documentElement.dataset.theme = 'light';
+            }
+          };
+
+          // Set the theme immediately to prevent a flash of the wrong theme.
+          forceLightTheme();
+
+          // Create an observer to watch for changes to the data-theme attribute.
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+              if (mutation.attributeName === 'data-theme') {
+                forceLightTheme();
+              }
+            });
+          });
+
+          // Start observing the document element for attribute changes.
+          observer.observe(document.documentElement, { attributes: true });
+        </script>
+      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS SDK</a><div id="tsd-toolbar-links"><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">agents\04-worker-mode</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="worker-mode" class="tsd-anchor-link">Worker Mode<a href="#worker-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Worker mode allows an agent to dispatch complex, long-running tasks to background &quot;copy&quot; agents while the main agent stays fully interactive. When a worker finishes, its result is automatically surfaced back to the user through the main agent's conversation.</p>
+<p>This mode is ideal when users submit tasks that take a while (research, code generation, multi-step analysis) and you want them to continue chatting or submit more tasks without blocking.</p>
+<p>See the <a href="https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04.2-chat-worker-mode.ts">Worker Mode Example</a> for a complete, runnable implementation.</p>
+<h2 id="enabling-worker-mode" class="tsd-anchor-link">Enabling Worker Mode<a href="#enabling-worker-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1">, </span><span class="hl-2">TAgentMode</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Research Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a research assistant capable of handling complex tasks.&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">mode:</span><span class="hl-1"> </span><span class="hl-2">TAgentMode</span><span class="hl-1">.</span><span class="hl-7">WORKER</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="how-it-works" class="tsd-anchor-link">How It Works<a href="#how-it-works" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="task-dispatching" class="tsd-anchor-link">Task Dispatching<a href="#task-dispatching" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When the user asks for something complex, the main agent's LLM evaluates the request:</p>
+<ul>
+<li><strong>Simple tasks</strong> (quick questions, math, lookups): The agent answers directly — no worker needed.</li>
+<li><strong>Complex tasks</strong> (research, analysis, code generation): The agent dispatches the task to a background worker via the internal <code>_sre_Worker_Dispatch</code> skill.</li>
+</ul>
+<p>The main agent immediately confirms the dispatch and remains available for new prompts.</p>
+<h3 id="copy-agents" class="tsd-anchor-link">Copy Agents<a href="#copy-agents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each worker is a &quot;copy&quot; of the main agent — it shares the same skills and model but runs independently in its own chat session. The copy agent:</p>
+<ul>
+<li>Preserves the original agent behavior (system prompt) defined by the developer</li>
+<li>Gets all of the main agent's skills (except internal <code>_sre_*</code> skills)</li>
+<li>Receives additional instructions appended to the behavior, telling it to use <code>&lt;worker_result&gt;</code> and <code>&lt;worker_question&gt;</code> tags for communication</li>
+<li>Has no awareness of the main conversation — it only knows its assigned task</li>
+</ul>
+<h3 id="worker-communication" class="tsd-anchor-link">Worker Communication<a href="#worker-communication" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Workers communicate back to the main agent through two tag-based protocols:</p>
+<ul>
+<li><strong><code>&lt;worker_result&gt;...&lt;/worker_result&gt;</code></strong>: The worker wraps its final output in this tag when the task is complete.</li>
+<li><strong><code>&lt;worker_question&gt;...&lt;/worker_question&gt;</code></strong>: The worker wraps a follow-up question in this tag if it needs clarification from the user.</li>
+</ul>
+<h3 id="auto-surfacing-results" class="tsd-anchor-link">Auto-Surfacing Results<a href="#auto-surfacing-results" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a worker completes or has a question, the result is automatically injected into the main agent's active chat session. The main agent's LLM then presents it naturally to the user — no manual polling needed.</p>
+<p>The injection happens via an internal queue mechanism:</p>
+<ol>
+<li>Worker finishes → result is pushed to the injection queue</li>
+<li>When the main agent's current turn ends, the queue is drained</li>
+<li>A synthetic prompt (<code>CHECK_WORKERS_RESULTS_QUEUE</code> or <code>CHECK_WORKERS_QUESTIONS_QUEUE</code>) is sent to the main agent</li>
+<li>The main agent calls its status/results skills and writes a natural language response</li>
+<li>That response streams through the chat's <code>TLLMEvent.Content</code> events — visible to the consumer like any other response</li>
+</ol>
+<h3 id="concurrency" class="tsd-anchor-link">Concurrency<a href="#concurrency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Up to 3 workers can run simultaneously. Additional dispatches are queued and start automatically when a running worker completes.</p>
+<h2 id="events" class="tsd-anchor-link">Events<a href="#events" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Worker mode emits events on the <code>agent</code> object for real-time visibility into background task progress.</p>
+<h3 id="workerdispatched" class="tsd-anchor-link">WorkerDispatched<a href="#workerdispatched" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a task is dispatched to a background worker.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerDispatched&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">task</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Task dispatched: </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Description: </span><span class="hl-6">${</span><span class="hl-2">task</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>Unique identifier for the job</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td><code>string</code></td>
+<td>The task description sent to the worker</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workercompleted" class="tsd-anchor-link">WorkerCompleted<a href="#workercompleted" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a worker successfully completes its task.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerCompleted&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">result</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Completed: </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Result: </span><span class="hl-6">${</span><span class="hl-2">result</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>string</code></td>
+<td>The worker's final result text</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerfailed" class="tsd-anchor-link">WorkerFailed<a href="#workerfailed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a worker encounters an error.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerFailed&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">error</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">error</span><span class="hl-1">(</span><span class="hl-3">`Failed: </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3"> — </span><span class="hl-6">${</span><span class="hl-2">error</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string</code></td>
+<td>Error message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerquestion" class="tsd-anchor-link">WorkerQuestion<a href="#workerquestion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a worker needs clarification from the user.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerQuestion&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">questionId</span><span class="hl-1">, </span><span class="hl-2">question</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Worker </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3"> asks: </span><span class="hl-6">${</span><span class="hl-2">question</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+<tr>
+<td><code>questionId</code></td>
+<td><code>string</code></td>
+<td>Unique identifier for the question</td>
+</tr>
+<tr>
+<td><code>question</code></td>
+<td><code>string</code></td>
+<td>The question text</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workeranswered" class="tsd-anchor-link">WorkerAnswered<a href="#workeranswered" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a user's answer is relayed back to the worker.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerAnswered&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">answer</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Answer sent to </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3">: </span><span class="hl-6">${</span><span class="hl-2">answer</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+<tr>
+<td><code>answer</code></td>
+<td><code>string</code></td>
+<td>The user's answer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workercancelled" class="tsd-anchor-link">WorkerCancelled<a href="#workercancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Fired when a job is cancelled.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerCancelled&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`Cancelled: </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerstatuschanged" class="tsd-anchor-link">WorkerStatusChanged<a href="#workerstatuschanged" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A catch-all event that fires on every status transition, alongside the more specific events above.</p>
+<pre><code class="typescript"><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerStatusChanged&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">status</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`</span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3">: </span><span class="hl-6">${</span><span class="hl-2">status</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jobId</code></td>
+<td><code>string</code></td>
+<td>The job identifier</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td>New status: <code>'running'</code>, <code>'waiting_for_input'</code>, <code>'completed'</code>, <code>'failed'</code>, or <code>'cancelled'</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="events-summary" class="tsd-anchor-link">Events Summary<a href="#events-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Payload</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WorkerDispatched</code></td>
+<td><code>{ jobId, task }</code></td>
+<td>Task sent to a background worker</td>
+</tr>
+<tr>
+<td><code>WorkerCompleted</code></td>
+<td><code>{ jobId, result }</code></td>
+<td>Worker finished successfully</td>
+</tr>
+<tr>
+<td><code>WorkerFailed</code></td>
+<td><code>{ jobId, error }</code></td>
+<td>Worker encountered an error</td>
+</tr>
+<tr>
+<td><code>WorkerQuestion</code></td>
+<td><code>{ jobId, questionId, question }</code></td>
+<td>Worker needs user clarification</td>
+</tr>
+<tr>
+<td><code>WorkerAnswered</code></td>
+<td><code>{ jobId, answer }</code></td>
+<td>User's answer relayed to worker</td>
+</tr>
+<tr>
+<td><code>WorkerCancelled</code></td>
+<td><code>{ jobId }</code></td>
+<td>Job was cancelled</td>
+</tr>
+<tr>
+<td><code>WorkerStatusChanged</code></td>
+<td><code>{ jobId, status }</code></td>
+<td>Any status transition (fires with every event above)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="job-lifecycle" class="tsd-anchor-link">Job Lifecycle<a href="#job-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code><span class="hl-1">  </span><span class="hl-2">Dispatched</span><span class="hl-1"> ──→ </span><span class="hl-2">Running</span><span class="hl-1"> ──→ </span><span class="hl-2">Completed</span><br/><span class="hl-1">                   │  ↑           │</span><br/><span class="hl-1">                   │  │      (</span><span class="hl-2">auto</span><span class="hl-1">-</span><span class="hl-2">surface</span><span class="hl-1">)</span><br/><span class="hl-1">                   ↓  │</span><br/><span class="hl-1">              </span><span class="hl-2">Waiting</span><span class="hl-1"> </span><span class="hl-2">for</span><span class="hl-1"> </span><span class="hl-2">Input</span><br/><span class="hl-1">                   │</span><br/><span class="hl-1">                   ↓</span><br/><span class="hl-1">               (</span><span class="hl-2">answered</span><span class="hl-1">) ──→ </span><span class="hl-2">Running</span><span class="hl-1"> ──→ ...</span><br/><br/><span class="hl-1">  </span><span class="hl-2">Any</span><span class="hl-1"> </span><span class="hl-2">state</span><span class="hl-1"> ──→ </span><span class="hl-5">Cancelled</span><span class="hl-1"> (</span><span class="hl-2">via</span><span class="hl-1"> </span><span class="hl-2">user</span><span class="hl-1"> </span><span class="hl-2">request</span><span class="hl-1">)</span><br/><span class="hl-1">  </span><span class="hl-2">Running</span><span class="hl-1">   ──→ </span><span class="hl-5">Failed</span><span class="hl-1">    (</span><span class="hl-2">on</span><span class="hl-1"> </span><span class="hl-2">error</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<h2 id="full-example-with-chat" class="tsd-anchor-link">Full Example with Chat<a href="#full-example-with-chat" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1">, </span><span class="hl-2">TAgentMode</span><span class="hl-1">, </span><span class="hl-2">TLLMEvent</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><span class="hl-0">import</span><span class="hl-1"> </span><span class="hl-6">*</span><span class="hl-1"> </span><span class="hl-0">as</span><span class="hl-1"> </span><span class="hl-2">readline</span><span class="hl-1"> </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;readline&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Research Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">`You are a helpful assistant. For simple questions, answer directly.</span><br/><span class="hl-3">For complex research tasks, dispatch them to a background worker.`</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">mode:</span><span class="hl-1"> </span><span class="hl-2">TAgentMode</span><span class="hl-1">.</span><span class="hl-7">WORKER</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Add skills that workers can use</span><br/><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">addSkill</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;WebSearch&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">description:</span><span class="hl-1"> </span><span class="hl-3">&#39;Search the web for information&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">process</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-2">query</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">// Your search implementation here</span><br/><span class="hl-1">        </span><span class="hl-0">return</span><span class="hl-1"> { </span><span class="hl-2">results:</span><span class="hl-1"> [{ </span><span class="hl-2">title:</span><span class="hl-1"> </span><span class="hl-3">`Result for: </span><span class="hl-6">${</span><span class="hl-2">query</span><span class="hl-6">}</span><span class="hl-3">`</span><span class="hl-1"> }] };</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Track worker activity</span><br/><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerDispatched&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1">, </span><span class="hl-2">task</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`</span><span class="hl-9">\n</span><span class="hl-3">⚡ Worker started: </span><span class="hl-6">${</span><span class="hl-2">task</span><span class="hl-10">.</span><span class="hl-5">substring</span><span class="hl-10">(</span><span class="hl-8">0</span><span class="hl-10">, </span><span class="hl-8">60</span><span class="hl-10">)</span><span class="hl-6">}</span><span class="hl-3">...`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;WorkerCompleted&#39;</span><span class="hl-1">, ({ </span><span class="hl-2">jobId</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">`</span><span class="hl-9">\n</span><span class="hl-3">✅ Worker </span><span class="hl-6">${</span><span class="hl-2">jobId</span><span class="hl-6">}</span><span class="hl-3"> completed`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Create a chat session</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">chat</span><span class="hl-1"> = </span><span class="hl-2">agent</span><span class="hl-1">.</span><span class="hl-5">chat</span><span class="hl-1">({ </span><span class="hl-2">persist:</span><span class="hl-1"> </span><span class="hl-6">false</span><span class="hl-1"> });</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">rl</span><span class="hl-1"> = </span><span class="hl-2">readline</span><span class="hl-1">.</span><span class="hl-5">createInterface</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">input:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">stdin</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">output:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">stdout</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">prompt:</span><span class="hl-1"> </span><span class="hl-3">&#39;You: &#39;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Listen on the Chat object for all output (user-initiated + auto-surfaced)</span><br/><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-2">first</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-2">chat</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-2">TLLMEvent</span><span class="hl-1">.</span><span class="hl-2">Content</span><span class="hl-1">, (</span><span class="hl-2">content</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">if</span><span class="hl-1"> (</span><span class="hl-2">first</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">stdout</span><span class="hl-1">.</span><span class="hl-5">write</span><span class="hl-1">(</span><span class="hl-3">&#39;</span><span class="hl-9">\n</span><span class="hl-3">🤖 Assistant: &#39;</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-2">first</span><span class="hl-1"> = </span><span class="hl-6">false</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">stdout</span><span class="hl-1">.</span><span class="hl-5">write</span><span class="hl-1">(</span><span class="hl-2">content</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-2">chat</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-2">TLLMEvent</span><span class="hl-1">.</span><span class="hl-2">End</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">if</span><span class="hl-1"> (!</span><span class="hl-2">first</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-2">first</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">        </span><span class="hl-2">console</span><span class="hl-1">.</span><span class="hl-5">log</span><span class="hl-1">(</span><span class="hl-3">&#39;</span><span class="hl-9">\n</span><span class="hl-3">&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-2">rl</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">();</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Handle user input</span><br/><span class="hl-2">rl</span><span class="hl-1">.</span><span class="hl-5">on</span><span class="hl-1">(</span><span class="hl-3">&#39;line&#39;</span><span class="hl-1">, (</span><span class="hl-2">input</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">if</span><span class="hl-1"> (</span><span class="hl-2">input</span><span class="hl-1">.</span><span class="hl-5">trim</span><span class="hl-1">() === </span><span class="hl-3">&#39;&#39;</span><span class="hl-1">) </span><span class="hl-0">return</span><span class="hl-1"> </span><span class="hl-2">rl</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-2">chat</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">(</span><span class="hl-2">input</span><span class="hl-1">).</span><span class="hl-5">stream</span><span class="hl-1">();</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-2">rl</span><span class="hl-1">.</span><span class="hl-5">prompt</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<blockquote>
+<p><strong>Note</strong>: We listen on <code>chat.on(TLLMEvent.Content, ...)</code> rather than on the per-prompt emitter returned by <code>.stream()</code>. This ensures we see both user-initiated responses <em>and</em> auto-surfaced worker results, since <code>ChatCommand.stream()</code> emits events on the Chat object for every prompt — including internally injected ones.</p>
+</blockquote>
+<h2 id="combining-with-planner-mode" class="tsd-anchor-link">Combining with Planner Mode<a href="#combining-with-planner-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Worker mode pairs naturally with Planner mode. The agent plans the work and dispatches complex subtasks to background workers:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Research Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">mode:</span><span class="hl-1"> [</span><span class="hl-2">TAgentMode</span><span class="hl-1">.</span><span class="hl-7">PLANNER</span><span class="hl-1">, </span><span class="hl-2">TAgentMode</span><span class="hl-1">.</span><span class="hl-7">WORKER</span><span class="hl-1">],</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>See the <a href="https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04.3-chat-planner-worker-combined.ts">Combined Example</a> for a full implementation.</p>
+<h2 id="workerjob-type" class="tsd-anchor-link">WorkerJob Type<a href="#workerjob-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>For advanced use cases, the <code>WorkerJob</code> interface is exported from the SDK:</p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">WorkerJob</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Unique job identifier</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td><code>string</code></td>
+<td>The dispatched task description</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td>Current status</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>number</code></td>
+<td>Timestamp of creation</td>
+</tr>
+<tr>
+<td><code>completedAt</code></td>
+<td><code>number?</code></td>
+<td>Timestamp of completion</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>string?</code></td>
+<td>Final result (when completed)</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string?</code></td>
+<td>Error message (when failed)</td>
+</tr>
+<tr>
+<td><code>pendingQuestion</code></td>
+<td><code>object?</code></td>
+<td><code>{ questionId, text }</code> when waiting for input</td>
+</tr>
+<tr>
+<td><code>interactions</code></td>
+<td><code>array</code></td>
+<td>Full log of prompts and responses</td>
+</tr>
+<tr>
+<td><code>partialResult</code></td>
+<td><code>string</code></td>
+<td>Accumulated response so far (while running)</td>
+</tr>
+<tr>
+<td><code>currentStep</code></td>
+<td><code>string?</code></td>
+<td>Description of current tool call</td>
+</tr>
+</tbody>
+</table>
+<h2 id="next-steps" class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><a href="agents_03-planner-mode.html">Planner Mode</a> - Systematic task planning</li>
+<li><a href="agents_02-agent-modes.html">Agent Modes Overview</a> - All available modes</li>
+<li><a href="04-chat.html">Chat</a> - Maintaining conversations with context</li>
+<li><a href="03-streaming.html">Streaming Responses</a> - Real-time output from agents</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#worker-mode"><span>Worker <wbr/>Mode</span></a><ul><li><a href="#enabling-worker-mode"><span>Enabling <wbr/>Worker <wbr/>Mode</span></a></li><li><a href="#how-it-works"><span>How <wbr/>It <wbr/>Works</span></a></li><li><ul><li><a href="#task-dispatching"><span>Task <wbr/>Dispatching</span></a></li><li><a href="#copy-agents"><span>Copy <wbr/>Agents</span></a></li><li><a href="#worker-communication"><span>Worker <wbr/>Communication</span></a></li><li><a href="#auto-surfacing-results"><span>Auto-<wbr/>Surfacing <wbr/>Results</span></a></li><li><a href="#concurrency"><span>Concurrency</span></a></li></ul></li><li><a href="#events"><span>Events</span></a></li><li><ul><li><a href="#workerdispatched"><span>Worker<wbr/>Dispatched</span></a></li><li><a href="#workercompleted"><span>Worker<wbr/>Completed</span></a></li><li><a href="#workerfailed"><span>Worker<wbr/>Failed</span></a></li><li><a href="#workerquestion"><span>Worker<wbr/>Question</span></a></li><li><a href="#workeranswered"><span>Worker<wbr/>Answered</span></a></li><li><a href="#workercancelled"><span>Worker<wbr/>Cancelled</span></a></li><li><a href="#workerstatuschanged"><span>Worker<wbr/>Status<wbr/>Changed</span></a></li></ul></li><li><a href="#events-summary"><span>Events <wbr/>Summary</span></a></li><li><a href="#job-lifecycle"><span>Job <wbr/>Lifecycle</span></a></li><li><a href="#full-example-with-chat"><span>Full <wbr/>Example with <wbr/>Chat</span></a></li><li><a href="#combining-with-planner-mode"><span>Combining with <wbr/>Planner <wbr/>Mode</span></a></li><li><a href="#workerjob-type"><span>Worker<wbr/>Job <wbr/>Type</span></a></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS SDK</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

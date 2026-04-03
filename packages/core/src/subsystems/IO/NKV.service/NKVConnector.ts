@@ -5,13 +5,23 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 
+export interface NKVPaginationOptions {
+    page: number;
+    limit: number;
+}
+
+export interface NKVListResult {
+    items: { key: string; data: StorageData }[];
+    total: number;
+}
+
 export interface INKVRequest {
     get(namespace: string, key: string): Promise<StorageData>;
     set(namespace: string, key: string, value: StorageData): Promise<void>;
     delete(namespace: string, key: string): Promise<void>;
     exists(namespace: string, key: string): Promise<boolean>;
     deleteAll(namespace: string): Promise<void>;
-    list(namespace: string): Promise<{ key: string; data: StorageData }[]>;
+    list(namespace: string, pagination?: NKVPaginationOptions): Promise<NKVListResult>;
 }
 
 /**
@@ -27,7 +37,7 @@ export abstract class NKVConnector extends SecureConnector {
             delete: async (namespace: string, key: string) => this.delete(candidate.writeRequest, namespace, key),
             exists: async (namespace: string, key: string) => this.exists(candidate.readRequest, namespace, key),
             deleteAll: async (namespace: string) => this.deleteAll(candidate.writeRequest, namespace),
-            list: async (namespace: string) => this.list(candidate.readRequest, namespace),
+            list: async (namespace: string, pagination?: NKVPaginationOptions) => this.list(candidate.readRequest, namespace, pagination),
         };
     }
 
@@ -39,5 +49,5 @@ export abstract class NKVConnector extends SecureConnector {
     protected abstract delete(acRequest: AccessRequest, namespace: string, key: string): Promise<void>;
     protected abstract exists(acRequest: AccessRequest, namespace: string, key: string): Promise<boolean>;
     protected abstract deleteAll(acRequest: AccessRequest, namespace: string): Promise<void>;
-    protected abstract list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]>;
+    protected abstract list(acRequest: AccessRequest, namespace: string, pagination?: NKVPaginationOptions): Promise<NKVListResult>;
 }

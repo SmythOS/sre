@@ -112,7 +112,9 @@ export class OpenAIConnector extends LLMConnector {
             const result = await apiInterface.createRequest(body, context, abortSignal);
 
             const message = result?.choices?.[0]?.message || { content: result?.output_text };
-            const finishReason = LLMHelper.normalizeFinishReason(result?.choices?.[0]?.finish_reason || result?.incomplete_details || TLLMFinishReason.Stop);
+            const finishReason = LLMHelper.normalizeFinishReason(
+                result?.choices?.[0]?.finish_reason || result?.incomplete_details || TLLMFinishReason.Stop,
+            );
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -155,18 +157,18 @@ export class OpenAIConnector extends LLMConnector {
 
     /**
      * Stream request implementation.
-     * 
+     *
      * **Error Handling Pattern:**
      * - Always returns emitters, never throws errors - ensures consistent error handling
      * - Uses setImmediate for event emission - prevents race conditions where events fire before listeners attach
      * - Emits End after terminal events (Error, Abort) - ensures cleanup code always runs
-     * 
+     *
      * **Why setImmediate?**
      * Since streamRequest is async, callers must await to get the emitter, creating a timing gap.
      * setImmediate defers event emission to the next event loop tick, ensuring events fire AFTER
      * listeners are attached. This prevents race conditions where synchronous event emission
      * would occur before listeners can be registered.
-     * 
+     *
      * @param acRequest - Access request for authorization
      * @param body - Request body parameters
      * @param context - LLM request context
@@ -221,7 +223,7 @@ export class OpenAIConnector extends LLMConnector {
                 emitter.emit(TLLMEvent.Error, error);
                 emitter.emit(TLLMEvent.End, [], [], TLLMFinishReason.Error);
             });
-            
+
             return emitter;
         }
     }
@@ -444,8 +446,8 @@ export class OpenAIConnector extends LLMConnector {
                     async (file) =>
                         await toFile(await file.getReadStream(), await file.getName(), {
                             type: file.mimetype,
-                        })
-                )
+                        }),
+                ),
             );
 
             // Assign only the first image file as required by the OpenAI image-edit endpoint
@@ -517,7 +519,7 @@ export class OpenAIConnector extends LLMConnector {
             prompt_tokens_details?: { cached_tokens?: number };
             cost?: number; // for web search tool
         },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -534,6 +536,18 @@ export class OpenAIConnector extends LLMConnector {
             usage?.prompt_tokens_details?.cached_tokens ||
             0;
 
+        // #region Find matching model and set tier based on threshold
+        // Matches latest-generation GPT models (5.4+, 6+) with optional -pro suffix
+        const isTieredModel = /^(smythos\/)?gpt-(5\.([4-9]|\d{2,})|([6-9]|[1-9]\d+)(\.\d+)?)(-pro)?/i.test(modelName);
+        const tierThreshold = 272_000;
+
+        let tier = '';
+
+        if (isTieredModel) {
+            tier = inputTokens < tierThreshold ? 'tier1' : 'tier2';
+        }
+        // #endregion
+
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: inputTokens,
@@ -544,6 +558,7 @@ export class OpenAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
+            tier,
         };
         SystemEvents.emit('USAGE:LLM', usageData);
 

@@ -74,8 +74,13 @@ export class ImageGenerator extends Component {
         // #endregion
 
         // #region Google AI model
-        aspectRatio: Joi.string().valid('1:1', '3:4', '4:3', '9:16', '16:9').optional().allow('').label('Aspect Ratio'),
+        aspectRatio: Joi.string()
+            .valid('1:1', '1:4', '1:8', '2:3', '3:2', '3:4', '4:1', '4:3', '4:5', '5:4', '8:1', '9:16', '16:9', '21:9')
+            .optional()
+            .allow('')
+            .label('Aspect Ratio'),
         personGeneration: Joi.string().valid('dont_allow', 'allow_adult', 'allow_all').optional().allow('').label('Person Generation'),
+        resolution: Joi.string().valid('0.5K', '1K', '2K', '4K').optional().allow('').label('Resolution'),
         // #endregion
     });
     constructor() {
@@ -335,11 +340,13 @@ const imageGenerator = {
                 aspectRatio?: string;
                 numberOfImages?: number;
                 personGeneration?: string;
+                resolution?: string;
             } = {
                 model,
                 aspectRatio: config?.data?.aspectRatio || config?.data?.size || '1:1',
                 numberOfImages: config?.data?.numberOfImages || 1,
-                personGeneration: config?.data?.personGeneration || 'allow_adult',
+                personGeneration: config?.data?.personGeneration || 'dont_allow',
+                resolution: config?.data?.resolution || '1K',
             };
 
             let response;

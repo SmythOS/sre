@@ -454,10 +454,10 @@ export class MilvusVectorDB extends VectorDBConnector {
 
         //* [1] Get datasources from NKV
         try {
-            const nkvDatasources = await this.nkvConnector
+            const { items } = await this.nkvConnector
                 .requester(acRequest.candidate as AccessCandidate)
-                .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)
-                .then((ds) => ds.map((d) => JSONContentHelper.create(d.data?.toString()).tryParse() as IStorageVectorDataSource));
+                .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`);
+            const nkvDatasources = items.map((d) => JSONContentHelper.create(d.data?.toString()).tryParse() as IStorageVectorDataSource);
 
             return nkvDatasources;
         } catch (error) {

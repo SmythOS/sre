@@ -404,11 +404,10 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        return (
-            await this.nkvConnector
-                .requester(acRequest.candidate as AccessCandidate)
-                .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)
-        ).map((ds) => {
+        const { items } = await this.nkvConnector
+            .requester(acRequest.candidate as AccessCandidate)
+            .list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`);
+        return items.map((ds) => {
             return JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource;
         });
     }
