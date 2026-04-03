@@ -32,6 +32,11 @@ pnpm test:coverage    # coverage report
 - `dev` is merged into `main` for releases.
 - Use `origin/dev` as the base for code reviews and diffs.
 
+## Pull Requests
+
+- When creating a GitHub PR, always use the template from `.github/pull_request_template.md` and fill in all sections.
+- Ask the user for an optional ClickUp ticket link before creating the PR.
+
 ## Naming Conventions
 
 **File suffixes**: `.service.ts` (services), `.class.ts` (classes/connectors), `.utils.ts` (utilities), `.helper.ts` (helpers), `.handler.ts` (event handlers), `.mw.ts` (middlewares)
